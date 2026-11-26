@@ -48,9 +48,7 @@ def install_control(app: FastAPI, *, root: Path, authenticate: Callable[[Request
         authenticate(request)
         return {"authorization_protocol": PROTOCOL, "resumable_runs": True, "run_scoped_llm": True, "deep_sessions": True}
 
-    @app.post("/v1/galaris/runs")
-    async def start(request: Request, body: dict[str, Any]) -> dict[str, str]:
-        authenticate(request)
+    def prepare(request: Request, body: dict[str, Any]) -> tuple[str, Callable[[RuntimeActor], AsyncIterator[tuple[str, dict[str, Any]]]]]:
         credential = request.headers.get("X-Galaris-Run-Context", "")
         def factory(actor: RuntimeActor) -> AsyncIterator[tuple[str, dict[str, Any]]]:
             actor.approvals = ActionApprovals(mcp_url=os.environ.get("GALARIS_MCP_URL", ""),
@@ -58,10 +56,28 @@ def install_control(app: FastAPI, *, root: Path, authenticate: Callable[[Request
                 session=actor.identifier, on_pending=actor.pending, on_running=actor.running, on_children=actor.children)
             actor.approvals.validate()
             return events(body, request, actor)
+        return credential, factory
+
+    @app.post("/v1/galaris/runs")
+    async def start(request: Request, body: dict[str, Any]) -> dict[str, str]:
+        authenticate(request)
+        credential, factory = prepare(request, body)
         try:
             identifier = runs.start(credential, body, factory)
         except (PermissionError, RuntimeError) as error:
             raise HTTPException(409, str(error)) from error
+        return {"runtime_run_id": identifier}
+
+    @app.post("/v1/galaris/runs/{identifier}/resume")
+    async def resume(identifier: str, request: Request, body: dict[str, Any]) -> dict[str, str]:
+        authenticate(request)
+        credential, factory = prepare(request, body)
+        try:
+            runs.resume(identifier, credential, factory)
+        except LookupError as error:
+            raise HTTPException(404, "Runtime run not found") from error
+        except PermissionError as error:
+            raise HTTPException(403, str(error)) from error
         return {"runtime_run_id": identifier}
 
     @app.get("/v1/galaris/runs/{identifier}")

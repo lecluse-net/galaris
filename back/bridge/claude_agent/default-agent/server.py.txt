@@ -12,6 +12,8 @@ import hmac
 import json
 import os
 from pathlib import Path
+from shutil import copyfileobj
+from tempfile import NamedTemporaryFile
 import time
 from typing import Any, AsyncIterator
 from uuid import UUID, uuid4
@@ -28,8 +30,7 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import BaseModel, ConfigDict, Field
 from stream_trace import ClaudeStreamTrace
-from runtime_support import file_precondition
-from runtime_support import deep_turn_text
+from runtime_support import RuntimeActor, deep_turn_text, file_precondition
 from runtime_web import deep_approvals, install_control
 
 
@@ -165,6 +166,32 @@ async def _prompt_messages(prompt: str) -> AsyncIterator[dict[str, Any]]:
     }
 
 
+def _approval_transcript(path: str, session_id: str) -> Path:
+    config = Path(os.environ.get("CLAUDE_CONFIG_DIR") or Path.home() / ".claude")
+    transcript = Path(path).resolve()
+    if (not transcript.is_relative_to((config / "projects").resolve())
+            or transcript.name != f"{UUID(session_id)}.jsonl"):
+        raise PermissionError("The deferred tool has no matching Claude transcript")
+    return transcript
+
+
+def _copy_transcript(source: Path, destination: Path) -> None:
+    if not source.is_file():
+        raise RuntimeError("The Claude approval transcript is unavailable")
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    temporary = None
+    try:
+        with source.open("rb") as original, NamedTemporaryFile(dir=destination.parent, delete=False) as copy:
+            temporary = Path(copy.name)
+            copyfileobj(original, copy)
+            copy.flush()
+            os.fsync(copy.fileno())
+        temporary.replace(destination)
+    finally:
+        if temporary is not None:
+            temporary.unlink(missing_ok=True)
+
+
 async def _run_events(
     body: ChatRequest,
     request: Request,
@@ -179,6 +206,13 @@ async def _run_events(
     deep_context = request.headers.get("X-Galaris-Deep-Context", "")
     external_inference = os.environ.get("CLAUDE_AGENT_EXTERNAL_INFERENCE") == "1"
     native_session = request.headers.get("X-Galaris-Deep-Native-Session", "")
+    managed = actor if isinstance(actor, RuntimeActor) else None
+    continuation = managed.continuation if managed else None
+    if continuation is not None:
+        native_session = str(UUID(continuation["session_id"]))
+        transcript = _approval_transcript(continuation["transcript_path"], native_session)
+        assert managed is not None
+        _copy_transcript(managed.path.with_suffix(".jsonl"), transcript)
     if deep_session:
         if not external_inference and (actor is None or not deep_context):
             raise HTTPException(status_code=403, detail="A session-scoped Deep request is required.")
@@ -199,8 +233,10 @@ async def _run_events(
     semantic_events: asyncio.Queue[dict[str, Any]] = asyncio.Queue()
     trace = ClaudeStreamTrace()
     tool_started: dict[str, float] = {}
-    tool_count = 0
+    tool_count = int(continuation["tool_count"]) if continuation is not None else 0
     permitted: dict[str, tuple[str, dict[str, Any]]] = {}
+    deferred: tuple[str, str, str] | None = None
+    local_approval_lock = asyncio.Lock()
     parents: dict[str, str] = {}
     background: set[str] = set()
 
@@ -231,10 +267,11 @@ async def _run_events(
         return allowed
 
     async def pre_tool(input_data: dict[str, Any], tool_use_id: str | None, _context: Any):
-        nonlocal tool_count
+        nonlocal tool_count, deferred
         call_id = str(input_data.get("tool_use_id") or tool_use_id or uuid4())
         tool_started[call_id] = time.perf_counter()
-        tool_count += 1
+        if continuation is None or call_id != continuation["tool_use_id"]:
+            tool_count += 1
         if tool_count > tool_limit:
             return {
                 "hookSpecificOutput": {
@@ -259,9 +296,25 @@ async def _run_events(
                 return {"hookSpecificOutput": {"hookEventName": "PreToolUse",
                     "permissionDecision": "deny", "permissionDecisionReason": "Galaris runtime authority changed"}}
         arguments = input_data.get("tool_input") or {}
-        allowed = deep_read_allowed(name, arguments) or await authorize_local(name, arguments, call_id)
+        if managed is not None and managed.approvals is not None:
+            async with local_approval_lock:
+                if deferred is not None:
+                    # The CLI checkpoints only one deferred tool per turn.
+                    return {"hookSpecificOutput": {"hookEventName": "PreToolUse",
+                        "permissionDecision": "deny",
+                        "permissionDecisionReason": "Another action is awaiting authorization. "
+                            "After it is resolved, request this action again if still needed."}}
+                decision, identifier = await asyncio.to_thread(managed.approvals.authorize_once, call_id, name, arguments,
+                    precondition=lambda: file_precondition(arguments, workspace))
+                if decision == "allow":
+                    permitted[call_id] = (name, arguments)
+                elif decision == "defer":
+                    deferred = (call_id, identifier, str(input_data["transcript_path"]))
+        else:
+            allowed = deep_read_allowed(name, arguments) or await authorize_local(name, arguments, call_id)
+            decision = "allow" if allowed else "deny"
         return {"hookSpecificOutput": {"hookEventName": "PreToolUse",
-            "permissionDecision": "allow" if allowed else "deny",
+            "permissionDecision": decision,
             "permissionDecisionReason": "Galaris one-action decision"}}
 
     async def post_tool(input_data: dict[str, Any], tool_use_id: str | None, _context: Any):
@@ -294,7 +347,8 @@ async def _run_events(
             # The managed MCP proxy checks the live Service policy and owns the continuation.
             return PermissionResultAllow(updated_input=input_data)
         call_id = str(getattr(_context, "tool_use_id", "") or "")
-        if await authorize_local(tool_name, input_data, call_id):
+        if (permitted.get(call_id) == (tool_name, input_data)
+                or (managed is None and await authorize_local(tool_name, input_data, call_id))):
             return PermissionResultAllow(updated_input=input_data)
         reason = (
             "An AI requester cannot approve this operation."
@@ -361,7 +415,7 @@ async def _run_events(
         permission_mode="default",
         can_use_tool=permission,
         hooks={
-            "PreToolUse": [HookMatcher(hooks=[pre_tool])],
+            "PreToolUse": [HookMatcher(hooks=[pre_tool], on_failure="block")],
             "PostToolUse": [HookMatcher(hooks=[post_tool])],
             "PostToolUseFailure": [HookMatcher(hooks=[failed_tool])],
         },
@@ -391,7 +445,7 @@ async def _run_events(
         # Own the SDK transport explicitly: a cancelled async iterator alone does
         # not guarantee its nested subprocess is closed before we report stopped.
         async with ClaudeSDKClient(options=options) as client:
-            await client.query(prompt=_prompt_messages(prompt))
+            await client.query(prompt="" if continuation is not None else _prompt_messages(prompt))
             messages = client.receive_messages() if deep_session else client.receive_response()
             async for message in messages:
                 while not semantic_events.empty():
@@ -472,6 +526,22 @@ async def _run_events(
         }
         return
 
+    if deferred is not None and terminal is not None and terminal.deferred_tool_use is not None and managed is not None:
+        deferred_id, request_id, transcript_path = deferred
+        if terminal.deferred_tool_use.id == deferred_id:
+            _copy_transcript(_approval_transcript(transcript_path, terminal.session_id),
+                managed.path.with_suffix(".jsonl"))
+            yield "parked_approval", {
+                "authorization_requests": [request_id],
+                "session_id": terminal.session_id,
+                "transcript_path": transcript_path,
+                "tool_use_id": deferred_id,
+                "tool_count": tool_count,
+            }
+            return
+
+    if deferred:
+        raise RuntimeError("Claude did not return a durable continuation for the requested authorization")
     if terminal is None:
         yield "result", {
             "success": False,

@@ -47,6 +47,10 @@ l'autorisation Galaris de l'action exacte. Les appels au serveur MCP Galaris con
 passent par le proxy du run et suivent les modes et droits de la fonction du Service.
 Le serveur MCP gère la demande d'accord et sa continuation sur le même appel. Les accords
 mémorisés pour les outils locaux restent liés à l'agent, au harnais et à sa configuration.
+Lorsqu’un outil local attend un accord, Claude managé sauvegarde le point de reprise
+dans son volume de données et ferme le processus SDK. La décision réveille la même tâche.
+Le harnais reprend l’appel différé avec la même autorisation à usage unique et vérifie
+de nouveau le contexte et les données de l’action avant de l’exécuter.
 Le nombre de tours et d'outils suit les limites figées dans
 `AgentRunEnvelopeV1`.
 

@@ -51,7 +51,7 @@ callback in the same unchanged scope. Duplicate claims cannot dispatch twice.
 An authoritative late receipt can reconcile `outcome_unknown`; it cannot restart
 the operation or rewrite a reconciled terminal outcome.
 
-Requests expire after 24 hours and are also bounded by their context lifetime.
+Requests stay open while their context remains valid. Historical expirations keep their terminal state.
 Unsettled operations are limited to 50 per agent and 200 per approver. Outbox
 leases retry notification independently of effects. Failed delivery remains
 visible in the human interface. Closed private payloads and receipts are scrubbed

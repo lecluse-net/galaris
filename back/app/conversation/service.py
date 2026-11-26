@@ -877,7 +877,7 @@ async def build_turn(
                 ),
                 "task_id": str(choice.metadata.get("task_id") or ""),
                 **({"run_id": str(choice.metadata["run_id"])} if choice.metadata.get("run_id") else {}),
-                "expires_at": choice.expires_at.isoformat(),
+                **({"expires_at": choice.expires_at.isoformat()} if choice.expires_at is not None else {}),
             }
             for choice in pending_choices
         ),

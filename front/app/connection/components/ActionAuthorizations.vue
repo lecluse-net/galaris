@@ -41,7 +41,7 @@
             </template>
           </dl>
           <div>{{ t(`permissions.actionStatus.${selected.status}`) }}</div>
-          <div>{{ t('permissions.expiresAt') }}: {{ selected.expires_at }}</div>
+          <div v-if="selected.expires_at">{{ t('permissions.expiresAt') }}: {{ selected.expires_at }}</div>
           <p v-if="selected.notification_failed" role="status">{{ t('permissions.notificationFailed') }}</p>
           <q-expansion-item :label="t('permissions.technicalDetails')" dense class="q-mt-md">
             <div class="q-pa-sm">

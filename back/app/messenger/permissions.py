@@ -76,7 +76,7 @@ async def list_decisions(*, managed_agent_ids: frozenset[int] | None,
             try:
                 policy = await authorization_policy(record.agent_id)
                 item.can_answer = (user_id == record.approver_user_id == policy.manager_user_id
-                    and interaction.status == "PENDING" and interaction.expires_at > datetime.now(timezone.utc))
+                    and interaction.status == "PENDING" and not interaction.has_expired(datetime.now(timezone.utc)))
             except PermissionError:
                 pass
             if item.can_answer:
@@ -221,7 +221,7 @@ async def _notify(record: PermissionDecision, *, always_key: str | None = None,
     ).order_by(Interaction.created_at.desc()).limit(1))
     scope_changed = previous is not None and (previous.metadata_.get("always_key") != always_key
         or (always_key is not None and not any(option.get("id") == "deny_always" for option in previous.options)))
-    if previous is not None and previous.expires_at > now and not scope_changed:
+    if previous is not None and not previous.has_expired(now) and not scope_changed:
         if record.interaction_id != previous.id:
             record.interaction_id = previous.id
             await db.commit()

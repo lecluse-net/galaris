@@ -130,7 +130,7 @@ async def authorization_context_pending(agent_id: int, context_key: str) -> bool
     async with get_db_session() as db:
         return bool(await db.scalar(select(ActionAuthorization.id).where(
             ActionAuthorization.agent_id == agent_id, ActionAuthorization.context_key == context_key,
-            ActionAuthorization.status == "pending", ActionAuthorization.expires_at > datetime.now(timezone.utc),
+            ActionAuthorization.status == "pending", ActionAuthorization.unexpired_at(datetime.now(timezone.utc)),
         ).limit(1)))
 
 
@@ -139,7 +139,7 @@ async def pending_context_approvals(contexts: set[str], *, approver_user_id: int
         return {}
     rows = (await get_db().execute(select(ActionAuthorization.context_key, ActionAuthorization.id).where(
         ActionAuthorization.context_key.in_(contexts), ActionAuthorization.approver_user_id == approver_user_id,
-        ActionAuthorization.status == "pending", ActionAuthorization.expires_at > datetime.now(timezone.utc),
+        ActionAuthorization.status == "pending", ActionAuthorization.unexpired_at(datetime.now(timezone.utc)),
     ).order_by(ActionAuthorization.created_at).limit(50))).all()
     approvals: dict[str, list[UUID]] = {}
     for context, identifier in rows:
@@ -262,7 +262,7 @@ async def claim_deferred_dispatch(identifier: UUID, *, agent_id: int, payload: o
             (row.dispatch_claimed_at is not None) != continuation
         ):
             raise AuthorizationClosed(identifier, "outcome_unknown")
-        valid = row.expires_at > datetime.now(timezone.utc) and row.deferred_payload_fingerprint == fingerprint(payload)
+        valid = not row.has_expired(datetime.now(timezone.utc)) and row.deferred_payload_fingerprint == fingerprint(payload)
         valid = valid and row.decision_source in ("human", "runtime_policy")
         valid = valid and row.approver_user_id == policy.manager_user_id
         responsible = await db.get(UserModel, row.approver_user_id, populate_existing=True)
@@ -358,11 +358,11 @@ def restore_prepared_callback(action: AuthorizationAction) -> str:
     try:
         payload = json.loads(get_encryption_service().decrypt(action.continuation))
         expected = fingerprint((action.agent_id, action.runtime, action.context_key, action.kind, action.name, action.connection_id))
-        if payload["identity"] != expected or datetime.fromisoformat(payload["expires_at"]) <= datetime.now(timezone.utc):
+        if payload["identity"] != expected:
             raise ValueError("The prepared continuation changed")
         return str(UUID(payload["callback_key"]))
     except Exception as error:
-        raise ToolCallRejectedError("The prepared continuation is invalid or expired") from error
+        raise ToolCallRejectedError("The prepared continuation is invalid") from error
 
 
 async def resolve_action_mode(action: AuthorizationAction, *, lock: bool = True) -> tuple[str, str]:
@@ -375,7 +375,7 @@ async def resolve_action_mode(action: AuthorizationAction, *, lock: bool = True)
         from .runtime_principals import runtime_principal_port
         principal = await runtime_principal_port().by_key(grant.token_id) if grant else None
         if grant is None or not grant.active or grant.agent_id != action.agent_id or grant.context_key != action.context_key or (
-            grant.expires_at <= datetime.now(timezone.utc) or principal is None or not principal.enabled
+            grant.has_expired(datetime.now(timezone.utc)) or principal is None or not principal.enabled
         ):
             raise ToolCallRejectedError("The runtime run authority was revoked")
         from .runtime_authorization import runtime_grant_snapshot
@@ -454,13 +454,12 @@ async def claim_action(action: AuthorizationAction, *, enabled_only: bool = Fals
         try:
             payload = json.loads(get_encryption_service().decrypt(action.continuation))
             if (payload["binding"] != fingerprint((action.agent_id, action.runtime, action.context_key,
-                    action.source, action.kind, action.name, action.connection_id, action.arguments))
-                    or datetime.fromisoformat(payload["expires_at"]) <= datetime.now(timezone.utc)):
+                    action.source, action.kind, action.name, action.connection_id, action.arguments))):
                 raise ValueError("Invalid authorization continuation")
             callback_key = payload["callback_key"]
             continuation_request = UUID(payload["request_id"])
         except Exception as exc:
-            raise ToolCallRejectedError("Authorization continuation is invalid or expired") from exc
+            raise ToolCallRejectedError("Authorization continuation is invalid") from exc
     operation_key = fingerprint((action.agent_id, action.runtime, action.context_key,
                                  callback_key, action.source, action.kind, action.name,
                                  action.connection_id))
@@ -488,9 +487,9 @@ async def claim_action(action: AuthorizationAction, *, enabled_only: bool = Fals
         row = await db.scalar(select(ActionAuthorization).where(
             ActionAuthorization.operation_key == operation_key,
         ).with_for_update().execution_options(populate_existing=True))
+        if continuation_request is not None and (row is None or row.id != continuation_request):
+            raise AuthorizationClosed(continuation_request, "invalidated")
         if row is None:
-            if continuation_request is not None:
-                raise AuthorizationClosed(continuation_request, "invalidated")
             if mode == "enabled":
                 return None
             refused = await db.scalar(select(ActionAuthorization.id).where(
@@ -501,7 +500,8 @@ async def claim_action(action: AuthorizationAction, *, enabled_only: bool = Fals
                 ActionAuthorization.configuration_fingerprint == configuration_fingerprint,
                 ActionAuthorization.policy_version == policy.version,
                 ActionAuthorization.mode == mode, ActionAuthorization.policy_source == origin,
-                ActionAuthorization.status == "denied", ActionAuthorization.expires_at > now,
+                ActionAuthorization.status == "denied",
+                ActionAuthorization.created_at > now - timedelta(hours=24),
             ).limit(1))
             if refused is not None:
                 raise AuthorizationClosed(refused, "denied")
@@ -525,7 +525,7 @@ async def claim_action(action: AuthorizationAction, *, enabled_only: bool = Fals
                 mode=mode, policy_source=origin, policy_version=policy.version,
                 preview=_action_preview(action, origin),
                 encrypted_arguments=get_encryption_service().encrypt(serialized),
-                expires_at=now + timedelta(hours=24), notification_due_at=now,
+                notification_due_at=now,
                 status="pending",
             )
             if action.source == "runtime" and action.kind == "tool" and action.connection_id is None:
@@ -540,7 +540,7 @@ async def claim_action(action: AuthorizationAction, *, enabled_only: bool = Fals
             metrics.transition(row.status, row.decision_source or "human_required")
         if row.status in ("pending", "approved"):
             from .runtime_permissions import permission_still_valid
-            if row.expires_at <= now:
+            if row.has_expired(now):
                 row.status = "expired"
             elif (row.fingerprint != arguments_fingerprint or
                   row.configuration_fingerprint != configuration_fingerprint or
@@ -582,7 +582,6 @@ async def claim_action(action: AuthorizationAction, *, enabled_only: bool = Fals
             "identity": fingerprint((action.agent_id, action.runtime, action.context_key, action.kind, action.name, action.connection_id)),
             "binding": fingerprint((action.agent_id, action.runtime, action.context_key, action.source,
                 action.kind, action.name, action.connection_id, action.arguments)),
-            "expires_at": row.expires_at.isoformat(),
         }))
         raise AuthorizationRequired(pending, token)
     if closed is not None:
@@ -621,7 +620,7 @@ async def finish_action(request_id: UUID | None, *, receipt: object = None,
 
 async def can_remember_action(row: ActionAuthorization) -> bool:
     """Reuse is scoped to a live connection function or a configured runtime action type."""
-    if (row.status != "pending" or row.expires_at <= datetime.now(timezone.utc) or row.mode != "ask"
+    if (row.status != "pending" or row.has_expired(datetime.now(timezone.utc)) or row.mode != "ask"
             or row.remember_configuration_fingerprint is None
             or row.capability_kind != "tool"
             or (row.runtime_grant_ref is not None and row.runtime_grant_id is None)):
@@ -698,7 +697,7 @@ async def answer_action(request_id: UUID, *, user_id: int, approved: bool, remem
         if permission is not None and not permission.allowed:
             return False
     if remember:
-        if row.expires_at <= now:
+        if row.has_expired(now):
             return False
         if row.source == "runtime":
             if not await can_remember_action(row):
@@ -719,7 +718,7 @@ async def answer_action(request_id: UUID, *, user_id: int, approved: bool, remem
             # Consume this operation once while future calls use its connection policy.
             row.mode = "enabled" if approved else "disabled"
             row.policy_source = "connection"
-    if row.expires_at <= now:
+    if row.has_expired(now):
         row.status = "expired"
         row.encrypted_arguments = None
         row.finished_at = row.wake_due_at = now
@@ -748,6 +747,6 @@ async def authorization_status(request_id: UUID, *, agent_id: int) -> str:
         ))
         if row is None:
             return "invalidated"
-        if row.status in ("pending", "approved") and row.expires_at <= datetime.now(timezone.utc):
+        if row.status in ("pending", "approved") and row.has_expired(datetime.now(timezone.utc)):
             return "expired"
         return row.status

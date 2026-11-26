@@ -247,6 +247,7 @@ async def test_approval_projects_editorial_fields_to_the_recipient_chat(action, 
         row = await db.get(ActionAuthorization, identifier)
         choice = await db.get(Interaction, row.interaction_id)
         assert choice is not None and choice.room_id is not None
+        assert row.expires_at is None and choice.expires_at is None
         review = await present_authorization(row, arguments=arguments, language="en")
         assert [item for item in review["fields"] if item.get("format") == "html"] == [
             {"label": label, "value": html, "format": "html"},
@@ -447,6 +448,7 @@ async def test_api_decision_resolves_chat_choice_without_dispatch(action, monkey
         assert await chat_pending_question_summary(approver) == (1, choice.expires_at)
         rooms = await list_chat_rooms(approver)
         assert {room.id: room.pending_question_until for room in rooms.items} == {room_id: choice.expires_at}
+        assert rooms.items[0].pending_question_without_deadline
         assert rooms.items[0].unread_count == 0
 
         chat_access = await db.scalar(select(Privilege).where(Privilege.code == "CHAT_ACCESS"))
@@ -461,6 +463,7 @@ async def test_api_decision_resolves_chat_choice_without_dispatch(action, monkey
             assert await chat_pending_question_summary(approver) == (0, None)
             rooms = await list_chat_rooms(approver)
             assert {room.id: room.pending_question_until for room in rooms.items} == {room_id: None}
+            assert not rooms.items[0].pending_question_without_deadline
         finally:
             role_id_ctx.reset(token)
 
@@ -472,9 +475,9 @@ async def test_api_decision_resolves_chat_choice_without_dispatch(action, monkey
             ),
         )
         assert question.room_id == choice.room_id
-        assert await chat_pending_question_summary(approver) == (2, min(choice.expires_at, question.expires_at))
+        assert await chat_pending_question_summary(approver) == (2, question.expires_at)
         rooms = await list_chat_rooms(approver)
-        assert rooms.items[0].pending_question_until == max(choice.expires_at, question.expires_at)
+        assert rooms.items[0].pending_question_without_deadline
         if processing:
             choice.status = "PROCESSING"
             choice.processing_token = uuid4()
@@ -487,6 +490,7 @@ async def test_api_decision_resolves_chat_choice_without_dispatch(action, monkey
         assert await chat_pending_question_summary(approver) == (1, question.expires_at)
         rooms = await list_chat_rooms(approver)
         assert {room.id: room.pending_question_until for room in rooms.items} == {room_id: question.expires_at}
+        assert not rooms.items[0].pending_question_without_deadline
     monkeypatch.setattr(outbox, "wake_authorization_context", AsyncMock(return_value=True))
     await outbox.reconcile_authorizations()
     async with get_db_session() as db:
@@ -562,6 +566,10 @@ async def test_managed_approval_waits_for_the_resumed_task_attempt(action, runti
         agent=AgentSnapshot(id=action.agent_id, code="synthetic", first_name="Synthetic", last_name="Runtime", driver_code="openai_messages"),
         target=ResolvedExecutionTarget(provider_code=runtime_action.runtime, target_ref=f"harness:{assignment_id}", revision="1"))
     credential = await issue_runtime_run_grant(request)
+    async with get_db_session() as db:
+        from app.services.authorization_models import RuntimeRunGrant
+        grant = await db.scalar(select(RuntimeRunGrant).where(RuntimeRunGrant.attempt_key == attempt_id))
+        assert grant is not None and grant.expires_at is None
     headers = {"Authorization": f"Bearer {bearer}", "X-Galaris-Run-Context": credential}
     endpoint = "/api/services/runtime-authorizations"
     payload = {"callback_key": "same-effect", "name": "write_file", "session": "synthetic", "arguments": {"content": "write once"}}
@@ -573,6 +581,8 @@ async def test_managed_approval_waits_for_the_resumed_task_attempt(action, runti
         # Even an immediate answer must wait for the first attempt to settle.
         async with get_db_session() as db:
             row = await db.get(ActionAuthorization, identifier)
+            assert row.expires_at is None
+            row.created_at -= timedelta(days=45)
             assert await answer_action(identifier, user_id=row.approver_user_id, approved=approved)
         assert (await client.get(f"{endpoint}/{identifier}", headers=headers)).json()["status"] == "pending"
         assert (await client.post(endpoint, headers=headers, json=payload)).json()["status"] == "pending"
@@ -627,14 +637,24 @@ async def test_managed_approval_waits_for_the_resumed_task_attempt(action, runti
         from app.harnesses.openai_client import OpenAIHarnessClient
         state = {"status": "waiting_for_authorization", "authorization_requests": [str(identifier)]}
         observed = asyncio.Event()
+        resumed = asyncio.Event()
+        parked = runtime_action.runtime == "claude_agent"
+        if parked:
+            state.update(approval_parked=True, stopped=True)
 
-        def runtime_snapshot(_request):
+        def runtime_snapshot(request):
+            if request.method == "POST":
+                assert parked and request.url.path.endswith("/synthetic-actor/resume")
+                assert request.headers["X-Galaris-Run-Context"] == credential
+                state.update(status="running", approval_parked=False, stopped=False)
+                resumed.set()
             observed.set()
             return httpx.Response(200, json=dict(state))
 
         async def delayed_actor_poll():
             await observed.wait()
             await asyncio.sleep(0.35)
+            assert resumed.is_set() is parked
             assert (await client.get(f"{endpoint}/{identifier}", headers=headers)).json()["status"] == ("approved" if approved else "denied")
             async with get_db_session():
                 scope = await SqlAlchemyAgentTaskAdapter().record_scope_preflight(task_id, agent_id=action.agent_id,

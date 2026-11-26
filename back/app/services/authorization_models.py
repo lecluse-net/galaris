@@ -3,7 +3,7 @@
 from datetime import datetime
 from uuid import UUID, uuid4
 
-from sqlalchemy import Boolean, CheckConstraint, DateTime, ForeignKey, Index, Integer, String, Text, func, text
+from sqlalchemy import Boolean, CheckConstraint, ColumnElement, DateTime, ForeignKey, Index, Integer, String, Text, func, or_, text
 from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -45,7 +45,7 @@ class ActionAuthorization(Base):
     preview: Mapped[str] = mapped_column(Text)
     interaction_id: Mapped[UUID | None] = mapped_column(ForeignKey("messenger_interactions.id", ondelete="SET NULL"), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
-    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     decided_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     cancelled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     cancelled_by_user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
@@ -53,12 +53,22 @@ class ActionAuthorization(Base):
     finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     notification_due_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True, index=True)
     notification_failed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    authority_checked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     wake_due_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True, index=True)
     __table_args__ = (
         CheckConstraint("status IN ('pending','approved','denied','expired','invalidated','executing','completed','failed','outcome_unknown')", name="ck_action_authorization_status"),
         CheckConstraint("source IN ('mcp','runtime','domain')", name="ck_action_authorization_source"),
         Index("ix_action_authorization_agent_status", "agent_id", "status"),
+        Index("ix_action_authorization_pending_review", "authority_checked_at", "created_at", "id",
+            postgresql_where=text("status IN ('pending','approved')")),
     )
+
+    @classmethod
+    def unexpired_at(cls, now: datetime) -> ColumnElement[bool]:
+        return or_(cls.expires_at.is_(None), cls.expires_at > now)
+
+    def has_expired(self, now: datetime) -> bool:
+        return self.expires_at is not None and self.expires_at <= now
 
 
 class RuntimeActionPermission(Base):
@@ -97,4 +107,11 @@ class RuntimeRunGrant(Base):
     target_revision: Mapped[str] = mapped_column(String(100))
     active: Mapped[bool] = mapped_column(Boolean, default=True, server_default="true")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
-    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+    @classmethod
+    def unexpired_at(cls, now: datetime) -> ColumnElement[bool]:
+        return or_(cls.expires_at.is_(None), cls.expires_at > now)
+
+    def has_expired(self, now: datetime) -> bool:
+        return self.expires_at is not None and self.expires_at <= now

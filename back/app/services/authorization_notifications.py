@@ -98,7 +98,7 @@ async def deliver_authorization_notifications() -> None:
     now = datetime.now(timezone.utc)
     async with get_db_session() as db:
         ids = list((await db.scalars(select(ActionAuthorization.id).where(
-            ActionAuthorization.status == "pending", ActionAuthorization.expires_at > now,
+            ActionAuthorization.status == "pending", ActionAuthorization.unexpired_at(now),
             ActionAuthorization.notification_due_at <= now,
         ).order_by(ActionAuthorization.created_at).limit(20))).all())
     for identifier in ids:
@@ -152,7 +152,8 @@ async def deliver_authorization_notifications() -> None:
                     body=body, body_html=body_html,
                     options=options,
                     metadata={"authorization_request_id": str(row.id)},
-                    timeout_seconds=max(1, int((row.expires_at - now).total_seconds())), language=language,
+                    timeout_seconds=(max(1, int((row.expires_at - now).total_seconds()))
+                                     if row.expires_at is not None else None), language=language,
                 ), idempotency_key=f"authorization:{row.id}",
             )
             attached = await db.scalar(update(ActionAuthorization).where(
@@ -165,20 +166,24 @@ async def deliver_authorization_notifications() -> None:
 
 
 async def reconcile_authorizations() -> None:
-    """Expire bounded approvals and classify abandoned dispatches without resending them."""
+    """Revalidate open approvals and classify abandoned dispatches without resending them."""
     now = datetime.now(timezone.utc)
     async with get_db_session() as db:
         unsettled = list((await db.scalars(select(ActionAuthorization.id).where(
-            ActionAuthorization.status.in_(("pending", "approved"))).order_by(ActionAuthorization.created_at).limit(200))).all())
+            ActionAuthorization.status.in_(("pending", "approved")))
+            .order_by(ActionAuthorization.authority_checked_at.asc().nulls_first(),
+                ActionAuthorization.created_at, ActionAuthorization.id).limit(200))).all())
     for identifier in unsettled:
         async with _isolated_delivery() as db:
             row = await db.scalar(select(ActionAuthorization).where(ActionAuthorization.id == identifier)
                 .with_for_update(skip_locked=True).execution_options(populate_existing=True))
-            if row is not None and row.status in ("pending", "approved") and not await _still_usable(row):
-                row.status = "invalidated"
-                row.encrypted_arguments = None
-                row.finished_at = row.wake_due_at = now
-                row.notification_due_at = None
+            if row is not None and row.status in ("pending", "approved"):
+                row.authority_checked_at = now
+                if not await _still_usable(row):
+                    row.status = "invalidated"
+                    row.encrypted_arguments = None
+                    row.finished_at = row.wake_due_at = now
+                    row.notification_due_at = None
             await db.commit()
     async with get_db_session() as db:
         await db.execute(update(ActionAuthorization).where(

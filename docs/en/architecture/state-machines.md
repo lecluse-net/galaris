@@ -14,12 +14,13 @@ The `service_action_authorizations` journal has `pending`, `approved`, `denied`,
 | Committed preparation requiring agreement | absent | `pending` |
 | Matching remembered runtime permission | absent | `approved`, then claim `executing` |
 | Authorized human answer | `pending` | `approved` or `denied` |
-| Expiry or loss of authority before effect | `pending` / `approved` | `expired` / `invalidated` |
+| Loss of authority before effect | `pending` / `approved` | `invalidated` |
 | Atomic claim after revalidation | `approved` | `executing` |
 | Effect receipt | `executing` | `completed` / `failed` / `outcome_unknown` |
 | Late authoritative remote evidence | `outcome_unknown` | `completed` / `failed`, without redispatch |
 
-The first valid decision wins. Reconciled outcomes stay terminal. Waiting returns
+The first valid decision wins. Authorization requests remain open while their context is valid.
+Historical expirations remain visible. Reconciled outcomes stay terminal. Waiting returns
 `galaris.execution-result/v2` with `disposition=waiting_for_authorization` and exact request UUIDs.
 UUIDs are serialized as JSON strings before JSONB result persistence; their identities survive
 reloading.

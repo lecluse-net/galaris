@@ -490,7 +490,7 @@ async def rebind_action_history(
         source, ActionAuthorization.capability_kind == "tool",
         ActionAuthorization.capability_name.in_(targets),
     ).with_for_update()):
-        if action.status == "executing" or (action.status in {"pending", "approved"} and action.expires_at > datetime.now(timezone.utc)):
+        if action.status == "executing" or (action.status in {"pending", "approved"} and not action.has_expired(datetime.now(timezone.utc))):
             raise ValueError(f"Cannot move {action.capability_name}: an action authorization is still in progress")
         service_id = targets[action.capability_name]
         destination = destinations.get((service_id, action.agent_id))
@@ -621,7 +621,7 @@ async def _merge_service(
     for action in await session.scalars(select(ActionAuthorization).where(
         (ActionAuthorization.service_id == source.id) | ActionAuthorization.connection_id.in_(origin_ids),
     ).with_for_update()):
-        if action.status == "executing" or (action.status in {"pending", "approved"} and action.expires_at > datetime.now(timezone.utc)):
+        if action.status == "executing" or (action.status in {"pending", "approved"} and not action.has_expired(datetime.now(timezone.utc))):
             raise ValueError(f"Cannot merge {source.code}: an action authorization is still in progress")
         service = targets.get(action.capability_name)
         if service is not None:

@@ -53,7 +53,7 @@ const ranks = { PENDING: 0, EXPIRED: 1, PROCESSING: 2, RESOLVED: 3 }
 // A delayed history refresh must not replace the successful click response with PENDING.
 const choice = computed(() => captured.value && ranks[captured.value.status] > ranks[props.interaction.status]
   ? captured.value : props.interaction)
-const status = computed(() => choice.value.status === 'PENDING' && Date.parse(choice.value.expires_at) <= now.value
+const status = computed(() => choice.value.status === 'PENDING' && Date.parse(choice.value.expires_at ?? '') <= now.value
   ? 'EXPIRED' : choice.value.status)
 const visibleOptions = computed(() => {
   const current = choice.value

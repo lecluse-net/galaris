@@ -846,7 +846,7 @@ class _RoomListProjection:
     last_messages: dict[UUID, NativeMessengerMessage] = field(default_factory=dict[UUID, NativeMessengerMessage])
     unread: dict[tuple[UUID, UUID], int] = field(default_factory=dict[tuple[UUID, UUID], int])
     expected_agents: dict[UUID, int | None] = field(default_factory=dict[UUID, int | None])
-    pending_questions: dict[tuple[UUID, UUID], datetime] = field(default_factory=dict[tuple[UUID, UUID], datetime])
+    pending_questions: dict[tuple[UUID, UUID], datetime | None] = field(default_factory=dict[tuple[UUID, UUID], datetime | None])
 
 
 async def _room_list_projection(
@@ -996,6 +996,8 @@ async def _room_dto(
         muted=membership.muted if membership is not None else False,
         unread_count=projection.unread.get(member_key, 0) if member_key is not None else 0,
         pending_question_until=projection.pending_questions.get(member_key) if member_key is not None else None,
+        pending_question_without_deadline=(member_key is not None and member_key in projection.pending_questions
+                                           and projection.pending_questions[member_key] is None),
         show_last_message=(
             membership.show_last_message if membership is not None else True
         ),

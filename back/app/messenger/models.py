@@ -12,6 +12,7 @@ from sqlalchemy import (
     BigInteger,
     Boolean,
     CheckConstraint,
+    ColumnElement,
     DateTime,
     ForeignKey,
     Identity,
@@ -20,6 +21,7 @@ from sqlalchemy import (
     String,
     Text,
     UniqueConstraint,
+    or_,
     text,
 )
 from sqlalchemy.dialects.postgresql import JSONB, UUID as PGUUID
@@ -224,11 +226,18 @@ class Interaction(Base):
     processing_expires_at: Mapped[Optional[datetime]] = mapped_column(
         DateTime(timezone=True), nullable=True, index=True
     )
-    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, index=True)
+    expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), index=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )
     resolved_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    @classmethod
+    def unexpired_at(cls, now: datetime) -> ColumnElement[bool]:
+        return or_(cls.expires_at.is_(None), cls.expires_at > now)
+
+    def has_expired(self, now: datetime) -> bool:
+        return self.expires_at is not None and self.expires_at <= now
 
 
 class PermissionDecision(HistoryMixin, Base):

@@ -361,12 +361,13 @@ class OpenAIHarnessClient:
             raise RuntimeError("A server-issued managed run context is required")
         message_count = max(0, int(_float((cursor or {}).get("messages"))))
         text_offset = max(0, int(_float((cursor or {}).get("text"))))
+        body = {"model": _model(envelope), "messages": _messages(envelope)}
         async with httpx.AsyncClient(timeout=_TIMEOUT, follow_redirects=False, trust_env=False, transport=self.transport) as client:
             if start:
                 from core.params import runtime_settings
 
                 created = await client.post(f"{self.base_url}/galaris/runs", headers=self._headers(envelope),
-                    json={"model": _model(envelope), "messages": _messages(envelope),
+                    json={**body,
                         "galaris_network_retry": {
                             "max_attempts": runtime_settings.TASK_NETWORK_MAX_ATTEMPTS,
                             "base_seconds": runtime_settings.TASK_NETWORK_RETRY_BASE_SECONDS,
@@ -393,13 +394,18 @@ class OpenAIHarnessClient:
                     continue
                 # Older runtimes allowed late approval callbacks to overwrite a terminal
                 # status. A stopped actor cannot make progress or accept an approval.
-                if state.get("stopped") is True and status in {"running", "waiting_for_authorization"}:
+                parked = state.get("approval_parked") is True
+                if state.get("stopped") is True and status in {"running", "waiting_for_authorization"} and not parked:
                     status = "outcome_unknown"
                 if status == "waiting_for_authorization":
                     from app.services.facade import runtime_authorizations_ready
 
                     pending_ids = [UUID(str(value)) for value in cast(Sequence[object], state.get("authorization_requests") or [])]
                     if await runtime_authorizations_ready(self.run_context, agent_id=envelope.agent_id, identifiers=pending_ids):
+                        if parked and state.get("stopped") is True:
+                            resumed = await client.post(f"{self.base_url}/galaris/runs/{runtime_run_id}/resume",
+                                headers=self._headers(envelope), json=body)
+                            resumed.raise_for_status()
                         # The actor polls independently. Releasing our lease on its
                         # old snapshot would gate its next poll and lose the wake.
                         await asyncio.sleep(0.25)

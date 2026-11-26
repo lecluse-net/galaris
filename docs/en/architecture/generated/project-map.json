@@ -12399,7 +12399,7 @@
           "connections.id"
         ],
         "history_mixin": true,
-        "line": 439,
+        "line": 448,
         "module": "app.messenger",
         "table": "messenger_files"
       },
@@ -12410,7 +12410,7 @@
           "connections.id"
         ],
         "history_mixin": false,
-        "line": 192,
+        "line": 194,
         "module": "app.messenger",
         "table": "messenger_interactions"
       },
@@ -12421,7 +12421,7 @@
           "connections.id"
         ],
         "history_mixin": false,
-        "line": 495,
+        "line": 504,
         "module": "app.messenger",
         "table": "messenger_listener_state"
       },
@@ -12433,7 +12433,7 @@
           "messenger_messages.id"
         ],
         "history_mixin": false,
-        "line": 476,
+        "line": 485,
         "module": "app.messenger",
         "table": "messenger_message_files"
       },
@@ -12449,7 +12449,7 @@
           "users.id"
         ],
         "history_mixin": true,
-        "line": 254,
+        "line": 263,
         "module": "app.messenger",
         "table": "messenger_messages"
       },
@@ -12462,7 +12462,7 @@
           "messenger_users.id"
         ],
         "history_mixin": false,
-        "line": 139,
+        "line": 141,
         "module": "app.messenger",
         "table": "messenger_room_users"
       },
@@ -12474,7 +12474,7 @@
           "topics.id"
         ],
         "history_mixin": true,
-        "line": 63,
+        "line": 65,
         "module": "app.messenger",
         "table": "messenger_rooms"
       },
@@ -12487,7 +12487,7 @@
           "users.id"
         ],
         "history_mixin": true,
-        "line": 96,
+        "line": 98,
         "module": "app.messenger",
         "table": "messenger_users"
       },
@@ -12544,7 +12544,7 @@
           "users.id"
         ],
         "history_mixin": true,
-        "line": 234,
+        "line": 243,
         "module": "app.messenger",
         "table": "permission_decisions"
       },
@@ -12795,7 +12795,7 @@
           "users.id"
         ],
         "history_mixin": false,
-        "line": 64,
+        "line": 74,
         "module": "app.services",
         "table": "runtime_action_permissions"
       },
@@ -12807,7 +12807,7 @@
           "agents.id"
         ],
         "history_mixin": false,
-        "line": 82,
+        "line": 92,
         "module": "app.services",
         "table": "runtime_run_grants"
       },
@@ -15169,7 +15169,7 @@
         "declared_path": "/action-authorizations/{identifier}/answer",
         "file": "back/app/services/authorization_router.py",
         "handler": "answer_request",
-        "line": 165,
+        "line": 164,
         "method": "POST",
         "module": "app.services"
       },
@@ -15178,7 +15178,7 @@
         "declared_path": "/action-authorizations/{identifier}/cancel",
         "file": "back/app/services/authorization_router.py",
         "handler": "cancel_request",
-        "line": 177,
+        "line": 176,
         "method": "POST",
         "module": "app.services"
       },
@@ -20812,7 +20812,7 @@
         "declared_path": "/mcp/{identifier}",
         "file": "back/app/harnesses/runtime_web.py",
         "handler": "mcp",
-        "line": 85,
+        "line": 101,
         "method": "POST",
         "module": "app.harnesses"
       },
@@ -22558,7 +22558,7 @@
         "declared_path": "/v1/galaris/runs",
         "file": "back/app/harnesses/runtime_web.py",
         "handler": "start",
-        "line": 52,
+        "line": 62,
         "method": "POST",
         "module": "app.harnesses"
       },
@@ -22567,7 +22567,7 @@
         "declared_path": "/v1/galaris/runs/{identifier}",
         "file": "back/app/harnesses/runtime_web.py",
         "handler": "status",
-        "line": 68,
+        "line": 84,
         "method": "GET",
         "module": "app.harnesses"
       },
@@ -22576,7 +22576,16 @@
         "declared_path": "/v1/galaris/runs/{identifier}/cancel",
         "file": "back/app/harnesses/runtime_web.py",
         "handler": "cancel",
-        "line": 76,
+        "line": 92,
+        "method": "POST",
+        "module": "app.harnesses"
+      },
+      {
+        "authorized": false,
+        "declared_path": "/v1/galaris/runs/{identifier}/resume",
+        "file": "back/app/harnesses/runtime_web.py",
+        "handler": "resume",
+        "line": 72,
         "method": "POST",
         "module": "app.harnesses"
       },

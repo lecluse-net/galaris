@@ -7,9 +7,14 @@ temporary=$(mktemp -d)
 trap 'rm -rf "$temporary"' EXIT
 report_dir="$source_root/artifacts/harness-runtimes"
 runtimes=(codex claude_agent hermes deepseek_harness)
+probe_args=()
 if [[ "${1:-}" == --process ]]; then
   report_dir="$source_root/artifacts/process-harness-qualification"
   runtimes=(claude_agent)
+elif [[ "${1:-}" == --claude-delayed-approval ]]; then
+  report_dir="$source_root/artifacts/harness-runtimes-delayed-approval"
+  runtimes=(claude_agent)
+  probe_args=(--delayed-approval)
 fi
 mkdir -p "$report_dir"
 report="$report_dir/summary.txt"
@@ -75,7 +80,7 @@ for runtime in "${runtimes[@]}"; do
       --tmpfs /sessions:mode=1777 --tmpfs /data:mode=1777 \
       --mount "type=bind,src=$source_root/back/scripts/qualify_harness_runtime.py,dst=/probe.py,readonly" \
       --mount "type=bind,src=$source_root/back/scripts/qualify_hermes_cancellation.py,dst=/probe_hermes_cancellation.py,readonly" \
-      --entrypoint python "$image" /probe.py "$runtime" > "$report_dir/$runtime.log" 2>&1; then
+      --entrypoint python "$image" /probe.py "$runtime" "${probe_args[@]}" > "$report_dir/$runtime.log" 2>&1; then
     printf 'PASS %s %s source=%s\n' "$runtime" "$digest" "$context_hash" >> "$report"
   else
     printf 'FAIL %s %s (see %s.log)\n' "$runtime" "$digest" "$runtime" >> "$report"

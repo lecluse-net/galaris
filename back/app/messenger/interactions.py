@@ -47,7 +47,7 @@ class ChoiceRequest(BaseModel):
     free_text: bool = False
     interpretation_required: bool = False
     metadata: dict[str, Any] = Field(default_factory=lambda: {})
-    timeout_seconds: int = 300
+    timeout_seconds: int | None = 300
     reminder_delays: tuple[Annotated[int, Field(gt=0)], ...] = ()
     language: str = ""
 
@@ -77,7 +77,7 @@ class PendingChoice:
     body: str
     options: list[ChoiceOption]
     metadata: dict[str, Any]
-    expires_at: datetime
+    expires_at: datetime | None
     connection_id: Optional[int] = None
     reference: str = ""
     free_text: bool = False
@@ -256,7 +256,7 @@ async def create_choice(
                     or existing.service_id != (messenger.service_id or None) or existing.room_id != room_id
                     or existing.user_id != user_id):
                 raise PermissionError("The existing request belongs to another messaging scope")
-            if existing.prompt_message_id is None and existing.status == "PENDING" and existing.expires_at > now:
+            if existing.prompt_message_id is None and existing.status == "PENDING" and not existing.has_expired(now):
                 return await _send_choice_prompt(messenger, existing, request, reply_to=reply_to)
             return _pending_from_record(existing)
 
@@ -287,7 +287,8 @@ async def create_choice(
         options=[option.model_dump() for option in request.options],
         free_text=request.free_text,
         metadata_=metadata,
-        expires_at=now + timedelta(seconds=max(1, request.timeout_seconds)),
+        expires_at=(now + timedelta(seconds=max(1, request.timeout_seconds))
+                    if request.timeout_seconds is not None else None),
     )
     db.add(record)
     await db.commit()
@@ -315,7 +316,7 @@ def _schedule_choice_reminder(record: Interaction, now: datetime) -> None:
     metadata.pop(_REMINDER_DUE_KEY, None)
     if delays:
         due = now + timedelta(seconds=delays[0])
-        if due < record.expires_at:
+        if record.expires_at is None or due < record.expires_at:
             metadata[_REMINDER_DUE_KEY] = due.isoformat()
             metadata[_REMINDER_DELAYS_KEY] = delays[1:]
     record.metadata_ = metadata
@@ -381,7 +382,7 @@ async def resolve_from_message(
         select(Interaction)
         .where(
             Interaction.status == "PENDING",
-            Interaction.expires_at > now,
+            Interaction.unexpired_at(now),
             Interaction.service_id == message.service_id,
             *scope_clauses,
         )
@@ -487,7 +488,7 @@ async def list_pending_choices(
         select(Interaction)
         .where(
             Interaction.status == "PENDING",
-            Interaction.expires_at > now,
+            Interaction.unexpired_at(now),
             Interaction.agent_id == agent_id,
             Interaction.connection_id == connection_id,
             Interaction.service_id == service_id,
@@ -532,7 +533,7 @@ async def apply_interpreted_response(
         if (record.resolution or {}).get("data") != response:
             raise ValueError("This request already has a different response")
         return False
-    if record.status != "PENDING" or record.expires_at <= datetime.now(timezone.utc):
+    if record.status != "PENDING" or record.has_expired(datetime.now(timezone.utc)):
         raise ValueError("This request is no longer pending")
     await apply(_pending_from_record(record))
     record.resolution = {"data": response}
@@ -610,7 +611,7 @@ async def resolve_pending_choice(
         if existing is None or existing.option_id != option.id:
             raise ValueError("This choice was already captured with another option.")
         return existing, record.status == "RESOLVED"
-    if record.status != "PENDING" or record.expires_at <= datetime.now(timezone.utc):
+    if record.status != "PENDING" or record.has_expired(datetime.now(timezone.utc)):
         raise ValueError("This choice is no longer pending.")
 
     if not await _recipient_authorized(record):
@@ -779,7 +780,7 @@ async def deliver_choice_reminders(*, now: datetime | None = None) -> None:
     for _ in range(5):
         current = now or datetime.now(timezone.utc)
         record = await db.scalar(select(Interaction).where(
-            Interaction.status == "PENDING", Interaction.expires_at > current,
+            Interaction.status == "PENDING", Interaction.unexpired_at(current),
             Interaction.prompt_message_id.is_not(None),
             due <= current.isoformat(),
         ).order_by(due, Interaction.id).limit(1).with_for_update(skip_locked=True)
@@ -807,7 +808,7 @@ async def deliver_choice_reminders(*, now: datetime | None = None) -> None:
                 ))
                 if prompt is None or await db.scalar(select(Interaction.id).where(
                     Interaction.id == choice.id, Interaction.status == "PENDING",
-                    Interaction.expires_at > (now or datetime.now(timezone.utc)),
+                    Interaction.unexpired_at(now or datetime.now(timezone.utc)),
                 )) is None:
                     continue
                 language = _language(choice.metadata.get("language"))
@@ -846,7 +847,7 @@ async def request_user_choice(
         if (existing.user_id != external_user or existing.connection_id != messenger.connection_id):
             raise PermissionError("The existing choice belongs to another conversation scope")
         if (existing.prompt_message_id is None and existing.status == "PENDING"
-                and existing.expires_at > datetime.now(timezone.utc)):
+                and not existing.has_expired(datetime.now(timezone.utc))):
             return await _send_choice_prompt(messenger, existing, ChoiceRequest(
                 kind=existing.kind, title=existing.title, body=existing.body,
                 options=[ChoiceOption.model_validate(option) for option in existing.options],
@@ -884,7 +885,7 @@ async def expire_user_choice(*, agent_id: int, kind: str, idempotency_key: str) 
         Interaction.metadata_["idempotency_key"].as_string() == idempotency_key,
         Interaction.status == "PENDING",
     ).with_for_update().execution_options(populate_existing=True))
-    if record is None or record.expires_at <= datetime.now(timezone.utc):
+    if record is None or record.has_expired(datetime.now(timezone.utc)):
         return
     record.expires_at = datetime.now(timezone.utc)
     await db.commit()

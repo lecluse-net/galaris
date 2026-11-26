@@ -43,7 +43,10 @@ The SDK uses `permission_mode="default"`. For local tools, its callback checks G
 authorization for the exact action. Calls to the configured Galaris MCP server pass through
 the run's proxy and follow the Service function's mode and permissions. The MCP server
 manages the approval request and continues the same call. Remembered local-tool grants
-remain bound to the agent, harness and configuration. Turn and Service counts follow the limits frozen in
+remain bound to the agent, harness and configuration. When a local tool needs approval, managed
+Claude saves the continuation to its data volume and closes the SDK process. The decision wakes
+the same Task. The harness resumes the deferred call with the same one-use authorization and
+checks its context and action data again before executing it. Turn and Service counts follow the limits frozen in
 `AgentRunEnvelopeV1`.
 
 `start`, `restart`, and `update` build or recreate the image pinned by `requirements.txt`.

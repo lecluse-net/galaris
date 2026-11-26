@@ -58,7 +58,7 @@ async def list_requests(agent_id: int | None = None, status: str | None = None,
     if status is not None:
         query = query.where(ActionAuthorization.status == status)
     if status == "pending":
-        query = query.where(ActionAuthorization.expires_at > datetime.now(timezone.utc))
+        query = query.where(ActionAuthorization.unexpired_at(datetime.now(timezone.utc)))
     total = await get_db().scalar(select(func.count()).select_from(query.subquery()))
     rows = (await get_db().scalars(query.order_by(ActionAuthorization.created_at.desc()).offset(offset).limit(limit))).all()
     services = await get_services_by_ids({row.service_id for row in rows if row.service_id is not None})
@@ -142,8 +142,7 @@ async def get_request(identifier: UUID) -> dict[str, Any]:
         result.update(can_answer=False, can_remember=False, can_cancel=False)
         return result
     can_answer = row.approver_user_id == scope.user_id and (row.source == "domain" or row.approver_user_id == policy.manager_user_id)
-    from datetime import datetime, timezone
-    result["can_answer"] = can_answer and row.status == "pending" and row.expires_at > datetime.now(timezone.utc)
+    result["can_answer"] = can_answer and row.status == "pending" and not row.has_expired(datetime.now(timezone.utc))
     result["can_remember"] = result["can_answer"] and await can_remember_action(row)
     if result["can_answer"]:
         result["decision_scope"] = approval_scope(row, language=language, can_remember=result["can_remember"])

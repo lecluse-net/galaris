@@ -15,7 +15,6 @@ import json
 import os
 from pathlib import Path
 import threading
-import time
 from typing import Any, cast
 from urllib.error import HTTPError
 from urllib.request import Request, urlopen
@@ -141,12 +140,10 @@ class ActionApprovals:
     def _authorize(self, callback: str, name: str, arguments: dict[str, Any], *,
                    precondition: Callable[[], dict[str, Any]] | None = None) -> bool:
         """Consume exactly one agreement immediately before returning to the SDK."""
-        deadline = time.monotonic() + 24 * 60 * 60
-        while not self.cancelled.is_set() and time.monotonic() < deadline:
+        while not self.cancelled.is_set():
             snapshot = {**arguments, **({"precondition": precondition()} if precondition else {})}
             try:
-                result = self._post("", {"callback_key": callback, "name": name,
-                    "session": self.session, "arguments": snapshot})
+                decision, identifier = self._local_decision(callback, name, arguments, snapshot=snapshot)
             except HTTPError as error:
                 if error.code in (401, 403, 404, 409, 422):
                     return False
@@ -158,20 +155,44 @@ class ActionApprovals:
                 if self.cancelled.wait(2):
                     return False
                 continue
-            status = result.get("status")
-            if status == "executing" and result.get("claimed") is True:
-                with self._waiting_lock:
-                    self.permits[callback] = str(result["request_id"])
-                    self._local_calls[callback] = (name, arguments)
-                self._running(str(result.get("request_id") or ""))
-                return True
-            if status != "pending":
-                self._running(str(result.get("request_id") or ""))
-                return False
-            self._pending(str(result["request_id"]))
+            if decision != "defer":
+                return decision == "allow"
+            self._pending(identifier)
             if self.cancelled.wait(2):
                 return False
         return False
+
+    def authorize_once(self, callback: str, name: str, arguments: dict[str, Any], *,
+                       precondition: Callable[[], dict[str, Any]]) -> tuple[str, str]:
+        with self._operation():
+            if self.cancelled.is_set():
+                return "deny", ""
+            snapshot = {**arguments, "precondition": precondition()}
+            try:
+                return self._local_decision(callback, name, arguments, snapshot=snapshot)
+            except HTTPError as error:
+                if error.code in (401, 403, 404, 409, 422):
+                    return "deny", ""
+                raise
+
+    def _local_decision(self, callback: str, name: str, arguments: dict[str, Any], *,
+                        snapshot: dict[str, Any]) -> tuple[str, str]:
+        result = self._post("", {"callback_key": callback, "name": name,
+            "session": self.session, "arguments": snapshot})
+        identifier = str(result.get("request_id") or "")
+        status = result.get("status")
+        if status == "pending":
+            if not identifier:
+                raise PermissionError("The pending action has no authorization identity")
+            return "defer", identifier
+        if status == "executing" and result.get("claimed") is True and identifier:
+            with self._waiting_lock:
+                self.permits[callback] = identifier
+                self._local_calls[callback] = (name, arguments)
+            self._running(identifier)
+            return "allow", identifier
+        self._running(identifier)
+        return "deny", identifier
 
     def mcp(self, body: dict[str, Any]) -> tuple[int, bytes]:
         with self._operation():
@@ -298,20 +319,23 @@ def file_precondition(arguments: dict[str, Any], workspace: Path) -> dict[str, A
 
 
 class RuntimeActor:
-    def __init__(self, identifier: str, path: Path, fingerprint: str) -> None:
+    def __init__(self, identifier: str, path: Path, fingerprint: str, *,
+                 state: dict[str, Any] | None = None, continuation: dict[str, Any] | None = None) -> None:
         self.identifier, self.path, self.fingerprint = identifier, path, fingerprint
         self.lock = threading.RLock()
         self.approvals: ActionApprovals | None = None
         self.loop: asyncio.AbstractEventLoop | None = None
         self.task: asyncio.Task[Any] | None = None
         self._cancel_requested = False
-        self.state: dict[str, Any] = {"runtime_run_id": identifier, "status": "running",
+        self.state: dict[str, Any] = state if state is not None else {"runtime_run_id": identifier, "status": "running",
             "messages": [], "result": "", "authorization_requests": []}
+        self.continuation = continuation
         self.persist()
 
     def persist(self) -> None:
         with self.lock:
-            encoded = json.dumps({"fingerprint": self.fingerprint, "state": self.state}, ensure_ascii=False, default=str)
+            encoded = json.dumps({"fingerprint": self.fingerprint, "state": self.state,
+                "continuation": self.continuation}, ensure_ascii=False, default=str)
             if len(encoded.encode()) > 4_000_000:
                 raise RuntimeError("Runtime control state exceeded its bounded journal")
             self.path.parent.mkdir(parents=True, exist_ok=True)
@@ -390,6 +414,11 @@ class RuntimeActor:
                         self.state.update(payload)
                         self.state["status"] = "completed" if payload.get("success") is not False else "failed"
                         self.persist()
+                    elif kind == "parked_approval":
+                        self.continuation = payload
+                        self.state.update(status="waiting_for_authorization", approval_parked=True,
+                            authorization_requests=payload["authorization_requests"])
+                        self.persist()
                     elif kind == "tool":
                         self.state["messages"].append(payload)
                     elif kind == "text":
@@ -412,6 +441,9 @@ class RuntimeActor:
                     self.approvals.finish(callback, outcome="outcome_unknown", receipt={})
             with self.lock:
                 self.state["stopped"] = True
+                if not self.state.get("approval_parked"):
+                    self.continuation = None
+                    self.path.with_suffix(".jsonl").unlink(missing_ok=True)
                 self.persist()
 
 
@@ -447,12 +479,36 @@ class RuntimeRuns:
                 if len(self.actors) >= 200:
                     raise RuntimeError("Runtime control capacity exceeded")
             actor = RuntimeActor(identifier, path, fingerprint)
-            self.actors[identifier] = actor
-            async def events() -> AsyncIterator[tuple[str, dict[str, Any]]]:
-                async for event in factory(actor):
-                    yield event
-            threading.Thread(target=lambda: asyncio.run(actor.consume(events())), daemon=True).start()
+            self._launch(actor, factory)
         return identifier
+
+    def _launch(self, actor: RuntimeActor,
+                factory: Callable[[RuntimeActor], AsyncIterator[tuple[str, dict[str, Any]]]]) -> None:
+        self.actors[actor.identifier] = actor
+        async def events() -> AsyncIterator[tuple[str, dict[str, Any]]]:
+            async for event in factory(actor):
+                yield event
+        threading.Thread(target=lambda: asyncio.run(actor.consume(events())), daemon=True).start()
+
+    def resume(self, identifier: str, run_context: str,
+               factory: Callable[[RuntimeActor], AsyncIterator[tuple[str, dict[str, Any]]]]) -> None:
+        if not run_context or hashlib.sha256(run_context.encode()).hexdigest() != identifier:
+            raise PermissionError("The continuation must use the same runtime authority")
+        with self.lock:
+            actor = self.actors.get(identifier)
+            path = self.root / f"{identifier}.json"
+            if not path.is_file():
+                raise LookupError("Runtime run not found")
+            if actor is not None and actor.snapshot().get("stopped") is not True:
+                return
+            record = json.loads(path.read_text(encoding="utf-8"))
+            state = record["state"]
+            continuation = record.get("continuation")
+            if not state.get("approval_parked") or not continuation:
+                return
+            state.update(status="running", stopped=False, approval_parked=False, authorization_requests=[])
+            self._launch(RuntimeActor(identifier, path, record["fingerprint"], state=state,
+                continuation=continuation), factory)
 
     def get(self, identifier: str) -> dict[str, Any]:
         if len(identifier) != 64 or any(char not in "0123456789abcdef" for char in identifier):
@@ -465,7 +521,9 @@ class RuntimeRuns:
             if not path.exists():
                 raise LookupError("Runtime run not found")
             state = json.loads(path.read_text(encoding="utf-8"))["state"]
-            if state["status"] in ("running", "waiting_for_authorization"):
+            if state.get("approval_parked"):
+                state["stopped"] = True
+            elif state["status"] in ("running", "waiting_for_authorization"):
                 state.update(status="outcome_unknown", success=False,
                     result="The runtime restarted; its unfinished operation was not replayed.")
             return state
@@ -473,8 +531,17 @@ class RuntimeRuns:
     def cancel(self, identifier: str) -> None:
         with self.lock:
             actor = self.actors.get(identifier)
-            if actor is None:
-                raise LookupError("Runtime run not found")
+            if actor is None or actor.snapshot().get("stopped") is True:
+                state = self.get(identifier)
+                if state.get("approval_parked"):
+                    path = self.root / f"{identifier}.json"
+                    record = json.loads(path.read_text(encoding="utf-8"))
+                    state.update(status="cancelled", success=False, stopped=True, approval_parked=False,
+                        authorization_requests=[])
+                    RuntimeActor(identifier, path, record["fingerprint"], state=state)
+                    self.actors.pop(identifier, None)
+                    path.with_suffix(".jsonl").unlink(missing_ok=True)
+                return
             if actor.approvals is not None:
                 actor.approvals.cancelled.set()
             if actor.task is not None and not actor.task.done():

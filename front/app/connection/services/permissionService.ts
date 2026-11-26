@@ -44,7 +44,7 @@ export interface ActionAuthorization {
   decision_source: string | null
   remembered?: boolean
   created_at: string
-  expires_at: string
+  expires_at: string | null
   notification_failed?: boolean
   can_answer?: boolean
   can_remember?: boolean

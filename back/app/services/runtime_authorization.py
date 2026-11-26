@@ -77,7 +77,7 @@ async def runtime_authorizations_ready(credential: str, *, agent_id: int, identi
     async with get_db_session() as db:
         grant = await db.scalar(select(RuntimeRunGrant).where(
             RuntimeRunGrant.credential_hash == fingerprint(credential), RuntimeRunGrant.agent_id == agent_id,
-            RuntimeRunGrant.active.is_(True), RuntimeRunGrant.expires_at > datetime.now(timezone.utc)))
+            RuntimeRunGrant.active.is_(True), RuntimeRunGrant.unexpired_at(datetime.now(timezone.utc))))
         if grant is None:
             return False
         rows = list(await db.scalars(select(ActionAuthorization).where(
@@ -117,7 +117,8 @@ async def issue_runtime_run_grant(request: AgentRunRequest) -> str:
     if request.target is None:
         raise PermissionError("A frozen managed Harness target is required")
     return await _issue_runtime_grant(
-        request.agent_id, request.target, _run_context(request), request.run_id, request.attempt_id, timedelta(hours=24),
+        request.agent_id, request.target, _run_context(request), request.run_id, request.attempt_id,
+        None if request.task_id is not None else timedelta(hours=24),
     )
 
 
@@ -128,7 +129,7 @@ async def issue_deep_runtime_grant(agent_id: int, target: ResolvedExecutionTarge
 
 async def _issue_runtime_grant(
     agent_id: int, target: ResolvedExecutionTarget, context: str, run_id: UUID,
-    attempt_id: UUID | None, lifetime: timedelta,
+    attempt_id: UUID | None, lifetime: timedelta | None,
 ) -> str:
     if not target.target_ref.startswith("harness:"):
         raise PermissionError("A frozen managed Harness target is required")
@@ -146,7 +147,7 @@ async def _issue_runtime_grant(
             RuntimeRunGrant.context_key == context, RuntimeRunGrant.active.is_(True)).values(active=False))
         from uuid import uuid4
         identifier = uuid4()
-        expires = datetime.now(timezone.utc) + lifetime
+        expires = datetime.now(timezone.utc) + lifetime if lifetime is not None else None
         credential = get_encryption_service().encrypt(f"runtime-run:{identifier}:{uuid4()}")
         db.add(RuntimeRunGrant(id=identifier, agent_id=agent_id, token_id=token.id,
             credential_hash=fingerprint(credential), actor_key=hashlib.sha256(credential.encode()).hexdigest(),
@@ -165,7 +166,7 @@ async def resolve_runtime_run_grant(credential: str, *, principal: RuntimePrinci
         row = await db.scalar(select(RuntimeRunGrant).where(
             RuntimeRunGrant.credential_hash == fingerprint(credential), RuntimeRunGrant.token_id == principal.id,
             RuntimeRunGrant.agent_id == principal.agent_id, RuntimeRunGrant.active.is_(True),
-            RuntimeRunGrant.expires_at > datetime.now(timezone.utc)))
+            RuntimeRunGrant.unexpired_at(datetime.now(timezone.utc))))
         if row is None:
             raise PermissionError("Invalid, stale or foreign runtime run context")
         agent = await get_agent_record(row.agent_id)
@@ -210,7 +211,7 @@ async def renew_runtime_run_grant(credential: str, request: AgentRunRequest) -> 
             raise PermissionError("The suspended runtime authority is missing; the existing run cannot be resumed")
         if not row.active:
             raise PermissionError("The suspended runtime authority was revoked")
-        if row.expires_at <= datetime.now(timezone.utc):
+        if row.has_expired(datetime.now(timezone.utc)):
             raise PermissionError("The suspended runtime authority expired")
         if request.target is None:
             raise PermissionError("The suspended runtime has no frozen target")

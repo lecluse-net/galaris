@@ -24,7 +24,7 @@ async def _can_answer(record: Interaction, user_id: int | None) -> bool:
     return await choice_authorized(record.kind, user_id)
 
 
-def _pending_questions() -> Select[tuple[UUID, UUID, str, datetime]]:
+def _pending_questions() -> Select[tuple[UUID, UUID, str, datetime | None]]:
     return (
         select(RoomUser.room_id, RoomUser.user_id, Interaction.kind, Interaction.expires_at)
         .select_from(RoomUser)
@@ -44,7 +44,7 @@ def _pending_questions() -> Select[tuple[UUID, UUID, str, datetime]]:
             or_(Interaction.room_id == cast(Room.id, String), Interaction.room_id == Room.external_id),
             or_(Interaction.user_id.is_(None), Interaction.user_id == MessengerUser.external_id),
             Interaction.status == "PENDING",
-            Interaction.expires_at > datetime.now(timezone.utc),
+            Interaction.unexpired_at(datetime.now(timezone.utc)),
             Message.connection_id == Connection.id,
             Message.platform.in_([spec.kind for spec in enabled_specs()]),
             Message.direction == "outbound",
@@ -58,25 +58,29 @@ async def pending_room_question_deadlines(
     memberships: Sequence[tuple[UUID, UUID]],
     *,
     viewer_user_id: int,
-) -> dict[tuple[UUID, UUID], datetime]:
+) -> dict[tuple[UUID, UUID], datetime | None]:
     """Find published questions the viewer can answer in each room."""
     if not memberships:
         return {}
     rows = (await get_db().execute(
         _pending_questions().with_only_columns(
             RoomUser.room_id, RoomUser.user_id, Interaction.kind, func.max(Interaction.expires_at),
+            func.bool_or(Interaction.expires_at.is_(None)),
         ).where(tuple_(RoomUser.room_id, RoomUser.user_id).in_(memberships))
         .group_by(RoomUser.room_id, RoomUser.user_id, Interaction.kind)
     )).all()
-    kinds = {kind for _, _, kind, _ in rows}
+    kinds = {kind for _, _, kind, _, _ in rows}
     answerable_kinds = {kind for kind in kinds if await choice_authorized(kind, viewer_user_id)}
-    deadlines: dict[tuple[UUID, UUID], datetime] = {}
-    for room_id, user_id, kind, deadline in rows:
+    deadlines: dict[tuple[UUID, UUID], datetime | None] = {}
+    for room_id, user_id, kind, deadline, indefinite in rows:
         if kind not in answerable_kinds:
             continue
         key = (room_id, user_id)
+        if indefinite:
+            deadlines[key] = None
+            continue
         previous = deadlines.get(key)
-        if previous is None or deadline > previous:
+        if deadline is not None and (key not in deadlines or (previous is not None and deadline > previous)):
             deadlines[key] = deadline
     return deadlines
 
@@ -98,12 +102,12 @@ async def chat_pending_question_summary(user_id: int) -> tuple[int, datetime | N
         ).group_by(Interaction.kind)
     )
     questions = [(count, expiry) for kind, count, expiry in rows if await choice_authorized(kind, user_id)]
-    return sum(count for count, _ in questions), min((expiry for _, expiry in questions), default=None)
+    return sum(count for count, _ in questions), min((expiry for _, expiry in questions if expiry is not None), default=None)
 
 
 def _snapshot(record: Interaction, *, participant: str | None, authorized: bool) -> NativeMessengerInteraction:
     status = record.status
-    if status == "PENDING" and record.expires_at <= datetime.now(timezone.utc):
+    if status == "PENDING" and record.has_expired(datetime.now(timezone.utc)):
         status = "EXPIRED"
     selected = (record.resolution or {}).get("option_id")
     recipient_authorized = authorized and participant is not None and record.user_id in {None, participant}

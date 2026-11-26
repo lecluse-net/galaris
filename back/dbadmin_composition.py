@@ -603,12 +603,48 @@ async def _reconcile_hermes_session_bindings(session: AsyncSession) -> None:
     await migrate_legacy_bindings(await _legacy_session_binding_routes(session))
 
 
+async def _keep_open_action_authorizations(session: AsyncSession) -> None:
+    # One transaction preserves the old request, its Chat choice, and its run
+    # authority. Earlier terminal outcomes and detached credentials stay closed.
+    await session.execute(text("""
+        UPDATE messenger_interactions AS choice
+        SET expires_at = NULL
+        FROM service_action_authorizations AS approval
+        WHERE choice.id = approval.interaction_id
+          AND choice.kind = 'tool_action_authorization'
+          AND choice.status IN ('PENDING', 'PROCESSING')
+          AND choice.expires_at > now()
+          AND approval.status IN ('pending', 'approved')
+          AND approval.expires_at > now()
+    """))
+    await session.execute(text("""
+        UPDATE runtime_run_grants AS run_grant
+        SET expires_at = NULL
+        FROM service_action_authorizations AS approval
+        WHERE run_grant.id = approval.runtime_grant_id
+          AND run_grant.active
+          AND run_grant.context_key LIKE 'task:%'
+          AND run_grant.expires_at > now()
+          AND approval.status IN ('pending', 'approved')
+          AND approval.expires_at > now()
+    """))
+    await session.execute(text("""
+        UPDATE service_action_authorizations
+        SET expires_at = NULL
+        WHERE status IN ('pending', 'approved') AND expires_at > now()
+    """))
+
+
 def register_dbadmin(registry: DbAdminRegistry) -> None:
     """Register transitional Hermès work without changing the in-progress bridge."""
 
     from file_storage_composition import register_dbadmin as register_file_storage
 
     register_file_storage(registry)
+    registry.register_reconciler(DbAdminReconciler(
+        key="app.services.keep_open_action_authorizations",
+        handler=_keep_open_action_authorizations,
+    ))
     registry.register_action(DbAdminAction(
         key="app.memory.normalize_snapshots",
         phase=DbAdminPhase.BEFORE_EXPAND,

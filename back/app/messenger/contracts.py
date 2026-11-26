@@ -83,7 +83,7 @@ class NativeMessengerInteraction(BaseModel):
     options: list[NativeInteractionOption]
     free_text: bool
     status: str
-    expires_at: datetime
+    expires_at: datetime | None
     selected_option_id: str | None = None
     can_answer: bool = False
     is_authorization: bool = False
@@ -137,6 +137,7 @@ class NativeMessengerRoom(BaseModel):
     muted: bool
     unread_count: int = 0
     pending_question_until: datetime | None = None
+    pending_question_without_deadline: bool = False
     show_last_message: bool = True
     archived: bool = False
     last_message: NativeMessengerMessage | None = None

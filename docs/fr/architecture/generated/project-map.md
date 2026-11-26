@@ -17,7 +17,7 @@ tests restent l’autorité sur le comportement.
 - 30 paires de domaines directement bidirectionnelles ;
 - 1 composantes fortement connexes ;
 - 0 paires frontend directement bidirectionnelles ;
-- 845 handlers HTTP/WebSocket détectés ;
+- 846 handlers HTTP/WebSocket détectés ;
 - 210 tables SQLAlchemy détectées ;
 - 290 outils MCP natifs détectés ;
 - 59 pages Vue détectées.
@@ -1278,8 +1278,8 @@ Aucune composante cyclique détectée.
 | GET | `/action-authorizations/runtime-policies` | `app.services` | `read_runtime_policies` | oui | `back/app/services/authorization_router.py:94` |
 | PUT | `/action-authorizations/runtime-policies` | `app.services` | `update_runtime_policy` | oui | `back/app/services/authorization_router.py:111` |
 | GET | `/action-authorizations/{identifier}` | `app.services` | `get_request` | oui | `back/app/services/authorization_router.py:131` |
-| POST | `/action-authorizations/{identifier}/answer` | `app.services` | `answer_request` | oui | `back/app/services/authorization_router.py:165` |
-| POST | `/action-authorizations/{identifier}/cancel` | `app.services` | `cancel_request` | oui | `back/app/services/authorization_router.py:177` |
+| POST | `/action-authorizations/{identifier}/answer` | `app.services` | `answer_request` | oui | `back/app/services/authorization_router.py:164` |
+| POST | `/action-authorizations/{identifier}/cancel` | `app.services` | `cancel_request` | oui | `back/app/services/authorization_router.py:176` |
 | POST | `/agent/openai/chat/completions` | `app.agent` | `agent_chat_completions` | oui | `back/app/agent/openai_router.py:77` |
 | GET | `/agent/openai/models` | `app.agent` | `get_agent_models` | oui | `back/app/agent/openai_router.py:66` |
 | GET | `/agents` | `app.agent` | `read_agents` | oui | `back/app/agent/router.py:202` |
@@ -1905,7 +1905,7 @@ Aucune composante cyclique détectée.
 | POST | `/mail/outbound/{delivery_id}/approve` | `bridge.mail` | `approve_outbound_mail` | oui | `back/bridge/mail/router.py:195` |
 | POST | `/mail/outbound/{delivery_id}/reject` | `bridge.mail` | `reject_outbound_mail` | oui | `back/bridge/mail/router.py:220` |
 | GET | `/mail/status` | `bridge.mail` | `read_mail_status` | oui | `back/bridge/mail/router.py:125` |
-| POST | `/mcp/{identifier}` | `app.harnesses` | `mcp` | non | `back/app/harnesses/runtime_web.py:85` |
+| POST | `/mcp/{identifier}` | `app.harnesses` | `mcp` | non | `back/app/harnesses/runtime_web.py:101` |
 | POST | `/media` | `app.file_share` | `prepare_media` | oui | `back/app/file_share/media_router.py:39` |
 | DELETE | `/media/{identifier}` | `app.file_share` | `release_media` | oui | `back/app/file_share/media_router.py:117` |
 | GET | `/memory/agenda` | `app.memory` | `read_memory_agenda` | oui | `back/app/memory/router.py:57` |
@@ -2099,9 +2099,10 @@ Aucune composante cyclique détectée.
 | POST | `/v1/chat/completions` | `bridge.codex` | `chat_completions` | non | `back/bridge/codex/default-agent/server.py:300` |
 | GET | `/v1/galaris/capabilities` | `app.harnesses` | `capabilities` | non | `back/app/harnesses/runtime_web.py:47` |
 | POST | `/v1/galaris/deep/{session}/steer` | `bridge.codex` | `steer` | non | `back/bridge/codex/default-agent/server.py:333` |
-| POST | `/v1/galaris/runs` | `app.harnesses` | `start` | non | `back/app/harnesses/runtime_web.py:52` |
-| GET | `/v1/galaris/runs/{identifier}` | `app.harnesses` | `status` | non | `back/app/harnesses/runtime_web.py:68` |
-| POST | `/v1/galaris/runs/{identifier}/cancel` | `app.harnesses` | `cancel` | non | `back/app/harnesses/runtime_web.py:76` |
+| POST | `/v1/galaris/runs` | `app.harnesses` | `start` | non | `back/app/harnesses/runtime_web.py:62` |
+| GET | `/v1/galaris/runs/{identifier}` | `app.harnesses` | `status` | non | `back/app/harnesses/runtime_web.py:84` |
+| POST | `/v1/galaris/runs/{identifier}/cancel` | `app.harnesses` | `cancel` | non | `back/app/harnesses/runtime_web.py:92` |
+| POST | `/v1/galaris/runs/{identifier}/resume` | `app.harnesses` | `resume` | non | `back/app/harnesses/runtime_web.py:72` |
 | GET | `/v1/models` | `bridge.codex` | `models` | non | `back/bridge/codex/default-agent/server.py:205` |
 | GET | `/voice/conversations` | `app.voice` | `read_voice_conversations` | oui | `back/app/voice/router.py:31` |
 | DELETE | `/voice/conversations/turns/{turn_id}` | `app.voice` | `delete_voice_conversation_turn` | oui | `back/app/voice/router.py:157` |
@@ -2272,19 +2273,19 @@ Aucune composante cyclique détectée.
 | `memory_topic_contact_scopes` | `MemoryTopicContactScope` | `app.memory` | non | `agents.id`, `memory_items.id` | `back/app/memory/models.py:762` |
 | `memory_urls` | `MemoryURL` | `app.memory` | non | `memory_items.id` | `back/app/memory/models.py:498` |
 | `memory_usages` | `MemoryUsage` | `app.memory` | non | `agents.id`, `memory_items.id`, `tasks.id` | `back/app/memory/models.py:945` |
-| `messenger_files` | `File` | `app.messenger` | oui | `connections.id` | `back/app/messenger/models.py:439` |
-| `messenger_interactions` | `Interaction` | `app.messenger` | non | `connections.id` | `back/app/messenger/models.py:192` |
-| `messenger_listener_state` | `ListenerState` | `app.messenger` | non | `connections.id` | `back/app/messenger/models.py:495` |
-| `messenger_message_files` | `Attachment` | `app.messenger` | non | `messenger_files.id`, `messenger_messages.id` | `back/app/messenger/models.py:476` |
-| `messenger_messages` | `Message` | `app.messenger` | oui | `connections.id`, `memory_items.id`, `messenger_rooms.id`, `messenger_users.id`, `topics.id`, `users.id` | `back/app/messenger/models.py:254` |
-| `messenger_room_users` | `RoomUser` | `app.messenger` | non | `messenger_messages.id`, `messenger_rooms.id`, `messenger_users.id` | `back/app/messenger/models.py:139` |
-| `messenger_rooms` | `Room` | `app.messenger` | oui | `connections.id`, `topics.id` | `back/app/messenger/models.py:63` |
-| `messenger_users` | `MessengerUser` | `app.messenger` | oui | `agents.id`, `services.id`, `users.id` | `back/app/messenger/models.py:96` |
+| `messenger_files` | `File` | `app.messenger` | oui | `connections.id` | `back/app/messenger/models.py:448` |
+| `messenger_interactions` | `Interaction` | `app.messenger` | non | `connections.id` | `back/app/messenger/models.py:194` |
+| `messenger_listener_state` | `ListenerState` | `app.messenger` | non | `connections.id` | `back/app/messenger/models.py:504` |
+| `messenger_message_files` | `Attachment` | `app.messenger` | non | `messenger_files.id`, `messenger_messages.id` | `back/app/messenger/models.py:485` |
+| `messenger_messages` | `Message` | `app.messenger` | oui | `connections.id`, `memory_items.id`, `messenger_rooms.id`, `messenger_users.id`, `topics.id`, `users.id` | `back/app/messenger/models.py:263` |
+| `messenger_room_users` | `RoomUser` | `app.messenger` | non | `messenger_messages.id`, `messenger_rooms.id`, `messenger_users.id` | `back/app/messenger/models.py:141` |
+| `messenger_rooms` | `Room` | `app.messenger` | oui | `connections.id`, `topics.id` | `back/app/messenger/models.py:65` |
+| `messenger_users` | `MessengerUser` | `app.messenger` | oui | `agents.id`, `services.id`, `users.id` | `back/app/messenger/models.py:98` |
 | `multimedia_delivery_resolutions` | `MediaDeliveryResolution` | `app.multimedia` | non | `multimedia_output_receipts.id`, `users.id` | `back/app/multimedia/models.py:58` |
 | `multimedia_generations` | `MediaGeneration` | `app.multimedia` | non | `agents.id`, `tasks.id` | `back/app/multimedia/models.py:15` |
 | `multimedia_output_receipts` | `MediaOutputReceipt` | `app.multimedia` | non | `multimedia_generations.id` | `back/app/multimedia/models.py:40` |
 | `params` | `Param` | `core.params` | non | — | `back/core/params/models.py:7` |
-| `permission_decisions` | `PermissionDecision` | `app.messenger` | oui | `agents.id`, `messenger_interactions.id`, `users.id` | `back/app/messenger/models.py:234` |
+| `permission_decisions` | `PermissionDecision` | `app.messenger` | oui | `agents.id`, `messenger_interactions.id`, `users.id` | `back/app/messenger/models.py:243` |
 | `plugin_development_samples` | `DevelopmentSampleState` | `app.plugin` | non | — | `back/app/plugin/models.py:48` |
 | `plugin_events` | `PluginEvent` | `app.plugin` | non | `plugin_releases.id`, `users.id` | `back/app/plugin/models.py:34` |
 | `plugin_releases` | `PluginRelease` | `app.plugin` | non | — | `back/app/plugin/models.py:13` |
@@ -2306,8 +2307,8 @@ Aucune composante cyclique détectée.
 | `resource_index_sources` | `ResourceIndexSource` | `app.file_share` | non | `resource_index_contents.id`, `topics.id` | `back/app/file_share/models.py:39` |
 | `role_privileges` | `RolePrivilege` | `core.authorize` | non | `privileges.id`, `roles.id` | `back/core/authorize/models.py:12` |
 | `roles` | `Role` | `core.authorize` | non | — | `back/core/authorize/models.py:65` |
-| `runtime_action_permissions` | `RuntimeActionPermission` | `app.services` | non | `agents.id`, `users.id` | `back/app/services/authorization_models.py:64` |
-| `runtime_run_grants` | `RuntimeRunGrant` | `app.services` | non | `agent_mcp_tokens.id`, `agents.id` | `back/app/services/authorization_models.py:82` |
+| `runtime_action_permissions` | `RuntimeActionPermission` | `app.services` | non | `agents.id`, `users.id` | `back/app/services/authorization_models.py:74` |
+| `runtime_run_grants` | `RuntimeRunGrant` | `app.services` | non | `agent_mcp_tokens.id`, `agents.id` | `back/app/services/authorization_models.py:92` |
 | `service_action_authorizations` | `ActionAuthorization` | `app.services` | non | `agents.id`, `connections.id`, `messenger_interactions.id`, `runtime_action_permissions.id`, `runtime_run_grants.id`, `services.id`, `users.id` | `back/app/services/authorization_models.py:13` |
 | `service_function_state` | `ServiceFunctionState` | `app.connection` | non | `services.id` | `back/app/connection/models.py:84` |
 | `services` | `Service` | `app.services` | non | — | `back/app/services/models.py:25` |

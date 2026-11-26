@@ -452,7 +452,7 @@ async def qualify_hermes_deep_scope(origin: str) -> None:
 
     authorization = importlib.import_module("galaris_authorization")
     agent_class = importlib.import_module("run_agent").AIAgent
-    model_calls: list[str | None] = []
+    model_calls: list[tuple[str | None, dict[str, Any]]] = []
     gate.update(deep_model_calls=model_calls, model_dispatched=True)
     loop = asyncio.get_running_loop()
 
@@ -471,12 +471,12 @@ async def qualify_hermes_deep_scope(origin: str) -> None:
     contexts = {"synthetic-hermes-one", "synthetic-hermes-two"}
     results = await asyncio.gather(*(asyncio.to_thread(talk, context) for context in contexts))
     assert all(ANSWER in json.dumps(result) for result in results)
-    assert set(model_calls) == contexts, model_calls
+    assert {context for context, _ in model_calls} == contexts, model_calls
     print("PASS Hermes: concurrent native calls retain the Deep session scope")
     gate.clear()
 
 
-async def http_adapter(runtime: str) -> None:
+async def http_adapter(runtime: str, *, approval_delay: int = 0) -> None:
     import socket
     import urllib.error
     import urllib.request
@@ -529,6 +529,7 @@ async def http_adapter(runtime: str) -> None:
                     assert not authorized and exc.code == 401, exc.read().decode()[:2000]
             await qualify_parallel_runs(origin, runtime)
             await qualify_deep_sessions(origin, runtime)
+            status: dict[str, Any] = {}
             for allowed in (False, True):
                 gate.clear()
                 target = Path("/workspace" if runtime == "codex" else "/data/workspace") / f"approval-{allowed}.txt"
@@ -546,10 +547,35 @@ async def http_adapter(runtime: str) -> None:
                     await asyncio.sleep(0.05)
                 assert gate["requests"], f"{runtime} did not intercept its actual SDK write"
                 assert not target.exists(), "The SDK effect happened before approval"
-                with urllib.request.urlopen(urllib.request.Request(status_url, headers=headers), timeout=10) as response:
-                    status = json.load(response)
+                while time.monotonic() < deadline:
+                    with urllib.request.urlopen(urllib.request.Request(status_url, headers=headers), timeout=10) as response:
+                        status = json.load(response)
+                    if status["status"] == "waiting_for_authorization" and (
+                        runtime != "claude_agent" or status.get("stopped") is True
+                    ):
+                        break
+                    await asyncio.sleep(0.05)
                 assert status["status"] == "waiting_for_authorization", status
+                if runtime == "claude_agent":
+                    assert status.get("approval_parked") is True and status.get("stopped") is True, status
+                    if allowed:
+                        with module._runs.lock:
+                            parked = module._runs.actors.pop(identifier)
+                        os.unlink(parked.continuation["transcript_path"])
+                if allowed and approval_delay:
+                    approve_at = time.monotonic() + approval_delay
+                    while time.monotonic() < approve_at:
+                        await asyncio.sleep(min(1, max(0, approve_at - time.monotonic())))
+                        with urllib.request.urlopen(urllib.request.Request(status_url, headers=headers), timeout=10) as response:
+                            status = json.load(response)
+                        assert status["status"] == "waiting_for_authorization", status
+                        assert not target.exists() and not gate["receipts"], "The SDK effect happened before approval"
+                    deadline = time.monotonic() + 25
                 gate["decision"] = "executing" if allowed else "denied"
+                if status.get("approval_parked"):
+                    resumed = urllib.request.Request(status_url + "/resume", data=request.data, headers=headers)
+                    with urllib.request.urlopen(resumed, timeout=10) as response:
+                        assert json.load(response)["runtime_run_id"] == identifier
                 while time.monotonic() < deadline:
                     with urllib.request.urlopen(urllib.request.Request(status_url, headers=headers), timeout=10) as response:
                         status = json.load(response)
@@ -588,8 +614,16 @@ async def http_adapter(runtime: str) -> None:
             while not gate["requests"] and time.monotonic() < deadline:
                 await asyncio.sleep(0.05)
             assert gate["requests"] and not target.exists(), "Cancellation must exercise a real pending SDK action"
+            if runtime == "claude_agent":
+                while time.monotonic() < deadline:
+                    with urllib.request.urlopen(urllib.request.Request(status_url, headers=headers), timeout=10) as response:
+                        status = json.load(response)
+                    if status.get("stopped") is True:
+                        break
+                    await asyncio.sleep(0.05)
+                assert status.get("approval_parked") is True and status.get("stopped") is True, status
             sdk_children = child_processes() - existing_children
-            assert sdk_children, "The cancellation probe did not observe a real SDK subprocess"
+            assert bool(sdk_children) is (runtime != "claude_agent"), sdk_children
             started = time.monotonic()
             for _ in range(2):
                 with urllib.request.urlopen(urllib.request.Request(status_url + "/cancel", data=b"{}", headers=headers), timeout=10) as response:
@@ -690,7 +724,9 @@ def main() -> None:
     if runtime == "process_claude":
         serve_process_claude()
         return
-    signal.alarm(90)
+    # The pinned CLI has a ten-minute default PreToolUse timeout.
+    approval_delay = 610 if sys.argv[1:] == ["claude_agent", "--delayed-approval"] else 0
+    signal.alarm(90 + approval_delay)
     Path.home().mkdir(parents=True, exist_ok=True)
     Path("/data/skills").mkdir(parents=True, exist_ok=True)
     server = ThreadingHTTPServer(("127.0.0.1", 0), ModelService)
@@ -705,7 +741,7 @@ def main() -> None:
         "HARNESS_MODEL": "qualification", "HERMES_HOME": "/tmp/hermes",
     })
     if runtime in {"codex", "claude_agent"}:
-        asyncio.run(http_adapter(runtime))
+        asyncio.run(http_adapter(runtime, approval_delay=approval_delay))
     elif runtime == "hermes":
         cancellation_probe = module_from_file("/probe_hermes_cancellation.py")
         asyncio.run(cancellation_probe.qualify())

@@ -126,6 +126,7 @@ const roomListId = useId()
 const now = ref(Date.now())
 
 function questionDeadline(room: MessengerRoom): number {
+  if (room.pending_question_without_deadline) return Infinity
   return room.pending_question_until ? Date.parse(room.pending_question_until) : 0
 }
 

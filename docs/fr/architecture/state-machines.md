@@ -15,12 +15,14 @@ Le journal `service_action_authorizations` porte les états `pending`, `approved
 | Préparation committée, accord requis | absent | `pending` |
 | Autorisation mémorisée de harnais correspondante | absent | `approved`, puis claim `executing` |
 | Réponse humaine habilitée | `pending` | `approved` ou `denied` |
-| Échéance ou perte d’autorité avant effet | `pending` / `approved` | `expired` / `invalidated` |
+| Perte d’autorité avant effet | `pending` / `approved` | `invalidated` |
 | Claim atomique après revalidation | `approved` | `executing` |
 | Reçu d’effet | `executing` | `completed` / `failed` / `outcome_unknown` |
 | Preuve distante tardive | `outcome_unknown` | `completed` / `failed`, sans redispatch |
 
-La première décision valide gagne. Un état réconcilié reste terminal. L’attente produit
+La première décision valide gagne. Les demandes d’autorisation restent ouvertes tant que
+leur contexte reste valide. Les états d’expiration historiques restent consultables.
+Un état réconcilié reste terminal. L’attente produit
 `galaris.execution-result/v2` avec `disposition=waiting_for_authorization` et les UUIDs concernés.
 Les UUIDs sont sérialisés en chaînes JSON avant la persistance du résultat en JSONB ; leur
 identité reste conservée lors du rechargement.

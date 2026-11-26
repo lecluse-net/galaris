@@ -453,7 +453,7 @@ tests-harness-contracts: ## Qualify the Harness boundary, concrete adapters and 
 .PHONY: tests-harness-contracts
 
 tests-harness-runtimes: ## Execute the real pinned Harness SDKs against an isolated deterministic model
-	@bash bin/test-harness-runtimes.sh
+	@bash bin/test-harness-runtimes.sh $(ARGS)
 .PHONY: tests-harness-runtimes
 
 tests-providers: ## Verify provider parameter contracts without external subscriptions or API calls

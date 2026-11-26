@@ -32,13 +32,13 @@ def pending_authorization_ids() -> Select[tuple[UUID]]:
     """Composable filter for journals; transport state remains domain-owned."""
     return select(ActionAuthorization.id).where(
         ActionAuthorization.status == "pending",
-        ActionAuthorization.expires_at > datetime.now(timezone.utc),
+        ActionAuthorization.unexpired_at(datetime.now(timezone.utc)),
     )
 
 
 def _review(row: ActionAuthorization) -> AuthorizationReview:
     status = row.status
-    if status in ("pending", "approved") and row.expires_at <= datetime.now(timezone.utc):
+    if status in ("pending", "approved") and row.has_expired(datetime.now(timezone.utc)):
         status = "expired"
     return AuthorizationReview(
         row.id, row.agent_id, row.connection_id, row.approver_user_id,
