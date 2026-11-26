@@ -42,6 +42,7 @@ from .contracts import (
     ChatViewerAgent,
     NativeInteractionAnswer,
     NativeMessengerAgent,
+    NativeMessengerAgentProfile,
     NativeMessengerConnection,
     NativeMessengerFile,
     NativeMessengerFileAccess,
@@ -445,6 +446,25 @@ async def internal_agent_avatar(agent_id: int) -> bytes | None:
 
     return await get_db().scalar(
         select(Agent.avatar).where(Agent.id == agent_id)
+    )
+
+
+async def internal_agent_profile(agent_id: int) -> NativeMessengerAgentProfile | None:
+    """Read only the presentation fields of an active Chat recipient."""
+    row = (await get_db().execute(
+        select(Agent.job_title, Agent.job_description, Agent.personality)
+        .join(Connection, Connection.agent_id == Agent.id)
+        .join(Service, Service.id == Connection.service_id)
+        .where(
+            Agent.id == agent_id, Agent.deleted_at.is_(None),
+            Service.code == CHAT_TOOL_CODE, messenger_connection_active(),
+        )
+        .limit(1)
+    )).one_or_none()
+    if row is None:
+        return None
+    return NativeMessengerAgentProfile(
+        job_title=row.job_title, job_description=row.job_description, personality=row.personality,
     )
 
 
@@ -2416,6 +2436,7 @@ __all__ = [
     "search_internal_users",
     "list_internal_agents",
     "list_internal_agent_page",
+    "internal_agent_profile",
     "list_internal_messages",
     "list_internal_rooms",
     "mark_chat_room_read",

@@ -14,12 +14,13 @@ interface AgentHarnessRuntimeOptions {
   previewAgentId: Readonly<Ref<number | undefined>>
   canViewAgents: Readonly<Ref<boolean>>
   canEdit: Readonly<Ref<boolean>>
+  canInspectAgent: (agent: Agent) => boolean
   canManageAgent: (agent: Agent) => boolean
   loadCatalogue: () => Promise<unknown>
 }
 
 export function useAgentHarnessRuntime({
-  agents, previewAgentId, canViewAgents, canEdit, canManageAgent, loadCatalogue,
+  agents, previewAgentId, canViewAgents, canEdit, canInspectAgent, canManageAgent, loadCatalogue,
 }: AgentHarnessRuntimeOptions) {
   const $q = useQuasar()
   const { t } = useI18n()
@@ -41,8 +42,8 @@ export function useAgentHarnessRuntime({
   }
 
   const isManagedRuntime = (agent: Agent): boolean => (
-    harnessStates[agent.id]?.managed
-    ?? drivers.value.some(driver => driver.name === agent.agent_driver && driver.manages_runtime)
+    canInspectAgent(agent) && (harnessStates[agent.id]?.managed
+      ?? drivers.value.some(driver => driver.name === agent.agent_driver && driver.manages_runtime))
   )
 
   const managedAgents = computed(() => agents.value.filter(agent => (
@@ -112,7 +113,7 @@ export function useAgentHarnessRuntime({
   )
 
   async function fetchHarnessStatus(agent: Agent, silent = false): Promise<void> {
-    if (!canViewAgents.value) return
+    if (!canViewAgents.value || !canInspectAgent(agent)) return
     if (!silent) markHarnessSelectionPending(agent.id)
     const inContext = currentContext()
     const request = Symbol()
@@ -230,8 +231,8 @@ export function useAgentHarnessRuntime({
     drivers.value = metadata
     // The shared network driver can represent container runtimes. Inspect the
     // internal driver if its metadata could not load.
-    const agentsToInspect = agents.value.filter(agent => agent.agent_driver !== 'internal'
-      || drivers.value.find(driver => driver.name === agent.agent_driver)?.manages_runtime !== false)
+    const agentsToInspect = agents.value.filter(agent => canInspectAgent(agent) && (agent.agent_driver !== 'internal'
+      || drivers.value.find(driver => driver.name === agent.agent_driver)?.manages_runtime !== false))
     await Promise.all(agentsToInspect.map(agent => fetchHarnessStatus(agent)))
     if (!current()) return
     stopPolling = startVisiblePolling(async () => {

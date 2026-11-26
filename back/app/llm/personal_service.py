@@ -12,6 +12,7 @@ from core.database import get_db
 from core.util import visible_text
 
 from . import llm_service, llm_provider_service, profile_service, tts_service
+from .capabilities import AICapability
 from .profile_models import UserLlmPreferences
 from .provider_models import LLM, LLMProvider
 
@@ -89,27 +90,33 @@ class NativeVoiceOption(BaseModel):
     caption: str
 
 
-class PersonalOptions(BaseModel):
-    profiles: list[SelectionOption]
-    current_profile_id: int | None
-    voices: list[SelectionOption]
+class NativeVoiceOptions(BaseModel):
     native_voices: list[NativeVoiceOption]
     native_voices_error: bool = False
 
 
-async def selection_options() -> PersonalOptions:
-    resources = (await get_db().scalars(
+class PersonalOptions(NativeVoiceOptions):
+    profiles: list[SelectionOption]
+    current_profile_id: int | None
+    voices: list[SelectionOption]
+
+
+async def _voice_resources(*capabilities: AICapability) -> list[LLM]:
+    resources = await get_db().scalars(
         select(LLM).join(LLM.provider)
         .where(LLMProvider.is_active.is_(True), or_(
-            LLM.service_capabilities.contains(["speech"]),
-            LLM.service_capabilities.contains(["realtime_conversation"]),
+            *(LLM.service_capabilities.contains([capability]) for capability in capabilities),
         ))
         .options(
             load_only(LLM.id, LLM.label, LLM.llm_provider_id, LLM.service_capabilities, raiseload=True),
             contains_eager(LLM.provider).load_only(LLMProvider.id, LLMProvider.name, LLMProvider.is_active, raiseload=True),
         )
         .order_by(LLM.label)
-    )).all()
+    )
+    return list(resources.all())
+
+
+async def _discover_native_voices(resources: list[LLM]) -> NativeVoiceOptions:
     native: list[NativeVoiceOption] = []
     native_error = False
     providers: dict[int, list[LLM]] = {}
@@ -133,6 +140,19 @@ async def selection_options() -> PersonalOptions:
                 for voice in voices
                 if voice.resource_type == "voice"
             )
+    return NativeVoiceOptions(native_voices=native, native_voices_error=native_error)
+
+
+async def native_voice_options() -> NativeVoiceOptions:
+    return await _discover_native_voices(await _voice_resources("realtime_conversation"))
+
+
+async def selection_options(*, include_native_voices: bool = True) -> PersonalOptions:
+    capabilities: tuple[AICapability, ...] = (
+        ("speech", "realtime_conversation") if include_native_voices else ("speech",)
+    )
+    resources = await _voice_resources(*capabilities)
+    native = await _discover_native_voices(resources) if include_native_voices else NativeVoiceOptions(native_voices=[])
     return PersonalOptions(
         profiles=[
             SelectionOption(id=p.id, label=p.label) for p in await profile_service.list_profiles()
@@ -143,8 +163,8 @@ async def selection_options() -> PersonalOptions:
             for r in resources
             if "speech" in r.service_capabilities
         ],
-        native_voices=native,
-        native_voices_error=native_error,
+        native_voices=native.native_voices,
+        native_voices_error=native.native_voices_error,
     )
 
 

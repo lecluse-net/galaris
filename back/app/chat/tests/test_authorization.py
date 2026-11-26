@@ -73,6 +73,7 @@ def test_every_route_has_the_expected_privilege_and_resource_assertion() -> None
         "read_recipients": (ACCESS, None),
         "read_viewer_agents": (IMPERSONATE, None),
         "read_agent_avatar": (ACCESS, AgentDialogueAssertion),
+        "read_agent_profile": (ACCESS, AgentDialogueAssertion),
         "read_rooms": (ACCESS, ChatScopeAssertion),
         "create_room": (MANAGE, None),
         "read_room": (ACCESS, ChatRoomAccessAssertion),

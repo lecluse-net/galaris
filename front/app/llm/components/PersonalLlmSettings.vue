@@ -15,6 +15,7 @@
           :hint="embedded ? undefined : t('personalVoice.profileHint')" />
         <q-select v-model="voiceSelection" :options="voiceOptions" dense outlined emit-value map-options
           :disable="!loaded || saving || disabled" :label="t('personalVoice.voiceTitle')"
+          :loading="loaded && loadingNativeVoices" :display-value="nativeVoiceFallback"
           :hint="embedded ? undefined : t(values.voice_mode === 'realtime' ? 'personalVoice.nativeHint' : 'personalVoice.ttsHint')">
           <template #option="{ itemProps, opt }">
             <q-item v-if="opt.group" dense>
@@ -30,7 +31,7 @@
           </template>
         </q-select>
       </div>
-      <div v-if="options.native_voices_error" role="status">{{ t('personalVoice.nativeCatalogError') }}</div>
+      <div v-if="loaded && nativeVoices.native_voices_error" role="status">{{ t('personalVoice.nativeCatalogError') }}</div>
       <div v-if="error" role="alert">{{ error }}</div>
       <div v-if="saved" role="status">{{ t('personalVoice.saved') }}</div>
       <div v-if="!embedded || (!loaded && !loading)" class="row justify-end q-gutter-sm q-mt-sm">
@@ -45,14 +46,16 @@
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { QForm } from 'quasar'
-import service, { type PersonalLlmOptions, type PersonalLlmPreferences } from '../services/personalLlmService'
+import service, { type NativeVoiceOptions, type PersonalLlmOptions, type PersonalLlmPreferences } from '../services/personalLlmService'
 
 const props = defineProps<{ userId?: number; embedded?: boolean; disabled?: boolean }>()
 const emit = defineEmits<{ draft: [value: PersonalLlmPreferences | null] }>()
 const { t } = useI18n()
 const values = ref<PersonalLlmPreferences>({ profile_id: null, voice_llm_id: null, voice_mode: 'tts', voice_code: null })
 let initial: PersonalLlmPreferences = { ...values.value }
-const options = ref<PersonalLlmOptions>({ profiles: [], current_profile_id: null, voices: [], native_voices: [] })
+const options = ref<PersonalLlmOptions>({ profiles: [], current_profile_id: null, voices: [] })
+const nativeVoices = ref<NativeVoiceOptions>({ native_voices: [] })
+const loadingNativeVoices = ref(false)
 const loading = ref(false), loaded = ref(false), saving = ref(false), saved = ref(false), error = ref('')
 let generation = 0
 
@@ -73,22 +76,44 @@ const voiceSelection = computed({
     values.value.voice_code = mode === 'realtime' ? decodeURIComponent(code) : null
   },
 })
+const nativeVoiceChoices = computed(() => nativeVoices.value.native_voices.map(voice => ({
+  label: voice.label, caption: voice.caption, icon: 'spatial_audio',
+  value: `realtime:${voice.model_id}:${encodeURIComponent(voice.voice_code)}`,
+})))
+const nativeVoiceFallback = computed(() =>
+  values.value.voice_mode === 'realtime' && !nativeVoiceChoices.value.some(voice => voice.value === voiceSelection.value)
+    ? values.value.voice_code?.replace(/^voice:/, '')
+    : undefined,
+)
 const voiceOptions = computed(() => [
   { label: t('personalVoice.ttsGroup'), value: 'group:tts', group: true, disable: true },
   { label: t('personalVoice.noVoice'), value: 'none', icon: 'volume_off' },
   ...options.value.voices.map(voice => ({ label: voice.label, value: `tts:${voice.id}`, icon: 'record_voice_over' })),
   { label: t('personalVoice.nativeGroup'), value: 'group:native', group: true, disable: true },
-  ...options.value.native_voices.map(voice => ({
-    label: voice.label, caption: voice.caption, icon: 'spatial_audio',
-    value: `realtime:${voice.model_id}:${encodeURIComponent(voice.voice_code)}`,
-  })),
-  ...(options.value.native_voices.length ? [] : [{ label: t('personalVoice.noNativeVoice'), value: 'unavailable', disable: true, icon: 'info' }]),
+  ...nativeVoiceChoices.value,
+  ...(!loadingNativeVoices.value && !nativeVoices.value.native_voices_error && !nativeVoiceChoices.value.length
+    ? [{ label: t('personalVoice.noNativeVoice'), value: 'unavailable', disable: true, icon: 'info' }]
+    : []),
 ])
+
+async function loadNativeVoices(current: number): Promise<void> {
+  nativeVoices.value = { native_voices: [] }
+  loadingNativeVoices.value = true
+  try {
+    const catalog = await service.nativeVoices()
+    if (current === generation) nativeVoices.value = catalog
+  } catch {
+    if (current === generation) nativeVoices.value = { native_voices: [], native_voices_error: true }
+  } finally {
+    if (current === generation) loadingNativeVoices.value = false
+  }
+}
 
 async function load(): Promise<void> {
   const current = ++generation
   if (props.embedded) emit('draft', null)
   loading.value = true; loaded.value = false; saving.value = false; error.value = ''; saved.value = false
+  void loadNativeVoices(current)
   try {
     const [preferences, catalog] = await Promise.all([
       props.embedded && props.userId === undefined

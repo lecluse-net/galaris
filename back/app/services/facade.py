@@ -5,7 +5,7 @@ from .legacy_names import canonical_service_call as canonical_service_call
 from typing import Any
 from uuid import UUID
 from collections.abc import Collection
-from .schemas import Service
+from .schemas import ConnectedExternalService, Service
 from .runtime_principals import RuntimePrincipal, register_runtime_principal_port
 from .mcp_authorization import (
     bind_native_action,
@@ -75,6 +75,12 @@ async def get_services_by_ids(service_ids: Collection[int]) -> dict[int, Service
     from . import service
 
     return await service.get_services_by_ids(service_ids)
+
+
+async def connected_external_services(agent_id: int) -> list[ConnectedExternalService]:
+    from . import service
+
+    return await service.connected_external_services(agent_id)
 
 
 async def get_service(code: str) -> Service | None:
@@ -213,6 +219,8 @@ __all__ = [
     "get_service_by_id",
     "is_desktop_mcp_url",
     "get_services_by_ids",
+    "connected_external_services",
+    "ConnectedExternalService",
     "get_service",
     "get_runtime_global_params",
     "has_active_admin_function",

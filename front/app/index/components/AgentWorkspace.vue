@@ -32,7 +32,7 @@
           :key="tab.name"
           :name="tab.name"
           :label="tab.label"
-          :icon="tab.name === 'none' ? 'person_off' : 'groups'"
+          :icon="tab.name === 'none' ? 'person_off' : tab.name === 'all' ? 'people' : 'groups'"
         />
       </q-tabs>
       <q-separator class="q-mb-md" />
@@ -62,7 +62,7 @@
         <AgentCard :agent="agent" :avatar-url="avatarUrls[agent.id]" :initials="agentInitials(agent)"
           :profile-label="getAgentProfileLabel(agent)" :compact="previewAgentId !== undefined"
           @open-summary="field => openRichTextDialog(agent, field)">
-          <q-card-actions class="agent-card-actions q-pa-sm">
+          <q-card-actions v-if="canInspectAgent(agent)" class="agent-card-actions q-pa-sm">
             <q-chip
               v-if="agent.agent_driver === 'internal'"
               dense
@@ -555,7 +555,7 @@
         <q-card-section class="galaris-dialog-title row items-center">
           <div class="text-h6">
             <q-icon :name="richTextField === 'personality' ? 'psychology' : 'work'" class="q-mr-sm" />
-            {{ richTextField === 'personality' ? $t('agent.editPersonality') : $t('agent.editJobDescription') }}
+            {{ $t(richTextTitle) }}
           </div>
           <q-space />
           <div class="text-caption q-mr-md">
@@ -568,15 +568,16 @@
           <RichTextEditor
             toolbar-mode="simple"
             v-model="richTextContent"
+            :readonly="!canEditRichText"
             min-height="500px"
             max-height="70vh"
           />
         </q-card-section>
 
         <q-card-actions align="right" class="q-pa-md galaris-dialog-actions">
-          <q-btn outline :label="$t('common.cancel')" color="grey"  v-close-popup />
+          <q-btn outline :label="$t(canEditRichText ? 'common.cancel' : 'common.close')" color="grey" v-close-popup />
           <q-btn
-            v-if="richTextAgent && canManageAgent(richTextAgent)"
+            v-if="canEditRichText"
             :label="$t('common.save')"
             color="primary"
             @click="saveRichText"
@@ -673,9 +674,8 @@ const canEdit = computed(() => privilegeStore.hasPrivilege(privileges.AGENT_EDIT
 const canManageAllAgents = computed(() => (
   privilegeStore.hasPrivilege(privileges.AGENT_MANAGE_ALL)
 ))
-const canManageAgent = (agent: Agent): boolean => (
-  canEdit.value && (agent.is_owner || canManageAllAgents.value)
-)
+const canInspectAgent = (agent: Agent): boolean => agent.is_owner || canManageAllAgents.value
+const canManageAgent = (agent: Agent): boolean => canEdit.value && canInspectAgent(agent)
 const {
   isManagedRuntime, managedAgents, harnessManagerUnavailable, harnessState, harnessStatusColor, harnessStatusIcon,
   harnessStatusLabel, hasHarnessCapability, hasHarnessAction, harnessRestartLabel, harnessLifecycleBusy,
@@ -683,7 +683,7 @@ const {
   fetchHarnessStatus, showHarnessLogsDialog, harnessLogs, harnessLogsLoading, harnessLogsAgentName,
   fetchHarnessLogs, openHarnessLogs, closeHarnessLogs, harnessLogColor,
 } = useAgentHarnessRuntime({
-  agents, previewAgentId, canViewAgents, canEdit, canManageAgent,
+  agents, previewAgentId, canViewAgents, canEdit, canInspectAgent, canManageAgent,
   loadCatalogue: () => previewAgentId.value === undefined
     ? Promise.all([agentStore.fetchAgents(), agentStore.fetchTitles(), agentStore.fetchGroups()])
     : agentStore.fetchTitles(),
@@ -696,8 +696,11 @@ const canViewParams = computed(() => (
   || privilegeStore.hasPrivilege(privileges.LLM_PROFILE_EDIT)
 ))
 
-const activeGroupTab = ref('')
-const currentTeamId = computed(() => agentStore.groups.find(group => String(group.id) === activeGroupTab.value)?.id ?? null)
+const activeGroupTab = ref('all')
+const currentTeamId = computed(() => {
+  const selected = groupTabs.value.length === 1 ? groupTabs.value[0]?.name : activeGroupTab.value
+  return agentStore.groups.find(group => String(group.id) === selected)?.id ?? null
+})
 const agentDialogTab = ref('general')
 const agentFormId = useId()
 const showAgentDialog = ref(false)
@@ -782,6 +785,11 @@ const loadAvatars = async () => {
 const richTextAgent = ref<Agent | null>(null)
 const richTextField = ref<'personality' | 'job_description'>('personality') // 'personality' or 'job_description'
 const richTextContent = ref('')
+const canEditRichText = computed(() => richTextAgent.value !== null && canManageAgent(richTextAgent.value))
+const richTextTitle = computed(() => {
+  if (richTextField.value === 'personality') return canEditRichText.value ? 'agent.editPersonality' : 'agent.personality'
+  return canEditRichText.value ? 'agent.editJobDescription' : 'agent.jobDescription'
+})
 
 const titleOptions = computed(() => {
   return agentStore.titles.map(title => ({
@@ -947,12 +955,14 @@ const groupTabs = computed(() => {
   const tabs = agentStore.sortedGroups.map(g => ({ name: String(g.id), label: g.name }))
   const hasUngrouped = agentStore.agents.some(agent => !agent.team_ids?.length)
   if (hasUngrouped) tabs.push({ name: 'none', label: t('agent.noGroup') })
+  if (tabs.length > 1) tabs.unshift({ name: 'all', label: t('agent.allAgents') })
   return tabs
 })
 
 const displayedAgents = computed(() => {
   if (previewAgentId.value !== undefined) return agents.value
   const list = agentStore.sortedAgents
+  if (activeGroupTab.value === 'all') return list
   if (activeGroupTab.value === 'none') {
     return list.filter(agent => !agent.team_ids?.length)
   }
@@ -1186,6 +1196,7 @@ const resetAgentForm = () => {
 }
 
 const openAgentDialog = (agent: Agent | null = null) => {
+  if (agent && !canInspectAgent(agent)) return
   const generation = ++agentDialogGeneration
   resetAgentForm()
   agentDialogTab.value = 'general'
@@ -1193,7 +1204,7 @@ const openAgentDialog = (agent: Agent | null = null) => {
     isAgentEdit.value = true
     Object.assign(agentForm, {
       id: agent.id,
-      user_id: agent.user_id,
+      user_id: agent.user_id ?? null,
       title_id: agent.title_id,
       code: agent.code || '',
       first_name: agent.first_name,
@@ -1390,9 +1401,9 @@ const onAgentValidationError = (component: Component) => {
 }
 
 const getAgentProfileLabel = (agent: Agent): string => (
-  agent.profile?.label
-  ?? llmProfileStore.currentProfile?.label
-  ?? t('agent.models.profileNotConfigured')
+  canInspectAgent(agent)
+    ? agent.profile?.label ?? llmProfileStore.currentProfile?.label ?? t('agent.models.profileNotConfigured')
+    : ''
 )
 
 // Avatar functions
@@ -1489,14 +1500,10 @@ const confirmDeleteAvatar = async () => {
 
 watch(agents, loadAvatars, { immediate: true })
 
-// Keep the active group tab valid and select the first available tab when necessary.
+// Reset to the full catalogue when the selected team disappears.
 watch(groupTabs, (tabs) => {
-  if (tabs.length === 0) {
-    activeGroupTab.value = ''
-    return
-  }
   if (!tabs.some(t => t.name === activeGroupTab.value)) {
-    activeGroupTab.value = tabs[0].name
+    activeGroupTab.value = 'all'
   }
 }, { immediate: true })
 
@@ -1542,8 +1549,9 @@ watch(() => props.requestedAgentId, async id => {
   await agentStore.fetchAgents()
   if (pageDisposed || id !== props.requestedAgentId) return
   const agent = agentStore.agents.find(item => item.id === id)
-  if (agent) openAgentDialog(agent)
-  else $q.notify({ type: 'negative', message: t('richEditor.unavailable') })
+  if (!agent) $q.notify({ type: 'negative', message: t('richEditor.unavailable') })
+  else if (canInspectAgent(agent)) openAgentDialog(agent)
+  else openRichTextDialog(agent, 'job_description')
 }, { immediate: true })
 onUnmounted(() => {
   pageDisposed = true

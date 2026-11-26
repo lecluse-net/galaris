@@ -8,7 +8,7 @@
         <q-select v-model="draft.document_format" dense outlined clearable emit-value map-options :label="t('documents.documentFormat')" :options="documentFormats.map(type => ({ value: type.code, label: formatDisplayLabel(type, t, locale) }))" />
         <q-toggle v-model="onlyUnclassified" dense :label="t('documents.library.unclassified')" />
         <q-select v-model="draft.keyword" dense outlined clearable :label="t('documents.keywordFilter')" :options="keywords" />
-        <OwnerSelect v-model="ownerSelection" :options="ownerOptions" :current-user-id="currentUserId" clearable />
+        <OwnerSelect v-model="ownerSelection" :options="ownerOptions" :current-user-id="currentUserId" clearable include-team-agents />
         <div v-for="pair in datePairs" :key="pair.label">
           <div class="text-caption q-mb-xs">{{ t(`documents.library.${pair.label}`) }}</div>
           <div class="row no-wrap q-gutter-sm">

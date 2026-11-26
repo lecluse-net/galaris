@@ -9,22 +9,25 @@
           <template #action><q-btn color="primary" outline :label="t('common.retry')" @click="retry" /></template>
         </q-banner>
         <template v-if="!job">
-          <q-select v-model="agentId" outlined emit-value map-options :options="agents" option-label="display_name" option-value="agent_id"
+          <q-select v-model="agentId" outlined emit-value map-options :options="agents" option-label="display_name" option-value="agent_id" :option-disable="inactiveAgent"
             :loading="agentsLoading" :label="t('onboarding.mission.agent')" class="q-mb-md" :disable="busy">
             <template #option="scope">
               <q-item-label v-if="scope.opt.team_heading || scope.opt.without_team" header class="text-weight-bold">
                 {{ scope.opt.without_team ? t('agent.noGroup') : scope.opt.team_heading }}
               </q-item-label>
               <q-item v-bind="scope.itemProps" :class="{ 'q-virtual-scroll--with-prev': scope.opt.team_heading || scope.opt.without_team }">
-                <q-item-section>{{ scope.opt.display_name }}</q-item-section>
+                <q-item-section>
+                  <q-item-label>{{ scope.opt.display_name }}</q-item-label>
+                  <q-item-label v-if="!scope.opt.active" caption>{{ t('agent.selectionUnavailable') }}</q-item-label>
+                </q-item-section>
               </q-item>
             </template>
           </q-select>
-          <p v-if="!agentsLoading && !agents.length">{{ t('onboarding.mission.noAgent') }}</p>
+          <p v-if="!agentsLoading && !agents.some(agent => agent.active)">{{ t('onboarding.mission.noAgent') }}</p>
           <q-select v-model="kind" outlined emit-value map-options :options="choices" :label="t('onboarding.mission.kind')" class="q-mb-md" :disable="busy" />
           <q-input v-model="text" type="textarea" outlined :label="t('onboarding.mission.request')" :disable="busy" maxlength="8000" />
           <p class="text-caption q-mt-sm">{{ t('onboarding.mission.cost') }}</p>
-          <q-btn color="primary" :label="t('onboarding.mission.start')" :loading="busy" :disable="agentId === null || !text.trim()" @click="start" />
+          <q-btn color="primary" :label="t('onboarding.mission.start')" :loading="busy" :disable="!selectedAgent || !text.trim()" @click="start" />
         </template>
         <template v-else>
           <p role="status">{{ t(`onboarding.mission.states.${state}`) }}</p>
@@ -59,6 +62,8 @@ const canUseMission = computed(() => canChat.value && access.hasPrivilege(privil
   && (access.hasPrivilege(privileges.TASK_ACCESS) || access.hasPrivilege(privileges.TASK_EDIT))
   && (access.hasPrivilege(privileges.DOCUMENT_ACCESS) || access.hasPrivilege(privileges.DOCUMENT_EDIT) || access.hasPrivilege(privileges.DOCUMENT_ADMIN)))
 const agents = ref<MissionAgent[]>([]), agentId = ref<number | null>(null), agentsLoading = ref(false), busy = ref(false), error = ref(false)
+const inactiveAgent = (agent: MissionAgent | null): boolean => agent?.active === false
+const selectedAgent = computed(() => agents.value.find(agent => agent.active && agent.agent_id === agentId.value))
 const kind = ref('summary'), text = ref(''), job = ref<MissionJob | null>(null), tasks = ref<MissionTask[]>([]), documents = ref<MissionDocument[]>([])
 const choices = computed(() => ['summary', 'brief', 'plan'].map(value => ({ value, label: t(`onboarding.mission.kinds.${value}`) })))
 const state = computed(() => {
@@ -85,7 +90,7 @@ function reset(): void { job.value = null; tasks.value = []; documents.value = [
 async function load(): Promise<void> {
   controller?.abort(); const request = new AbortController(); controller = request
   agentsLoading.value = true; error.value = false
-  try { const result = await firstMissionService.agents(request.signal); if (!request.signal.aborted) { agents.value = result; if (!agents.value.some(agent => agent.agent_id === agentId.value)) agentId.value = agents.value[0]?.agent_id ?? null } }
+  try { const result = await firstMissionService.agents(request.signal); if (!request.signal.aborted) { agents.value = result; if (!selectedAgent.value) agentId.value = result.find(agent => agent.active)?.agent_id ?? null } }
   catch { if (!request.signal.aborted) error.value = true }
   finally { if (!request.signal.aborted) agentsLoading.value = false }
 }
@@ -111,11 +116,12 @@ async function send(): Promise<void> {
   finally { if (!disposed && version === contextVersion && session === sessionGeneration()) busy.value = false }
 }
 async function start(): Promise<void> {
-  if (agentId.value === null || busy.value || !text.value.trim() || !canUseMission.value) return
+  const agent = selectedAgent.value
+  if (!agent || busy.value || !text.value.trim() || !canUseMission.value) return
   busy.value = true; error.value = false
   const session = sessionGeneration(), prompt = text.value
   const version = contextVersion
-  try { const room = await firstMissionService.createRoom(agentId.value, t('onboarding.mission.room'))
+  try { const room = await firstMissionService.createRoom(agent.agent_id, t('onboarding.mission.room'))
     if (disposed || version !== contextVersion || session !== sessionGeneration()) return
     job.value = { room, client: crypto.randomUUID(), text: prompt, message: null }; save()
   } catch { if (!disposed && version === contextVersion && session === sessionGeneration()) error.value = true }

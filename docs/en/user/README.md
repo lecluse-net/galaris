@@ -54,12 +54,16 @@ then closes by default. **Preferences → System → Allow users to create their
 reopens it immediately; new accounts have no permissions until a role is assigned.
 Disabling this setting closes the signup form and API while existing accounts can still log in.
 
-After login, Home displays Welcome until you explicitly confirm setup, even on a preconfigured
-instance. The Galaris logo returns you to this journey from configuration screens. Once the default
-language, a usable LLM and an agent are configured, select **Setup complete — open home** to use the
-regular home page. This choice is saved for your account across devices; if saving fails, the journey
-stays visible and you can retry. `/welcome` remains accessible. If a required item later becomes
-unavailable, the journey reappears. Without configuration permissions, it explains the required access.
+After login, the member home shows **Your teams**, the agents you can contact, and what you can
+do with your role. Open an agent profile to see their photo, job description, personality, and
+connected external tools. With access to Documents, for example, a card explains how to find
+shared results and opens the library.
+
+With the Administrator role, Home displays Welcome until you confirm setup, even on a
+preconfigured instance. Set the default language, configure a usable LLM and an agent, and select
+**Setup complete — open home**. This choice is saved for your account across devices. If saving
+fails, the journey stays visible and you can retry. If a required item later becomes unavailable,
+the journey reappears. You can also reopen `/welcome` to see the setup steps available to your role.
 
 The LLM step opens **Providers & models**. It is complete only when a conversational model
 belongs to an active provider with its required credentials configured. OpenRouter is enabled
@@ -67,8 +71,7 @@ by default, but its API key must be entered. A local provider that does not requ
 complete the step without one; an OAuth provider must be connected. This check uses the saved
 configuration; test the connection to verify that the credentials are valid.
 
-The welcome journey presents seven steps in a timeline that wraps to fit the available width,
-without horizontal scrolling. Select a step to display its content
+The welcome journey numbers the steps visible to your role. Select a step to display its content
 below, or use **Previous step** and **Next step**. The first step, **Default language**, uses the
 same presentation: if the language is unset, users with parameter management permissions can
 choose it directly; otherwise, the saved language is displayed. The choice saves automatically;
@@ -79,7 +82,7 @@ The sidebar shows only the screens authorized by your role:
 
 | Screen | What it is for |
 |---|---|
-| Home | view available Agents, recent Tasks, and missing configuration steps |
+| Home | find your teams, the agents you can contact, and the spaces available to your role |
 | Agents | learn the role, personality, and capabilities of each Agent |
 | Activity | separately track text conversations, calls, Tasks, Processes, and LLM calls in real time |
 | Goals | track long-running missions, their cycles, evidence, and results |
@@ -140,7 +143,7 @@ In **Providers**, an administrator can adjust concurrent LLM calls for each conn
 Voice conversations take priority, followed by text conversations and background work;
 with a single place, the current call must still finish before the next one starts.
 
-In **Roles & permissions**, privilege categories supplied at installation follow the
+In **Users & Permissions**, privilege categories supplied at installation follow the
 interface language. Custom names stay as entered; administrators can rename or delete
 these categories without an update restoring them.
 

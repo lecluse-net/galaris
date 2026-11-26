@@ -13,7 +13,9 @@
           <q-input v-if="operation === 'rename-keyword'" v-model="name" outlined autofocus :label="t('documents.library.name')" maxlength="100" :disable="saving" />
           <TopicSelect v-if="operation === 'merge-topics' || operation === 'move' && mode === 'topics'" v-model="target" outlined :clearable="operation === 'move'" :disable="saving" :label="t('documents.classification.destination')" :hint="operation === 'move' && target === null ? t('documents.library.withoutTopic') : undefined" />
           <q-select v-if="operation === 'merge-keywords'" v-model="name" outlined :options="mergeKeywordOptions" :label="t('documents.classification.destination')" :disable="saving" />
-          <q-select v-if="operation === 'move' && mode === 'agents'" v-model="target" outlined emit-value map-options :options="agentOptions" :label="t('documents.classification.destination')" :loading="loadingOwners" :disable="saving" />
+          <AgentTeamSelect v-if="operation === 'move' && mode === 'agents'" v-model="agentTarget" outlined
+            :options="agentOptions" :display-value="agentOptions.find(option => option.value === agentTarget)?.label"
+            :label="t('documents.classification.destination')" :loading="loadingOwners" :disable="saving" />
           <q-select v-if="operation === 'move'" v-model="keyword" outlined emit-value map-options use-input input-debounce="0" :options="moveKeywords" :label="t('documents.keywords')" :display-value="keyword === undefined ? t('documents.classification.keepKeywords') : keyword === null ? t('documents.library.withoutTag') : keyword" :disable="saving" @new-value="(value, done) => done(value.trim(), 'add-unique')" />
           <q-banner v-if="failure" role="alert">{{ failure }}</q-banner>
         </q-card-section>
@@ -33,6 +35,7 @@ import { useQuasar } from 'quasar'
 import { privileges, usePrivilegeStore } from '@/core/authorize'
 import { apiErrorDetail, sessionGeneration } from '@/core/api'
 import { DialogHeader, type ContextAction } from '@/core/util'
+import { AgentTeamSelect } from '@/app/agent'
 import { TopicFormDialog, TopicSelect, topicService, type Topic } from '@/app/topic'
 import { documentService } from '../services/documentService'
 import type { DocumentLibraryEntry, DocumentTopicBranch, DocumentLibraryFilters } from '../types'
@@ -57,8 +60,12 @@ type Operation = 'rename-keyword' | 'merge-keywords' | 'delete-keywords' | 'merg
 const operation = ref<Operation>('rename-keyword')
 const selected = shallowRef<DocumentClassificationNode[]>([]), documents = shallowRef<DocumentClassificationContext[]>([])
 const name = ref(''), target = ref<string | null>(null), keyword = ref<string | null | undefined>()
+const agentTarget = computed({
+  get: () => target.value === null || target.value === 'personal' ? null : Number(target.value),
+  set: value => { target.value = value === null ? 'personal' : String(value) },
+})
 const mergeKeywordOptions = ref<string[]>([])
-const agentOptions = ref<{ label: string; value: string | null }[]>([]), loadingOwners = ref(false)
+const agentOptions = ref<{ label: string; value: number | null }[]>([]), loadingOwners = ref(false)
 const bulkOpen = ref(false), bulkEntries = shallowRef<DocumentLibraryEntry[]>([]), bulkResult = ref('')
 let disposed = false
 onBeforeUnmount(() => { disposed = true })
@@ -141,7 +148,7 @@ async function requestMove(values: DocumentClassificationContext[]): Promise<voi
     loadingOwners.value = true
     try {
       const result = await documentService.listDocumentOwnerOptions()
-      if (current(generation)) agentOptions.value = [{ label: t('documents.library.withoutAgent'), value: 'personal' }, ...result.agents.map(agent => ({ label: agent.label, value: String(agent.id) }))]
+      if (current(generation)) agentOptions.value = [{ label: t('documents.library.withoutAgent'), value: null }, ...result.agents.map(agent => ({ label: agent.label, value: agent.id }))]
     } finally { if (current(generation)) loadingOwners.value = false }
   }
 }

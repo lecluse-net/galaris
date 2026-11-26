@@ -22,8 +22,8 @@
             <InternalAgentAvatar v-if="store.selectedRoom" :agent-id="store.selectedRoom.agent_id" :name="store.selectedRoom.agent_name" size="28px" />
           </template>
           <template #before-options>
-            <ChatHomePagination class="document-conversation-pagination" :page="roomsPage" :page-size="roomsPageSize"
-              :total="roomsTotal" :loading="searching" :label="t('chat.home.conversationPages')"
+            <ListPagination class="document-conversation-pagination" :page="roomsPage" :page-size="roomsPageSize"
+              :total="roomsTotal" :loading="searching" :label="t('chat.home.conversationPages')" :page-size-label="t('chat.home.perPage')"
               @update:page="changePage" @update:page-size="changePageSize" />
           </template>
           <template #option="scope">
@@ -70,7 +70,7 @@ import type { QScrollArea } from 'quasar'
 import { privileges, usePrivilegeStore } from '@/core/authorize'
 import { sessionGeneration } from '@/core/api'
 import { websocket } from '@/core/websocket'
-import type { DocumentFocus } from '@/core/util'
+import { ListPagination, type DocumentFocus } from '@/core/util'
 import { useChatState } from '../stores/chat'
 import { chatService } from '../services/chatService'
 import { useConversationVisibility } from '../useConversationVisibility'
@@ -78,7 +78,6 @@ import MessageTimeline from './MessageTimeline.vue'
 import Composer from './Composer.vue'
 import RoomCreateDialog from './RoomCreateDialog.vue'
 import InternalAgentAvatar from './InternalAgentAvatar.vue'
-import ChatHomePagination from './ChatHomePagination.vue'
 import type { MessengerAgent, MessengerMessage, MessengerRoom, ReasoningEffort } from '../types'
 
 const { documentId = null, beforeSend, captureDocumentFocus, visible = true } = defineProps<{

@@ -20,7 +20,7 @@
           <AgentSelect
             :model-value="form.agent_id ?? null"
             @update:model-value="value => form.agent_id = value ?? undefined"
-            :options="agentOptions"
+            :load-agents="false"
             :label="$t('task.form.assignedAgent')"
             filled
             emit-value
@@ -78,13 +78,11 @@
 
 <script setup lang="ts">
 import { DialogHeader, RichTextEditor } from '@/core/util'
-import { ref, computed, watch, onMounted } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { privileges, usePrivilegeStore } from '@/core/authorize'
 import type { Task, TaskCreate, TaskUpdate, ForcedRoute, Effort } from '../types'
-import { agentService } from '@/app/agent/facade'
 import { AgentSelect } from '@/app/agent'
-import type { Agent } from '@/app/agent/contracts'
 
 interface FormData {
   label: string
@@ -121,17 +119,9 @@ const defaultForm: FormData = {
 }
 
 const form = ref<FormData>({ ...defaultForm })
-const agents = ref<Agent[]>([])
 const { t } = useI18n()
 const privilegeStore = usePrivilegeStore()
 const canEdit = computed(() => privilegeStore.hasPrivilege(privileges.TASK_EDIT))
-
-const agentOptions = computed(() =>
-  agents.value.map(agent => ({
-    label: `${agent.first_name} ${agent.last_name}`.trim(),
-    value: agent.id
-  }))
-)
 
 const routeOptions = computed(() => [
   { label: t('task.form.auto'), value: null },
@@ -144,19 +134,6 @@ const effortOptions = computed(() => [
   { label: t('task.dispatch.effortLevels.standard'), value: 'standard' },
   { label: t('task.dispatch.effortLevels.high'), value: 'high' }
 ])
-
-async function loadAgents() {
-  try {
-    const response = await agentService.getAgents()
-    agents.value = response.data
-  } catch (error) {
-    console.error('Failed to load agents:', error)
-  }
-}
-
-onMounted(() => {
-  void loadAgents()
-})
 
 watch(() => props.task, (task) => {
   if (task) {

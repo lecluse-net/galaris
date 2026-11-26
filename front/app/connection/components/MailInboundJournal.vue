@@ -6,7 +6,7 @@
         <q-input v-model="search" outlined dense clearable debounce="300" :label="t('mailJournal.inboundSearch')" />
       </div>
       <div class="col-10 col-md-4">
-        <AgentSelect v-model="agentId" :options="agentOptions" outlined dense clearable emit-value map-options :label="t('mailJournal.agentFilter')" />
+        <AgentSelect v-model="agentId" scope="catalogue" outlined dense clearable emit-value map-options :label="t('mailJournal.agentFilter')" />
       </div>
       <div class="col-2 col-md-1">
         <q-btn flat round icon="refresh" :aria-label="t('mailJournal.refresh')" :loading="loading" @click="load" />
@@ -103,7 +103,6 @@ import { privileges, usePrivilegeStore } from '@/core/authorize'
 import { mailService, type MailInboundItem, type MailInboundDetail } from '../services/mailService'
 import { answerActionAuthorization, getActionAuthorization, type ActionAuthorization } from '../services/permissionService'
 
-const { agents } = defineProps<{ agents: Array<{ id: number; label: string }> }>()
 const { t, locale } = useI18n()
 const $q = useQuasar()
 const privilegeStore = usePrivilegeStore()
@@ -111,7 +110,6 @@ const canEdit = computed(() => privilegeStore.hasPrivilege(privileges.CONNECTION
 const canReadTasks = computed(() => privilegeStore.hasAnyPrivilege([privileges.TASK_ACCESS, privileges.TASK_EDIT]))
 const search = ref('')
 const agentId = ref<number | null>(null)
-const agentOptions = computed(() => agents.map(agent => ({ label: agent.label, value: agent.id })))
 const rows = ref<MailInboundItem[]>([])
 const loading = ref(false)
 const error = ref(false)

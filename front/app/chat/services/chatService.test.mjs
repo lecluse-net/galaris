@@ -4,7 +4,9 @@ import { serviceRecorder } from '../../../test-support/service-recorder.mjs'
 import { loadTypescript } from '../../../test-support/load-typescript.mjs'
 import { sessionReadCache } from '../../../test-support/session-read-cache.mjs'
 
-function setup() { return serviceRecorder(new URL('./chatService.ts', import.meta.url), 'chatService', { axios: { isAxiosError: () => false } }) }
+function setup() { return serviceRecorder(new URL('./chatService.ts', import.meta.url), 'chatService', {
+  '@/app/agent/facade': { agentDialogueService: {} }, axios: { isAxiosError: () => false },
+}) }
 
 test('voice callbacks retained across a development reload can still send ICE candidates', async () => {
   const { service, requests } = setup()
@@ -96,6 +98,7 @@ for (const first of ['send', 'upload']) for (const conflict of ['draft_file_unav
     } }
     const { chatService: service } = loadTypescript(new URL('./chatService.ts', import.meta.url), {
       '@/core/api': { api, sessionGeneration: () => generation }, '@/core/util/facade': sessionReadCache(),
+      '@/app/agent/facade': { agentDialogueService: {} },
       axios: { isAxiosError: value => value === error },
     })
     const file = new File(['Synthetic recovered bytes'], 'kept.txt', { type: 'text/plain' })

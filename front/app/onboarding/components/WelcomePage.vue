@@ -44,7 +44,7 @@
             <h1>{{ t('onboarding.title') }}</h1>
             <p>{{ t('onboarding.description') }}</p>
 
-            <div class="welcome-progress">
+            <div v-if="requiredTotal > 0" class="welcome-progress">
               <div class="welcome-progress__labels">
                 <span>{{ t('onboarding.progress') }}</span>
                 <strong>{{ t('onboarding.progressCount', { count: requiredCompleted, total: requiredTotal }) }}</strong>
@@ -60,15 +60,15 @@
           </div>
 
           <div class="welcome-hero__mark" aria-hidden="true">
-            <q-icon :name="mandatoryReady ? 'rocket_launch' : 'route'" />
+            <q-icon :name="instanceReady ? 'rocket_launch' : 'route'" />
           </div>
         </section>
 
-        <q-banner v-if="mandatoryReady" rounded role="status" class="ready-banner">
+        <q-banner v-if="!hasMissingSetup" rounded role="status" class="ready-banner">
           <template #avatar>
             <q-icon name="task_alt" color="positive" />
           </template>
-          <div class="text-weight-bold">{{ t('onboarding.ready.title') }}</div>
+          <div class="text-weight-bold">{{ t(instanceReady ? 'onboarding.ready.title' : 'onboarding.ready.available') }}</div>
           <div class="text-caption">{{ t('onboarding.ready.description') }}</div>
           <p v-if="helpStore.loadError" role="alert">{{ t('onboarding.ready.loadError') }}</p>
           <p v-if="helpStore.saveErrors.includes(WELCOME_DISMISSAL_KEY)" role="alert">{{ t('onboarding.ready.saveError') }}</p>
@@ -85,7 +85,7 @@
               no-caps
               color="primary"
               icon-right="arrow_forward"
-              :label="t('onboarding.actions.home')"
+              :label="t(instanceReady ? 'onboarding.actions.home' : 'onboarding.actions.openHome')"
               :disable="!helpStore.ready"
               :loading="helpStore.pending.includes(WELCOME_DISMISSAL_KEY)"
               @click="completeSetup"
@@ -93,9 +93,9 @@
           </template>
         </q-banner>
 
-        <FirstMission v-if="mandatoryReady" />
+        <FirstMission v-if="instanceReady" />
 
-        <section :aria-label="t('onboarding.summary.title')">
+        <section v-if="steps.length" :aria-label="t('onboarding.summary.title')">
           <q-stepper
             v-model="activeStep"
             flat
@@ -109,7 +109,7 @@
             <q-step
               v-for="step in steps"
               :key="step.key"
-              :name="step.name"
+              :name="step.key"
               :title="t(`onboarding.steps.${step.key}.title`)"
               :caption="statusFor(step).label"
               :prefix="step.name"
@@ -136,8 +136,7 @@
                 <p class="step-lead">{{ t(`onboarding.steps.${step.key}.description`) }}</p>
 
                 <div v-if="step.key === 'language'" class="welcome-language">
-                  <div v-if="!canAccessParams" class="text-caption">{{ t('onboarding.permissionRequired') }}</div>
-                  <div v-else-if="languageLoading" role="status">
+                  <div v-if="languageLoading" role="status">
                     <q-spinner color="primary" class="q-mr-sm" />{{ t('common.loading') }}
                   </div>
                   <q-banner v-else-if="languageLoadError" rounded>
@@ -172,12 +171,12 @@
 
                 <div v-if="step.key !== 'language'" class="step-actions">
                   <q-btn
-                    v-if="step.canEdit && step.route"
+                    v-if="step.route"
                     unelevated
                     no-caps
                     color="primary"
                     icon-right="open_in_new"
-                    :label="t(`onboarding.steps.${step.key}.${step.complete ? 'reviewAction' : 'action'}`)"
+                    :label="t(step.canEdit ? `onboarding.steps.${step.key}.${step.complete ? 'reviewAction' : 'action'}` : 'onboarding.actions.openSection')"
                     :to="step.route"
                   />
                   <q-btn
@@ -199,7 +198,7 @@
                     no-caps
                     icon="arrow_back"
                     :label="t('onboarding.actions.previous')"
-                    @click="activeStep = step.name - 1"
+                    @click="selectStep(step.name - 1)"
                   />
                   <span />
                   <q-btn outline
@@ -210,7 +209,7 @@
                     icon-right="arrow_forward"
                     :label="t('onboarding.actions.next')"
                     class="step-navigation__next"
-                    @click="activeStep = step.name + 1"
+                    @click="selectStep(step.name + 1)"
                   />
                 </div>
               </article>
@@ -226,10 +225,10 @@
 import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
-import { privileges, usePrivilegeStore } from '@/core/authorize'
 import { languageFields, SettingsFields, useParamsStore } from '@/core/params'
 import { useAuthStore, useHelpStore } from '@/core/user'
 import { useOnboardingStore, WELCOME_DISMISSAL_KEY } from '../stores/onboardingStore'
+import { useSetupAccess } from '../setupAccess'
 import FirstMission from './FirstMission.vue'
 
 type StepKey = 'language' | 'llm' | 'agent' | 'tools' | 'connections' | 'skills' | 'processes'
@@ -256,9 +255,9 @@ const authStore = useAuthStore()
 const helpStore = useHelpStore()
 const router = useRouter()
 const onboardingStore = useOnboardingStore()
-const privilegeStore = usePrivilegeStore()
 const paramsStore = useParamsStore()
-const canAccessParams = computed(() => authStore.isAuthenticated && privilegeStore.hasAnyPrivilege([privileges.LANGUAGE_CONFIG_ACCESS, privileges.LANGUAGE_CONFIG_EDIT]))
+const { canView, canEdit, hasMissingSetup } = useSetupAccess()
+const canAccessParams = computed(() => authStore.isAuthenticated && canView.value.language)
 const defaultLanguageFields = languageFields.filter(field => field.name === 'DEFAULT_LANGUAGE')
 const configuredLanguage = computed(() => {
   const value = paramsStore.getParamValue('DEFAULT_LANGUAGE')
@@ -268,7 +267,7 @@ const configuredLanguage = computed(() => {
 })
 const languageLoading = ref(false)
 const languageLoadError = ref(false)
-const activeStep = ref(1)
+const activeStep = ref<StepKey>('language')
 
 watch(() => helpStore.accountId, () => {
   if (!helpStore.ready && !helpStore.loadError) void helpStore.load()
@@ -301,25 +300,23 @@ watch(
   },
 )
 
-const steps = computed<SetupStep[]>(() => [
+const setupSteps = computed<Omit<SetupStep, 'name'>[]>(() => [
   {
-    name: 1,
     key: 'language',
     icon: 'translate',
     route: null,
     required: true,
     complete: onboardingStore.languageConfigured === true,
-    canEdit: canAccessParams.value && privilegeStore.hasPrivilege(privileges.LANGUAGE_CONFIG_EDIT),
+    canEdit: canEdit.value.language,
     tipKeys: [],
   },
   {
-    name: 2,
     key: 'llm',
     icon: 'smart_toy',
     route: '/llm?tab=providers',
     required: true,
     complete: onboardingStore.llmProvider?.has_data ?? false,
-    canEdit: onboardingStore.llmProvider?.has_privilege ?? false,
+    canEdit: canEdit.value.llm,
     tipKeys: [
       'onboarding.steps.llm.tipProvider',
       'onboarding.steps.llm.tipModel',
@@ -327,13 +324,12 @@ const steps = computed<SetupStep[]>(() => [
     ],
   },
   {
-    name: 3,
     key: 'agent',
     icon: 'support_agent',
     route: '/agent',
     required: true,
     complete: onboardingStore.agents?.has_data ?? false,
-    canEdit: onboardingStore.agents?.has_privilege ?? false,
+    canEdit: canEdit.value.agent,
     tipKeys: [
       'onboarding.steps.agent.tipIdentity',
       'onboarding.steps.agent.tipModel',
@@ -341,13 +337,12 @@ const steps = computed<SetupStep[]>(() => [
     ],
   },
   {
-    name: 4,
     key: 'connections',
     icon: 'hub',
     route: '/services?tab=connections',
     required: false,
     complete: onboardingStore.connections?.has_data ?? false,
-    canEdit: onboardingStore.connections?.has_privilege ?? false,
+    canEdit: canEdit.value.connections,
     tipKeys: [
       'onboarding.steps.connections.tipChannels',
       'onboarding.steps.connections.tipAgent',
@@ -355,13 +350,12 @@ const steps = computed<SetupStep[]>(() => [
     ],
   },
   {
-    name: 5,
     key: 'tools',
     icon: 'construction',
     route: '/services',
     required: false,
     complete: onboardingStore.tools?.has_data ?? false,
-    canEdit: onboardingStore.tools?.has_privilege ?? false,
+    canEdit: canEdit.value.tools,
     tipKeys: [
       'onboarding.steps.tools.tipChoose',
       'onboarding.steps.tools.tipRights',
@@ -369,13 +363,12 @@ const steps = computed<SetupStep[]>(() => [
     ],
   },
   {
-    name: 6,
     key: 'skills',
     icon: 'psychology',
     route: '/skill',
     required: false,
     complete: onboardingStore.skills?.has_data ?? false,
-    canEdit: onboardingStore.skillsAccess,
+    canEdit: canEdit.value.skills,
     tipKeys: [
       'onboarding.steps.skills.tipChoose',
       'onboarding.steps.skills.tipAssign',
@@ -383,13 +376,12 @@ const steps = computed<SetupStep[]>(() => [
     ],
   },
   {
-    name: 7,
     key: 'processes',
     icon: 'account_tree',
     route: '/process',
     required: false,
     complete: onboardingStore.processes?.has_data ?? false,
-    canEdit: onboardingStore.processesAccess,
+    canEdit: canEdit.value.processes,
     tipKeys: [
       'onboarding.steps.processes.tipRepeatable',
       'onboarding.steps.processes.tipTools',
@@ -397,12 +389,24 @@ const steps = computed<SetupStep[]>(() => [
     ],
   },
 ])
+const steps = computed(() => setupSteps.value
+  .filter(step => canView.value[step.key])
+  .map((step, index) => ({ ...step, name: index + 1 })))
+
+function selectStep(number: number): void {
+  const step = steps.value[number - 1]
+  if (step) activeStep.value = step.key
+}
+
+watch(steps, visible => {
+  if (!visible.some(step => step.key === activeStep.value)) selectStep(1)
+}, { immediate: true })
 
 const requiredSteps = computed(() => steps.value.filter(step => step.required))
 const requiredCompleted = computed(() => requiredSteps.value.filter(step => step.complete === true).length)
 const requiredTotal = computed(() => requiredSteps.value.length)
-const requiredProgress = computed(() => requiredCompleted.value / requiredTotal.value)
-const mandatoryReady = computed(() => requiredCompleted.value === requiredTotal.value)
+const requiredProgress = computed(() => requiredTotal.value > 0 ? requiredCompleted.value / requiredTotal.value : 0)
+const instanceReady = computed(() => !onboardingStore.instanceNeedsSetup && onboardingStore.languageConfigured === true)
 
 function statusFor(step: SetupStep): StepStatus {
   if (step.complete === true) {

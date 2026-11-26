@@ -35,7 +35,7 @@ et **Nouvel Agent**, ouvre cette même fiche pour les membres de l’équipe cou
 sélecteur d’équipe. Sélectionnez plusieurs humains ou agents, cliquez sur **Ajouter** dans
 la colonne concernée, puis sur **Enregistrer**. Leurs autres appartenances sont conservées.
 Ce bouton exige les droits de consultation des équipes et de modification de leurs membres ;
-il est désactivé dans l’onglet **Sans équipe**.
+il est disponible quand une équipe est sélectionnée.
 
 Le manager conserve son accès à ses agents, et l’administrateur peut contacter tous les agents.
 Partager une équipe ne permet pas d’administrer
@@ -46,9 +46,11 @@ Un agent équipé d’une portée déléguée sur **Tâches** peut intervenir su
 agents de sa portée déléguée ; seule `all` ouvre la portée globale. Le demandeur d’une délégation peut en consulter le résultat sans obtenir
 la gestion des autres tâches du destinataire.
 
-Les sélecteurs proposent les agents autorisés pour l’action : agents administrables dans
-les écrans de gestion, interlocuteurs autorisés dans le chat, catalogue des membres dans
-la composition d’équipe. Leurs choix sont revérifiés à l’ouverture.
+La page **Agents** et les listes de consultation des fiches incluent les agents dont vous êtes
+le manager et ceux de vos équipes. Vous pouvez choisir ces agents dans les filtres. Les résultats
+restent soumis aux droits de chaque écran. Pour une action donnée, les agents visibles qui ne
+sont pas éligibles apparaissent grisés avec la mention **Non disponible pour cette action**.
+Les choix sont revérifiés à l’ouverture de la liste.
 
 Les agents disposent d'un annuaire en lecture seule, sans délégation Agent :
 `team_list(search="Recherche")` recherche les équipes par partie de leur nom et renvoie

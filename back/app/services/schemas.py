@@ -514,6 +514,11 @@ class ConversationToolCatalog(BaseModel):
     next_connection_id: int | None = None
 
 
+class ConnectedExternalService(BaseModel):
+    code: str
+    label: str
+
+
 class Service(BaseModel):
     """Internal tool object built from API or database records."""
     code: str

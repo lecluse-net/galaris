@@ -11,7 +11,7 @@ from fastapi.responses import FileResponse
 from starlette.background import BackgroundTask
 
 from core.authorize import Privileges, authorize
-from app.agent import current_management_scope
+from app.agent import current_dialogue_scope, current_management_scope
 from core.database import get_db
 from sqlalchemy import select
 
@@ -169,7 +169,7 @@ async def list_personal_skills(
     page_size: int = Query(default=50, ge=1, le=500),
 ) -> PersonalSkillPage:
     scope = await current_management_scope()
-    if owner_agent_id is not None and not scope.allows(owner_agent_id):
+    if owner_agent_id is not None and not scope.allows(owner_agent_id) and not (await current_dialogue_scope(agent_id=owner_agent_id)).allows(owner_agent_id):
         raise HTTPException(status_code=404, detail="Agent introuvable")
     items, total = await personal_catalogue.list_page(
         agent_ids=scope.agent_ids, owner_agent_id=owner_agent_id,

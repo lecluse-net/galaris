@@ -9,6 +9,7 @@ import { useAuthStore } from '/core/user/stores/authStore.ts'
 import { useHelpStore } from '/core/user/stores/helpStore.ts'
 import { contextHelpKey } from '/core/util/contextHelp.ts'
 import { usePrivilegeStore } from '/core/authorize/stores/privilegeStore.ts'
+import { useAuthorizeStore } from '/core/authorize/stores/authorizeStore.ts'
 import { websocket } from '/core/websocket.ts'
 import 'quasar/src/css/index.sass'
 import '@quasar/extras/material-icons/material-icons.css'
@@ -24,7 +25,7 @@ window.testApp = {
     this.pendingMount = this.mountComponent(options)
     return this.pendingMount
   },
-  async mountComponent({ component, props = {}, slots = {}, setProps = [], containerStyle = {}, route = '/', browserHistory = false, authenticated = true, dark = toQuasarDark(getThemeMode()), locale = 'en', user = {}, shell = false }) {
+  async mountComponent({ component, props = {}, slots = {}, setProps = [], containerStyle = {}, route = '/', browserHistory = false, authenticated = true, dark = toQuasarDark(getThemeMode()), locale = 'en', user = {}, role = null, shell = false }) {
     this.unmount?.()
     errors.length = 0
     const pinia = createPinia()
@@ -37,6 +38,8 @@ window.testApp = {
     if (authenticated) {
       auth.$patch({ token: 'component-test', user: { id: 1, email: 'test@example.invalid', display_name: 'Test User', language: locale, document_library_mode: 'folders', ...user } })
     }
+    const authorize = useAuthorizeStore(pinia)
+    authorize.activeRole = role
     const privileges = usePrivilegeStore(pinia)
     await privileges.loadPrivileges()
     await setLocale(locale)
@@ -72,7 +75,7 @@ window.testApp = {
     app.provide(contextHelpKey, useHelpStore(pinia))
     app.mount('#app')
     Object.assign(this, {
-      pinia, router, auth, privileges, events,
+      pinia, router, auth, authorize, privileges, events,
       notify(options) { app.config.globalProperties.$q.notify(options) },
       async setProps(values) { currentProps.value = { ...currentProps.value, ...values }; await nextTick() },
       async invoke(name, ...args) { const result = await targetRef.value[name](...args); await nextTick(); return result },

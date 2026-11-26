@@ -17,6 +17,7 @@ import { sessionGeneration } from '@/core/api'
 import { onReadSessionChanged, onSessionReadInvalidation } from '@/core/util/facade'
 import { useAgentStore } from '../stores/agentStore'
 import { agentService } from '../services/agentService'
+import { agentDialogueService } from '../services/agentDialogueService'
 
 const {
   agentId,
@@ -26,6 +27,7 @@ const {
   textColor,
   hasAvatar = undefined,
   updatedAt,
+  dialogue = false,
 } = defineProps<{
   agentId: number
   name?: string
@@ -34,12 +36,13 @@ const {
   textColor?: string
   hasAvatar?: boolean
   updatedAt?: string | null
+  dialogue?: boolean
 }>()
 
 const agentStore = useAgentStore()
 const avatarUrl = ref('')
 let request: AbortController | undefined
-const agent = computed(() => agentStore.agents.find(item => item.id === agentId) ?? null)
+const agent = computed(() => dialogue ? null : (agentStore.agents.find(item => item.id === agentId) ?? null))
 const displayName = computed(() => {
   const value = agent.value
     ? `${agent.value.first_name} ${agent.value.last_name}`.trim()
@@ -58,7 +61,7 @@ const available = computed(() => hasAvatar ?? agent.value?.has_avatar)
 const revision = computed(() => updatedAt ?? agent.value?.updated_at)
 let session: string | null = sessionGeneration()
 watch(
-  [() => agentId, available, revision],
+  [() => agentId, () => dialogue, available, revision],
   () => { void loadAvatar() },
   { immediate: true },
 )
@@ -81,7 +84,14 @@ async function loadAvatar(refresh = false): Promise<void> {
   const current = new AbortController()
   request = current
   try {
-    const url = await agentService.getAvatarBlobUrl(agentId, current.signal, revision.value)
+    let url: string
+    if (dialogue) {
+      const blob = await agentDialogueService.avatarBlob(agentId, current.signal)
+      if (current.signal.aborted) return
+      url = blob ? URL.createObjectURL(blob) : ''
+    } else {
+      url = await agentService.getAvatarBlobUrl(agentId, current.signal, revision.value)
+    }
     if (current.signal.aborted) {
       if (url) URL.revokeObjectURL(url)
     } else {

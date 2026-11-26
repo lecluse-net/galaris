@@ -831,7 +831,9 @@ async def test_managed_mail_read_resumes_only_its_registered_waiter(inbox, monke
 
 @pytest.mark.asyncio
 async def test_reception_http_requires_privilege_and_hides_other_agents(inbox, client):
+    from app.agent.dialogue_service import set_agent_membership
     from core.authorize import Assignment, Privilege, Role, RolePrivilege
+    from core.team import TeamModel, set_human_membership
     from core.user import UserModel
     from core.user.auth_service import create_access_token
 
@@ -868,7 +870,17 @@ async def test_reception_http_requires_privilege_and_hides_other_agents(inbox, c
     assert response.status_code == 200, response.text
     assert response.json()["total"] == 0
     assert (await client.get(detail_url, headers=headers[outsider])).status_code == 404
-    assert (await client.get(f"/api/mail/inbound?agent_id={config.agent_id}", headers=headers[outsider])).status_code == 404
+    filter_url = f"/api/mail/inbound?agent_id={config.agent_id}"
+    assert (await client.get(filter_url, headers=headers[outsider])).status_code == 404
+    async with get_db_session() as db:
+        team = TeamModel(name="Synthetic mail team")
+        db.add(team)
+        await db.flush()
+        await set_human_membership(team.id, outsider, True)
+        await set_agent_membership(team.id, config.agent_id, True)
+    filtered = await client.get(filter_url, headers=headers[outsider])
+    assert filtered.status_code == 200 and filtered.json()["total"] == 0
+    assert (await client.get(detail_url, headers=headers[outsider])).status_code == 404
     read.assert_not_called()
     async with get_db_session() as db:
         await connections.set_connection_function_state(config.connection_id, "mail_process", "enabled")

@@ -13,13 +13,7 @@ description: Principes de travail transversaux du dépôt Galaris — environnem
 4. Consulter `AGENTS.md`, `docs/fr/dev/README.md` et la cartographie générée du projet.
 5. Limiter le diff à la demande ; ne pas profiter d’un changement pour réécrire un domaine.
 
-Pour situer une demande parmi les travaux ouverts, consulter `git worktree list` et
-vérifier où se trouvent ses prérequis. Réutiliser le checkout qui porte les changements
-dont elle dépend. Pour un chantier indépendant, choisir une base qui permet de le
-livrer seul et un répertoire distinct. Préserver en place les modifications déjà engagées.
-
-Avant de tester depuis un autre checkout, vérifier quel code la cible Make monte ou
-construit. `make tests` attribue un projet Compose propre à son exécution dans
+`make tests` attribue un projet Compose propre à son exécution dans
 `bin/test-back.sh`. La pile de développement, elle, dérive ses noms de conteneurs de
 `APP_NAME` et publie des ports. Pour une vérification dans le navigateur, identifier
 l’instance qui sert le checkout à qualifier. Si une deuxième instance est nécessaire,

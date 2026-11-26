@@ -46,6 +46,12 @@ class NativeMessengerAgent(BaseModel):
     active: bool
 
 
+class NativeMessengerAgentProfile(BaseModel):
+    job_title: str | None
+    job_description: str | None
+    personality: str | None
+
+
 class NativeMessengerMember(BaseModel):
     id: UUID
     external_id: str
@@ -235,6 +241,7 @@ __all__ = [
     "NativeInteractionOption",
     "NativeMessengerInteraction",
     "NativeMessengerAgent",
+    "NativeMessengerAgentProfile",
     "ChatViewerAgent",
     "NativeMessengerConnection",
     "NativeMessengerFile",

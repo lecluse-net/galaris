@@ -17,7 +17,7 @@ tests remain authoritative for behavior.
 - 30 directly bidirectional domain pairs;
 - 1 strongly connected components;
 - 0 directly bidirectional frontend pairs;
-- 847 detected HTTP/WebSocket handlers;
+- 849 detected HTTP/WebSocket handlers;
 - 212 detected SQLAlchemy tables;
 - 290 detected native MCP tools;
 - 59 detected Vue pages.
@@ -211,7 +211,7 @@ tests remain authoritative for behavior.
 | `app.chat` | `app.document` | `back/app/chat/document_conversation.py` |
 | `app.chat` | `app.file_share` | `back/app/chat/mcp.py` |
 | `app.chat` | `app.messenger` | `back/app/chat/assertions.py`, `back/app/chat/desktop_screen.py`, `back/app/chat/document_conversation.py`, `back/app/chat/document_previews.py`, `back/app/chat/draft_service.py`, `back/app/chat/events.py`, `back/app/chat/mcp_apps.py`, `back/app/chat/provider.py`, `back/app/chat/push_service.py`, `back/app/chat/router.py`, `back/app/chat/schemas.py`, `back/app/chat/storage.py`, `back/app/chat/thumbnail_service.py` |
-| `app.chat` | `app.services` | `back/app/chat/mcp.py` |
+| `app.chat` | `app.services` | `back/app/chat/mcp.py`, `back/app/chat/router.py`, `back/app/chat/schemas.py` |
 | `app.chat` | `app.topic` | `back/app/chat/router.py` |
 | `app.chat` | `app.voice` | `back/app/chat/events.py`, `back/app/chat/router.py`, `back/app/chat/webrtc.py` |
 | `app.chat` | `core.authorize` | `back/app/chat/assertions.py`, `back/app/chat/dbadmin.py`, `back/app/chat/events.py`, `back/app/chat/router.py`, `back/app/chat/webrtc.py` |
@@ -818,11 +818,11 @@ tests remain authoritative for behavior.
 
 | Source | Target | Files |
 |---|---|---|
-| `app/agent` | `core/api` | `front/app/agent/components/AgentAvatar.vue`, `front/app/agent/components/AgentSelect.vue`, `front/app/agent/composables/useAgentChoices.ts`, `front/app/agent/composables/useAgentMcp.ts`, `front/app/agent/composables/useAgentTeamMetadata.ts`, `front/app/agent/composables/useHarnessLogs.ts`, `front/app/agent/richContent.ts`, `front/app/agent/services/agentSelectionService.ts`, `front/app/agent/services/agentService.ts`, `front/app/agent/services/mcpTokenService.ts`, `front/app/agent/services/teamService.ts`, `front/app/agent/stores/agentSelectionStore.ts`, `front/app/agent/stores/agentStore.ts` |
+| `app/agent` | `core/api` | `front/app/agent/components/AgentAvatar.vue`, `front/app/agent/components/AgentSelect.vue`, `front/app/agent/composables/useAgentChoices.ts`, `front/app/agent/composables/useAgentMcp.ts`, `front/app/agent/composables/useAgentTeamMetadata.ts`, `front/app/agent/composables/useHarnessLogs.ts`, `front/app/agent/services/agentDialogueService.ts`, `front/app/agent/services/agentSelectionService.ts`, `front/app/agent/services/agentService.ts`, `front/app/agent/services/mcpTokenService.ts`, `front/app/agent/services/teamService.ts`, `front/app/agent/stores/agentSelectionStore.ts`, `front/app/agent/stores/agentStore.ts` |
 | `app/agent` | `core/authorize` | `front/app/agent/components/AgentSelect.vue`, `front/app/agent/components/AgentTitlesPanel.vue`, `front/app/agent/navigation.ts` |
 | `app/agent` | `core/navigation` | `front/app/agent/navigation.ts` |
 | `app/agent` | `core/team` | `front/app/agent/components/TeamAgentMembers.vue`, `front/app/agent/team.ts` |
-| `app/agent` | `core/util` | `front/app/agent/components/AgentAvatar.vue`, `front/app/agent/components/AgentCard.vue`, `front/app/agent/components/AgentMcpPanel.vue`, `front/app/agent/components/AgentTitlesPanel.vue`, `front/app/agent/components/AvatarGenerationDialog.vue`, `front/app/agent/composables/useAgentMcp.ts`, `front/app/agent/composables/useHarnessLogs.ts`, `front/app/agent/index.ts`, `front/app/agent/richContent.ts`, `front/app/agent/services/agentOptionGroups.ts`, `front/app/agent/services/agentSelectionService.ts`, `front/app/agent/services/agentService.ts`, `front/app/agent/services/teamService.ts`, `front/app/agent/stores/agentStore.ts` |
+| `app/agent` | `core/util` | `front/app/agent/components/AgentAvatar.vue`, `front/app/agent/components/AgentCard.vue`, `front/app/agent/components/AgentMcpPanel.vue`, `front/app/agent/components/AgentTitlesPanel.vue`, `front/app/agent/components/AvatarGenerationDialog.vue`, `front/app/agent/composables/useAgentMcp.ts`, `front/app/agent/composables/useHarnessLogs.ts`, `front/app/agent/index.ts`, `front/app/agent/richContent.ts`, `front/app/agent/services/agentDialogueService.ts`, `front/app/agent/services/agentOptionGroups.ts`, `front/app/agent/services/agentSelectionService.ts`, `front/app/agent/services/agentService.ts`, `front/app/agent/services/teamService.ts`, `front/app/agent/stores/agentStore.ts` |
 | `app/browser` | `app/connection` | `front/app/browser/stores/browserSettingsStore.ts` |
 | `app/browser` | `core/api` | `front/app/browser/services/browserService.ts` |
 | `app/browser` | `core/authorize` | `front/app/browser/navigation.ts`, `front/app/browser/stores/browserSettingsStore.ts` |
@@ -838,7 +838,7 @@ tests remain authoritative for behavior.
 | `app/calendar` | `core/navigation` | `front/app/calendar/navigation.ts` |
 | `app/calendar` | `core/user` | `front/app/calendar/components/CalendarWorkspace.vue` |
 | `app/calendar` | `core/util` | `front/app/calendar/calendarDates.ts`, `front/app/calendar/components/CalendarBoard.vue`, `front/app/calendar/components/CalendarColorSelect.vue`, `front/app/calendar/components/CalendarConfirmDialog.vue`, `front/app/calendar/components/CalendarEventChip.vue`, `front/app/calendar/components/CalendarEventEditor.vue`, `front/app/calendar/components/CalendarEventPanel.vue`, `front/app/calendar/components/CalendarEventTasks.vue`, `front/app/calendar/components/CalendarResourceDialog.vue`, `front/app/calendar/components/CalendarRowMenu.vue`, `front/app/calendar/components/CalendarSettings.vue`, `front/app/calendar/components/CalendarWorkspace.vue`, `front/app/calendar/presentation.ts`, `front/app/calendar/richContent.ts` |
-| `app/chat` | `app/agent` | `front/app/chat/components/RoomCreateDialog.vue`, `front/app/chat/components/RoomList.vue` |
+| `app/chat` | `app/agent` | `front/app/chat/components/RoomCreateDialog.vue`, `front/app/chat/components/RoomList.vue`, `front/app/chat/services/chatService.ts`, `front/app/chat/types.ts` |
 | `app/chat` | `app/conversation` | `front/app/chat/components/AgentExecutionTrace.vue` |
 | `app/chat` | `app/task` | `front/app/chat/components/AgentExecutionTrace.vue`, `front/app/chat/components/AgentTasksPanel.vue`, `front/app/chat/components/CompactTaskOperations.vue`, `front/app/chat/liveState.ts`, `front/app/chat/runtimeState.ts`, `front/app/chat/types.ts` |
 | `app/chat` | `app/topic` | `front/app/chat/components/AgentTasksPanel.vue`, `front/app/chat/components/Composer.vue`, `front/app/chat/components/MessageTimeline.vue`, `front/app/chat/components/RoomCreateDialog.vue`, `front/app/chat/components/RoomPreferencesDialog.vue` |
@@ -874,7 +874,7 @@ tests remain authoritative for behavior.
 | `app/dataset` | `core/authorize` | `front/app/dataset/components/DatasetEditor.vue` |
 | `app/dataset` | `core/navigation` | `front/app/dataset/navigation.ts` |
 | `app/dataset` | `core/util` | `front/app/dataset/components/DatasetDialog.vue`, `front/app/dataset/components/DatasetEditor.vue`, `front/app/dataset/richContent.ts` |
-| `app/document` | `app/agent` | `front/app/document/components/DocumentEditor.vue`, `front/app/document/components/DocumentHistoryDialog.vue`, `front/app/document/components/DocumentLibraryPage.vue`, `front/app/document/components/DocumentSharingPanel.vue`, `front/app/document/components/DocumentTopicNavigation.vue` |
+| `app/document` | `app/agent` | `front/app/document/components/DocumentClassificationActions.vue`, `front/app/document/components/DocumentEditor.vue`, `front/app/document/components/DocumentHistoryDialog.vue`, `front/app/document/components/DocumentLibraryPage.vue`, `front/app/document/components/DocumentSharingPanel.vue`, `front/app/document/components/DocumentTopicNavigation.vue` |
 | `app/document` | `app/share` | `front/app/document/components/DocumentBulkDialog.vue`, `front/app/document/components/DocumentEditor.vue`, `front/app/document/components/DocumentLibraryFilters.vue`, `front/app/document/components/DocumentLibraryPage.vue`, `front/app/document/components/DocumentSharingPanel.vue`, `front/app/document/services/documentService.ts`, `front/app/document/types.ts` |
 | `app/document` | `app/topic` | `front/app/document/components/DocumentClassificationActions.vue`, `front/app/document/components/DocumentTopicNavigation.vue` |
 | `app/document` | `core/api` | `front/app/document/components/DocumentBulkList.vue`, `front/app/document/components/DocumentClassificationActions.vue`, `front/app/document/components/DocumentEditor.vue`, `front/app/document/components/DocumentFolderCollection.vue`, `front/app/document/components/DocumentFolderThumbnail.vue`, `front/app/document/components/DocumentImportDialog.vue`, `front/app/document/components/DocumentLibraryNavigation.vue`, `front/app/document/components/DocumentResourceEmbed.vue`, `front/app/document/components/DocumentThumbnail.vue`, `front/app/document/services/documentService.ts`, `front/app/document/stores/documentIcons.ts`, `front/app/document/stores/documentMutations.ts` |
@@ -909,7 +909,7 @@ tests remain authoritative for behavior.
 | `app/incident` | `core/authorize` | `front/app/incident/navigation.ts`, `front/app/incident/pages/index.vue` |
 | `app/incident` | `core/navigation` | `front/app/incident/navigation.ts`, `front/app/incident/pages/index.vue` |
 | `app/incident` | `core/util` | `front/app/incident/pages/index.vue` |
-| `app/index` | `app/agent` | `front/app/index/components/AgentPreview.vue`, `front/app/index/components/AgentWorkspace.vue`, `front/app/index/components/DashboardAgentTable.vue`, `front/app/index/components/DashboardLiveActivity.vue`, `front/app/index/composables/useAgentHarnessRuntime.ts`, `front/app/index/pages/agent.vue` |
+| `app/index` | `app/agent` | `front/app/index/components/AgentPreview.vue`, `front/app/index/components/AgentWorkspace.vue`, `front/app/index/components/DashboardAgentTable.vue`, `front/app/index/components/DashboardLiveActivity.vue`, `front/app/index/components/HomeAgentProfile.vue`, `front/app/index/components/HomeUser.vue`, `front/app/index/composables/useAgentHarnessRuntime.ts`, `front/app/index/pages/agent.vue` |
 | `app/index` | `app/connection` | `front/app/index/pages/services.vue` |
 | `app/index` | `app/conversation` | `front/app/index/pages/task.vue` |
 | `app/index` | `app/harnesses` | `front/app/index/components/AgentWorkspace.vue`, `front/app/index/composables/useAgentHarnessRuntime.ts` |
@@ -920,13 +920,13 @@ tests remain authoritative for behavior.
 | `app/index` | `app/task` | `front/app/index/components/DashboardLiveActivity.vue`, `front/app/index/pages/task.vue` |
 | `app/index` | `app/voice` | `front/app/index/pages/task.vue` |
 | `app/index` | `core/api` | `front/app/index/components/AgentWorkspace.vue`, `front/app/index/composables/useAgentHarnessRuntime.ts`, `front/app/index/pages/agent.vue`, `front/app/index/pages/task.vue`, `front/app/index/services/dashboardService.ts`, `front/app/index/services/homeService.ts`, `front/app/index/stores/dashboardStore.ts` |
-| `app/index` | `core/authorize` | `front/app/index/components/AgentWorkspace.vue`, `front/app/index/components/DashboardLiveActivity.vue`, `front/app/index/components/HomeActionCenter.vue`, `front/app/index/components/HomeConnected.vue`, `front/app/index/navigation.ts`, `front/app/index/pages/agent.vue`, `front/app/index/pages/services.vue`, `front/app/index/pages/task.vue`, `front/app/index/stores/dashboardStore.ts` |
-| `app/index` | `core/navigation` | `front/app/index/components/HomeActionCenter.vue`, `front/app/index/components/HomeConnected.vue`, `front/app/index/components/MainLayout.vue`, `front/app/index/components/Sidebar.vue`, `front/app/index/navigation.ts`, `front/app/index/pages/agent.vue`, `front/app/index/pages/services.vue`, `front/app/index/pages/task.vue` |
+| `app/index` | `core/authorize` | `front/app/index/components/AgentWorkspace.vue`, `front/app/index/components/DashboardLiveActivity.vue`, `front/app/index/components/HomeActionCenter.vue`, `front/app/index/components/HomeConnected.vue`, `front/app/index/components/HomeUser.vue`, `front/app/index/navigation.ts`, `front/app/index/pages/agent.vue`, `front/app/index/pages/index.vue`, `front/app/index/pages/services.vue`, `front/app/index/pages/task.vue`, `front/app/index/pages/welcome.vue`, `front/app/index/stores/dashboardStore.ts` |
+| `app/index` | `core/navigation` | `front/app/index/components/HomeActionCenter.vue`, `front/app/index/components/HomeConnected.vue`, `front/app/index/components/HomeUser.vue`, `front/app/index/components/MainLayout.vue`, `front/app/index/components/Sidebar.vue`, `front/app/index/navigation.ts`, `front/app/index/pages/agent.vue`, `front/app/index/pages/services.vue`, `front/app/index/pages/task.vue` |
 | `app/index` | `core/params` | `front/app/index/components/AgentWorkspace.vue` |
 | `app/index` | `core/settings` | `front/app/index/components/HomePublic.vue`, `front/app/index/components/MainLayout.vue`, `front/app/index/components/Sidebar.vue`, `front/app/index/components/SidebarFooter.vue`, `front/app/index/environmentPresentation.ts`, `front/app/index/navigation.ts`, `front/app/index/pages/about.vue`, `front/app/index/pages/graphic-reference.vue`, `front/app/index/pages/tool-inventory.vue`, `front/app/index/router.ts` |
-| `app/index` | `core/team` | `front/app/index/components/AgentWorkspace.vue`, `front/app/index/pages/agent.vue` |
-| `app/index` | `core/user` | `front/app/index/components/HomeActionCenter.vue`, `front/app/index/components/HomePublic.vue`, `front/app/index/components/MainLayout.vue`, `front/app/index/pages/index.vue`, `front/app/index/pages/welcome.vue`, `front/app/index/stores/dashboardStore.ts` |
-| `app/index` | `core/util` | `front/app/index/components/AgentPreview.vue`, `front/app/index/components/AgentWorkspace.vue`, `front/app/index/components/DashboardLiveActivity.vue`, `front/app/index/components/HomeActionCenter.vue`, `front/app/index/components/HomeConnected.vue`, `front/app/index/composables/useAgentHarnessRuntime.ts`, `front/app/index/environmentPresentation.ts`, `front/app/index/graphic-reference/GalleryDialogCard.vue`, `front/app/index/graphic-reference/GalleryForms.vue`, `front/app/index/graphic-reference/GalleryNavigation.vue`, `front/app/index/graphic-reference/GalleryPatterns.vue`, `front/app/index/index.ts`, `front/app/index/pages/about.vue`, `front/app/index/pages/agent.vue`, `front/app/index/pages/graphic-reference.vue`, `front/app/index/pages/license.vue`, `front/app/index/pages/services.vue`, `front/app/index/pages/task.vue` |
+| `app/index` | `core/team` | `front/app/index/components/AgentWorkspace.vue`, `front/app/index/components/HomeUser.vue`, `front/app/index/pages/agent.vue` |
+| `app/index` | `core/user` | `front/app/index/components/HomeActionCenter.vue`, `front/app/index/components/HomePublic.vue`, `front/app/index/components/HomeUser.vue`, `front/app/index/components/MainLayout.vue`, `front/app/index/pages/index.vue`, `front/app/index/pages/welcome.vue`, `front/app/index/stores/dashboardStore.ts` |
+| `app/index` | `core/util` | `front/app/index/components/AgentPreview.vue`, `front/app/index/components/AgentWorkspace.vue`, `front/app/index/components/DashboardLiveActivity.vue`, `front/app/index/components/HomeActionCenter.vue`, `front/app/index/components/HomeAgentProfile.vue`, `front/app/index/components/HomeConnected.vue`, `front/app/index/components/HomeUser.vue`, `front/app/index/composables/useAgentHarnessRuntime.ts`, `front/app/index/environmentPresentation.ts`, `front/app/index/graphic-reference/GalleryDialogCard.vue`, `front/app/index/graphic-reference/GalleryForms.vue`, `front/app/index/graphic-reference/GalleryNavigation.vue`, `front/app/index/graphic-reference/GalleryPatterns.vue`, `front/app/index/index.ts`, `front/app/index/pages/about.vue`, `front/app/index/pages/agent.vue`, `front/app/index/pages/graphic-reference.vue`, `front/app/index/pages/license.vue`, `front/app/index/pages/services.vue`, `front/app/index/pages/task.vue` |
 | `app/index` | `core/websocket` | `front/app/index/components/DashboardLiveActivity.vue` |
 | `app/lab` | `app/task` | `front/app/lab/pages/ai-evaluations.vue` |
 | `app/lab` | `core/api` | `front/app/lab/components/LabComparisonDialog.vue`, `front/app/lab/components/LabHumanReviewDialog.vue`, `front/app/lab/components/LabSyntheticDatasetDialog.vue`, `front/app/lab/components/LabWorkbench.vue`, `front/app/lab/services/dispatcherEvaluationService.ts`, `front/app/lab/services/evaluationService.ts`, `front/app/lab/services/labWorkbenchService.ts`, `front/app/lab/services/mechanismEvaluationService.ts`, `front/app/lab/services/processCampaignService.ts` |
@@ -949,7 +949,7 @@ tests remain authoritative for behavior.
 | `app/memory` | `core/util` | `front/app/memory/components/ContactCreateDialog.vue`, `front/app/memory/components/ContactEditDialog.vue`, `front/app/memory/components/ContactResourceCard.vue`, `front/app/memory/components/ContactResourceDialog.vue`, `front/app/memory/components/MemoryAttachmentButton.vue`, `front/app/memory/components/MemoryContentPreviews.vue`, `front/app/memory/components/MemoryGraph.vue`, `front/app/memory/components/MemoryItemDialog.vue`, `front/app/memory/components/MemoryItemForm.vue`, `front/app/memory/components/MemoryItemHistory.vue`, `front/app/memory/components/MemoryItemThumbnail.vue`, `front/app/memory/pages/contacts.vue`, `front/app/memory/pages/index.vue`, `front/app/memory/richContent.ts`, `front/app/memory/services/memoryService.ts` |
 | `app/memory` | `core/websocket` | `front/app/memory/components/MemoryGraph.vue`, `front/app/memory/components/MemoryItemDialog.vue`, `front/app/memory/stores/memoryStore.ts` |
 | `app/onboarding` | `core/api` | `front/app/onboarding/components/FirstMission.vue`, `front/app/onboarding/services/firstMissionService.ts`, `front/app/onboarding/services/onboardingService.ts`, `front/app/onboarding/stores/onboardingStore.ts` |
-| `app/onboarding` | `core/authorize` | `front/app/onboarding/components/FirstMission.vue`, `front/app/onboarding/components/WelcomePage.vue` |
+| `app/onboarding` | `core/authorize` | `front/app/onboarding/components/FirstMission.vue`, `front/app/onboarding/setupAccess.ts` |
 | `app/onboarding` | `core/params` | `front/app/onboarding/components/WelcomePage.vue` |
 | `app/onboarding` | `core/user` | `front/app/onboarding/components/FirstMission.vue`, `front/app/onboarding/components/WelcomePage.vue` |
 | `app/onboarding` | `core/util` | `front/app/onboarding/stores/onboardingStore.ts` |
@@ -1282,35 +1282,35 @@ No cyclic component detected.
 | POST | `/action-authorizations/{identifier}/cancel` | `app.services` | `cancel_request` | yes | `back/app/services/authorization_router.py:176` |
 | POST | `/agent/openai/chat/completions` | `app.agent` | `agent_chat_completions` | yes | `back/app/agent/openai_router.py:77` |
 | GET | `/agent/openai/models` | `app.agent` | `get_agent_models` | yes | `back/app/agent/openai_router.py:66` |
-| GET | `/agents` | `app.agent` | `read_agents` | yes | `back/app/agent/router.py:204` |
-| POST | `/agents` | `app.agent` | `create_agent` | yes | `back/app/agent/router.py:263` |
-| GET | `/agents/avatar-generation` | `app.agent` | `read_avatar_generation_availability` | yes | `back/app/agent/router.py:243` |
-| GET | `/agents/drivers` | `app.agent` | `read_executor_drivers` | yes | `back/app/agent/router.py:173` |
-| GET | `/agents/groups` | `app.agent` | `read_groups` | yes | `back/app/agent/router.py:116` |
-| POST | `/agents/groups` | `app.agent` | `create_group` | yes | `back/app/agent/router.py:136` |
-| DELETE | `/agents/groups/{id}` | `app.agent` | `delete_group` | yes | `back/app/agent/router.py:158` |
-| GET | `/agents/groups/{id}` | `app.agent` | `read_group` | yes | `back/app/agent/router.py:125` |
-| PUT | `/agents/groups/{id}` | `app.agent` | `update_group` | yes | `back/app/agent/router.py:145` |
-| GET | `/agents/managers` | `app.agent` | `read_agent_managers` | yes | `back/app/agent/router.py:220` |
-| GET | `/agents/selection` | `app.agent` | `read_agent_selection` | yes | `back/app/agent/router.py:48` |
+| GET | `/agents` | `app.agent` | `read_agents` | yes | `back/app/agent/router.py:205` |
+| POST | `/agents` | `app.agent` | `create_agent` | yes | `back/app/agent/router.py:272` |
+| GET | `/agents/avatar-generation` | `app.agent` | `read_avatar_generation_availability` | yes | `back/app/agent/router.py:250` |
+| GET | `/agents/drivers` | `app.agent` | `read_executor_drivers` | yes | `back/app/agent/router.py:174` |
+| GET | `/agents/groups` | `app.agent` | `read_groups` | yes | `back/app/agent/router.py:117` |
+| POST | `/agents/groups` | `app.agent` | `create_group` | yes | `back/app/agent/router.py:137` |
+| DELETE | `/agents/groups/{id}` | `app.agent` | `delete_group` | yes | `back/app/agent/router.py:159` |
+| GET | `/agents/groups/{id}` | `app.agent` | `read_group` | yes | `back/app/agent/router.py:126` |
+| PUT | `/agents/groups/{id}` | `app.agent` | `update_group` | yes | `back/app/agent/router.py:146` |
+| GET | `/agents/managers` | `app.agent` | `read_agent_managers` | yes | `back/app/agent/router.py:227` |
+| GET | `/agents/selection` | `app.agent` | `read_agent_selection` | yes | `back/app/agent/router.py:49` |
 | GET | `/agents/teams/agents` | `app.agent` | `agents` | yes | `back/app/agent/team_router.py:16` |
 | PUT | `/agents/teams/{team_id}/members/{agent_id}` | `app.agent` | `update_membership` | yes | `back/app/agent/team_router.py:23` |
-| GET | `/agents/titles` | `app.agent` | `read_titles` | yes | `back/app/agent/router.py:59` |
-| POST | `/agents/titles` | `app.agent` | `create_title` | yes | `back/app/agent/router.py:79` |
-| DELETE | `/agents/titles/{id}` | `app.agent` | `delete_title` | yes | `back/app/agent/router.py:101` |
-| GET | `/agents/titles/{id}` | `app.agent` | `read_title` | yes | `back/app/agent/router.py:68` |
-| PUT | `/agents/titles/{id}` | `app.agent` | `update_title` | yes | `back/app/agent/router.py:88` |
+| GET | `/agents/titles` | `app.agent` | `read_titles` | yes | `back/app/agent/router.py:60` |
+| POST | `/agents/titles` | `app.agent` | `create_title` | yes | `back/app/agent/router.py:80` |
+| DELETE | `/agents/titles/{id}` | `app.agent` | `delete_title` | yes | `back/app/agent/router.py:102` |
+| GET | `/agents/titles/{id}` | `app.agent` | `read_title` | yes | `back/app/agent/router.py:69` |
+| PUT | `/agents/titles/{id}` | `app.agent` | `update_title` | yes | `back/app/agent/router.py:89` |
 | GET | `/agents/{agent_id}/mcp-tokens` | `app.mcp` | `list_agent_mcp_tokens` | yes | `back/app/mcp/router.py:70` |
 | POST | `/agents/{agent_id}/mcp-tokens` | `app.mcp` | `create_agent_mcp_token` | yes | `back/app/mcp/router.py:92` |
 | DELETE | `/agents/{agent_id}/mcp-tokens/{token_id}` | `app.mcp` | `delete_agent_mcp_token` | yes | `back/app/mcp/router.py:146` |
 | PUT | `/agents/{agent_id}/mcp-tokens/{token_id}` | `app.mcp` | `update_agent_mcp_token` | yes | `back/app/mcp/router.py:120` |
-| DELETE | `/agents/{id}` | `app.agent` | `delete_agent` | yes | `back/app/agent/router.py:318` |
-| GET | `/agents/{id}` | `app.agent` | `read_agent` | yes | `back/app/agent/router.py:251` |
-| PUT | `/agents/{id}` | `app.agent` | `update_agent` | yes | `back/app/agent/router.py:291` |
-| DELETE | `/agents/{id}/avatar` | `app.agent` | `delete_avatar` | yes | `back/app/agent/router.py:430` |
-| GET | `/agents/{id}/avatar` | `app.agent` | `download_avatar` | yes | `back/app/agent/router.py:396` |
-| POST | `/agents/{id}/avatar` | `app.agent` | `upload_avatar` | yes | `back/app/agent/router.py:358` |
-| POST | `/agents/{id}/avatar/generate` | `app.agent` | `generate_agent_avatar` | yes | `back/app/agent/router.py:332` |
+| DELETE | `/agents/{id}` | `app.agent` | `delete_agent` | yes | `back/app/agent/router.py:327` |
+| GET | `/agents/{id}` | `app.agent` | `read_agent` | yes | `back/app/agent/router.py:258` |
+| PUT | `/agents/{id}` | `app.agent` | `update_agent` | yes | `back/app/agent/router.py:300` |
+| DELETE | `/agents/{id}/avatar` | `app.agent` | `delete_avatar` | yes | `back/app/agent/router.py:439` |
+| GET | `/agents/{id}/avatar` | `app.agent` | `download_avatar` | yes | `back/app/agent/router.py:405` |
+| POST | `/agents/{id}/avatar` | `app.agent` | `upload_avatar` | yes | `back/app/agent/router.py:367` |
+| POST | `/agents/{id}/avatar/generate` | `app.agent` | `generate_agent_avatar` | yes | `back/app/agent/router.py:341` |
 | GET | `/api/docs` | `core.api` | `public_swagger_ui_html` | no | `back/core/api.py:239` |
 | GET | `/api/health` | `core.api` | `health_check` | no | `back/core/api.py:270` |
 | GET | `/api/health/live` | `core.api` | `liveness_check` | no | `back/core/api.py:275` |
@@ -1404,71 +1404,72 @@ No cyclic component detected.
 | GET | `/calendars/{calendar_id}/sync-runs` | `app.calendar` | `sync_runs` | yes | `back/app/calendar/router.py:217` |
 | POST | `/calendars/{calendar_id}/test` | `app.calendar` | `test_calendar` | yes | `back/app/calendar/router.py:307` |
 | GET | `/catalogue` | `app.process` | `read_catalogue` | yes | `back/app/process/router.py:94` |
-| GET | `/chat/agents/{agent_id}/avatar` | `app.chat` | `read_agent_avatar` | yes | `back/app/chat/router.py:532` |
-| DELETE | `/chat/desktop-screen` | `app.chat` | `disconnect_desktop_screen` | yes | `back/app/chat/router.py:237` |
-| POST | `/chat/desktop-screen/poll` | `app.chat` | `poll_desktop_screen` | yes | `back/app/chat/router.py:221` |
-| POST | `/chat/desktop-screen/{identifier}/complete` | `app.chat` | `complete_desktop_screen` | yes | `back/app/chat/router.py:246` |
-| GET | `/chat/documents/{document_id}/conversation` | `app.chat` | `read_document_conversation_preference` | yes | `back/app/chat/router.py:266` |
-| PUT | `/chat/documents/{document_id}/conversation` | `app.chat` | `update_document_conversation_preference` | yes | `back/app/chat/router.py:279` |
-| GET | `/chat/emojis/frequent` | `app.chat` | `read_frequent_emojis` | yes | `back/app/chat/router.py:451` |
-| POST | `/chat/emojis/usage` | `app.chat` | `create_emoji_usage` | yes | `back/app/chat/router.py:460` |
-| GET | `/chat/identities` | `app.chat` | `read_identity_mappings` | yes | `back/app/chat/router.py:470` |
-| DELETE | `/chat/identities/{service_id}` | `app.chat` | `delete_identity_mapping` | yes | `back/app/chat/router.py:500` |
-| PUT | `/chat/identities/{service_id}` | `app.chat` | `update_identity_mapping` | yes | `back/app/chat/router.py:479` |
-| GET | `/chat/inbox` | `app.chat` | `read_inbox` | yes | `back/app/chat/router.py:406` |
-| GET | `/chat/push/configuration` | `app.chat` | `read_push_configuration` | yes | `back/app/chat/router.py:418` |
-| DELETE | `/chat/push/subscriptions` | `app.chat` | `remove_push_subscription` | yes | `back/app/chat/router.py:441` |
-| POST | `/chat/push/subscriptions` | `app.chat` | `create_push_subscription` | yes | `back/app/chat/router.py:428` |
-| GET | `/chat/recipients` | `app.chat` | `read_recipients` | yes | `back/app/chat/router.py:507` |
-| GET | `/chat/rooms` | `app.chat` | `read_rooms` | yes | `back/app/chat/router.py:552` |
-| POST | `/chat/rooms` | `app.chat` | `create_room` | yes | `back/app/chat/router.py:584` |
-| GET | `/chat/rooms/{room_id}` | `app.chat` | `read_room` | yes | `back/app/chat/router.py:614` |
-| PATCH | `/chat/rooms/{room_id}` | `app.chat` | `update_room_preferences` | yes | `back/app/chat/router.py:634` |
-| GET | `/chat/rooms/{room_id}/activity` | `app.chat` | `read_activity` | yes | `back/app/chat/router.py:1125` |
-| GET | `/chat/rooms/{room_id}/activity/{round_id}` | `app.chat` | `read_activity_detail` | yes | `back/app/chat/router.py:1140` |
-| POST | `/chat/rooms/{room_id}/activity/{round_id}/control` | `app.chat` | `control_response` | yes | `back/app/chat/router.py:1154` |
-| PATCH | `/chat/rooms/{room_id}/archive` | `app.chat` | `update_room_archive` | yes | `back/app/chat/router.py:652` |
-| POST | `/chat/rooms/{room_id}/attachments` | `app.chat` | `create_attachment_message` | yes | `back/app/chat/router.py:1403` |
-| POST | `/chat/rooms/{room_id}/calls` | `app.chat` | `start_call` | yes | `back/app/chat/router.py:1607` |
-| GET | `/chat/rooms/{room_id}/calls/active` | `app.chat` | `read_active_call` | yes | `back/app/chat/router.py:1666` |
-| GET | `/chat/rooms/{room_id}/calls/status` | `app.chat` | `read_voice_call_status` | yes | `back/app/chat/router.py:1580` |
-| DELETE | `/chat/rooms/{room_id}/calls/{call_id}` | `app.chat` | `stop_call` | yes | `back/app/chat/router.py:1725` |
-| POST | `/chat/rooms/{room_id}/calls/{call_id}/candidates` | `app.chat` | `add_call_candidate` | yes | `back/app/chat/router.py:1690` |
-| GET | `/chat/rooms/{room_id}/commands` | `app.chat` | `read_room_commands` | yes | `back/app/chat/router.py:693` |
-| GET | `/chat/rooms/{room_id}/deep` | `app.chat` | `read_deep_room` | yes | `back/app/chat/router.py:707` |
-| GET | `/chat/rooms/{room_id}/deep/{submission_id}/events` | `app.chat` | `read_deep_events` | yes | `back/app/chat/router.py:713` |
-| POST | `/chat/rooms/{room_id}/deep/{submission_id}/stop` | `app.chat` | `stop_deep_room_submission` | yes | `back/app/chat/router.py:724` |
-| POST | `/chat/rooms/{room_id}/dictation` | `app.chat` | `transcribe_dictation` | yes | `back/app/chat/router.py:1352` |
-| GET | `/chat/rooms/{room_id}/documents` | `app.chat` | `read_room_documents` | yes | `back/app/chat/router.py:1192` |
-| POST | `/chat/rooms/{room_id}/documents` | `app.chat` | `create_room_document` | yes | `back/app/chat/router.py:1222` |
-| GET | `/chat/rooms/{room_id}/draft` | `app.chat` | `get_private_draft` | yes | `back/app/chat/router.py:1757` |
-| PUT | `/chat/rooms/{room_id}/draft` | `app.chat` | `save_private_draft` | yes | `back/app/chat/router.py:1764` |
-| DELETE | `/chat/rooms/{room_id}/draft/files/{key}` | `app.chat` | `discard_private_draft_file` | yes | `back/app/chat/router.py:1786` |
-| POST | `/chat/rooms/{room_id}/draft/files/{key}` | `app.chat` | `upload_private_draft_file` | yes | `back/app/chat/router.py:1774` |
-| GET | `/chat/rooms/{room_id}/files/{file_id}` | `app.chat` | `download_file` | yes | `back/app/chat/router.py:1535` |
-| PATCH | `/chat/rooms/{room_id}/files/{file_id}` | `app.chat` | `rename_chat_attachment` | yes | `back/app/chat/router.py:1525` |
-| GET | `/chat/rooms/{room_id}/interactions/{interaction_id}` | `app.chat` | `read_interaction` | yes | `back/app/chat/router.py:1268` |
-| POST | `/chat/rooms/{room_id}/interactions/{interaction_id}/answer` | `app.chat` | `answer_interaction` | yes | `back/app/chat/router.py:1277` |
-| GET | `/chat/rooms/{room_id}/messages` | `app.chat` | `read_messages` | yes | `back/app/chat/router.py:732` |
-| POST | `/chat/rooms/{room_id}/messages` | `app.chat` | `create_message` | yes | `back/app/chat/router.py:1293` |
-| GET | `/chat/rooms/{room_id}/messages/{message_id}/mcp-apps/{presentation_id}` | `app.chat` | `open_message_mcp_app` | yes | `back/app/chat/router.py:754` |
-| POST | `/chat/rooms/{room_id}/messages/{message_id}/mcp-apps/{presentation_id}` | `app.chat` | `filter_message_mcp_app` | yes | `back/app/chat/router.py:762` |
-| GET | `/chat/rooms/{room_id}/messages/{message_id}/previews` | `app.chat` | `read_message_previews` | yes | `back/app/chat/router.py:900` |
-| GET | `/chat/rooms/{room_id}/messages/{message_id}/previews/content` | `app.chat` | `read_message_preview_content` | yes | `back/app/chat/router.py:1079` |
-| GET | `/chat/rooms/{room_id}/messages/{message_id}/previews/image` | `app.chat` | `read_message_preview_image` | yes | `back/app/chat/router.py:1026` |
-| POST | `/chat/rooms/{room_id}/messages/{message_id}/previews/repository` | `app.chat` | `open_message_directory_repository` | yes | `back/app/chat/router.py:995` |
-| POST | `/chat/rooms/{room_id}/messages/{message_id}/speech` | `app.chat` | `read_message_speech` | yes | `back/app/chat/router.py:801` |
-| PATCH | `/chat/rooms/{room_id}/messages/{message_id}/topic` | `app.chat` | `update_message_topic` | yes | `back/app/chat/router.py:869` |
-| POST | `/chat/rooms/{room_id}/mute` | `app.chat` | `set_muted` | yes | `back/app/chat/router.py:1517` |
-| GET | `/chat/rooms/{room_id}/processes` | `app.chat` | `read_room_processes` | yes | `back/app/chat/router.py:1250` |
-| POST | `/chat/rooms/{room_id}/read` | `app.chat` | `mark_read` | yes | `back/app/chat/router.py:1509` |
-| GET | `/chat/rooms/{room_id}/repositories` | `app.chat` | `discover_room_repositories` | yes | `back/app/chat/router.py:956` |
-| POST | `/chat/rooms/{room_id}/repositories` | `app.chat` | `open_room_repository` | yes | `back/app/chat/router.py:972` |
-| GET | `/chat/rooms/{room_id}/speech/status` | `app.chat` | `read_message_speech_status` | yes | `back/app/chat/router.py:775` |
-| GET | `/chat/rooms/{room_id}/tasks` | `app.chat` | `read_room_tasks` | yes | `back/app/chat/router.py:1171` |
-| PATCH | `/chat/rooms/{room_id}/topic` | `app.chat` | `update_room_topic` | yes | `back/app/chat/router.py:669` |
-| GET | `/chat/status` | `app.chat` | `read_status` | yes | `back/app/chat/router.py:396` |
-| GET | `/chat/viewer-agents` | `app.chat` | `read_viewer_agents` | yes | `back/app/chat/router.py:525` |
+| GET | `/chat/agents/{agent_id}/avatar` | `app.chat` | `read_agent_avatar` | yes | `back/app/chat/router.py:535` |
+| GET | `/chat/agents/{agent_id}/profile` | `app.chat` | `read_agent_profile` | yes | `back/app/chat/router.py:555` |
+| DELETE | `/chat/desktop-screen` | `app.chat` | `disconnect_desktop_screen` | yes | `back/app/chat/router.py:240` |
+| POST | `/chat/desktop-screen/poll` | `app.chat` | `poll_desktop_screen` | yes | `back/app/chat/router.py:224` |
+| POST | `/chat/desktop-screen/{identifier}/complete` | `app.chat` | `complete_desktop_screen` | yes | `back/app/chat/router.py:249` |
+| GET | `/chat/documents/{document_id}/conversation` | `app.chat` | `read_document_conversation_preference` | yes | `back/app/chat/router.py:269` |
+| PUT | `/chat/documents/{document_id}/conversation` | `app.chat` | `update_document_conversation_preference` | yes | `back/app/chat/router.py:282` |
+| GET | `/chat/emojis/frequent` | `app.chat` | `read_frequent_emojis` | yes | `back/app/chat/router.py:454` |
+| POST | `/chat/emojis/usage` | `app.chat` | `create_emoji_usage` | yes | `back/app/chat/router.py:463` |
+| GET | `/chat/identities` | `app.chat` | `read_identity_mappings` | yes | `back/app/chat/router.py:473` |
+| DELETE | `/chat/identities/{service_id}` | `app.chat` | `delete_identity_mapping` | yes | `back/app/chat/router.py:503` |
+| PUT | `/chat/identities/{service_id}` | `app.chat` | `update_identity_mapping` | yes | `back/app/chat/router.py:482` |
+| GET | `/chat/inbox` | `app.chat` | `read_inbox` | yes | `back/app/chat/router.py:409` |
+| GET | `/chat/push/configuration` | `app.chat` | `read_push_configuration` | yes | `back/app/chat/router.py:421` |
+| DELETE | `/chat/push/subscriptions` | `app.chat` | `remove_push_subscription` | yes | `back/app/chat/router.py:444` |
+| POST | `/chat/push/subscriptions` | `app.chat` | `create_push_subscription` | yes | `back/app/chat/router.py:431` |
+| GET | `/chat/recipients` | `app.chat` | `read_recipients` | yes | `back/app/chat/router.py:510` |
+| GET | `/chat/rooms` | `app.chat` | `read_rooms` | yes | `back/app/chat/router.py:570` |
+| POST | `/chat/rooms` | `app.chat` | `create_room` | yes | `back/app/chat/router.py:602` |
+| GET | `/chat/rooms/{room_id}` | `app.chat` | `read_room` | yes | `back/app/chat/router.py:632` |
+| PATCH | `/chat/rooms/{room_id}` | `app.chat` | `update_room_preferences` | yes | `back/app/chat/router.py:652` |
+| GET | `/chat/rooms/{room_id}/activity` | `app.chat` | `read_activity` | yes | `back/app/chat/router.py:1143` |
+| GET | `/chat/rooms/{room_id}/activity/{round_id}` | `app.chat` | `read_activity_detail` | yes | `back/app/chat/router.py:1158` |
+| POST | `/chat/rooms/{room_id}/activity/{round_id}/control` | `app.chat` | `control_response` | yes | `back/app/chat/router.py:1172` |
+| PATCH | `/chat/rooms/{room_id}/archive` | `app.chat` | `update_room_archive` | yes | `back/app/chat/router.py:670` |
+| POST | `/chat/rooms/{room_id}/attachments` | `app.chat` | `create_attachment_message` | yes | `back/app/chat/router.py:1421` |
+| POST | `/chat/rooms/{room_id}/calls` | `app.chat` | `start_call` | yes | `back/app/chat/router.py:1625` |
+| GET | `/chat/rooms/{room_id}/calls/active` | `app.chat` | `read_active_call` | yes | `back/app/chat/router.py:1684` |
+| GET | `/chat/rooms/{room_id}/calls/status` | `app.chat` | `read_voice_call_status` | yes | `back/app/chat/router.py:1598` |
+| DELETE | `/chat/rooms/{room_id}/calls/{call_id}` | `app.chat` | `stop_call` | yes | `back/app/chat/router.py:1743` |
+| POST | `/chat/rooms/{room_id}/calls/{call_id}/candidates` | `app.chat` | `add_call_candidate` | yes | `back/app/chat/router.py:1708` |
+| GET | `/chat/rooms/{room_id}/commands` | `app.chat` | `read_room_commands` | yes | `back/app/chat/router.py:711` |
+| GET | `/chat/rooms/{room_id}/deep` | `app.chat` | `read_deep_room` | yes | `back/app/chat/router.py:725` |
+| GET | `/chat/rooms/{room_id}/deep/{submission_id}/events` | `app.chat` | `read_deep_events` | yes | `back/app/chat/router.py:731` |
+| POST | `/chat/rooms/{room_id}/deep/{submission_id}/stop` | `app.chat` | `stop_deep_room_submission` | yes | `back/app/chat/router.py:742` |
+| POST | `/chat/rooms/{room_id}/dictation` | `app.chat` | `transcribe_dictation` | yes | `back/app/chat/router.py:1370` |
+| GET | `/chat/rooms/{room_id}/documents` | `app.chat` | `read_room_documents` | yes | `back/app/chat/router.py:1210` |
+| POST | `/chat/rooms/{room_id}/documents` | `app.chat` | `create_room_document` | yes | `back/app/chat/router.py:1240` |
+| GET | `/chat/rooms/{room_id}/draft` | `app.chat` | `get_private_draft` | yes | `back/app/chat/router.py:1775` |
+| PUT | `/chat/rooms/{room_id}/draft` | `app.chat` | `save_private_draft` | yes | `back/app/chat/router.py:1782` |
+| DELETE | `/chat/rooms/{room_id}/draft/files/{key}` | `app.chat` | `discard_private_draft_file` | yes | `back/app/chat/router.py:1804` |
+| POST | `/chat/rooms/{room_id}/draft/files/{key}` | `app.chat` | `upload_private_draft_file` | yes | `back/app/chat/router.py:1792` |
+| GET | `/chat/rooms/{room_id}/files/{file_id}` | `app.chat` | `download_file` | yes | `back/app/chat/router.py:1553` |
+| PATCH | `/chat/rooms/{room_id}/files/{file_id}` | `app.chat` | `rename_chat_attachment` | yes | `back/app/chat/router.py:1543` |
+| GET | `/chat/rooms/{room_id}/interactions/{interaction_id}` | `app.chat` | `read_interaction` | yes | `back/app/chat/router.py:1286` |
+| POST | `/chat/rooms/{room_id}/interactions/{interaction_id}/answer` | `app.chat` | `answer_interaction` | yes | `back/app/chat/router.py:1295` |
+| GET | `/chat/rooms/{room_id}/messages` | `app.chat` | `read_messages` | yes | `back/app/chat/router.py:750` |
+| POST | `/chat/rooms/{room_id}/messages` | `app.chat` | `create_message` | yes | `back/app/chat/router.py:1311` |
+| GET | `/chat/rooms/{room_id}/messages/{message_id}/mcp-apps/{presentation_id}` | `app.chat` | `open_message_mcp_app` | yes | `back/app/chat/router.py:772` |
+| POST | `/chat/rooms/{room_id}/messages/{message_id}/mcp-apps/{presentation_id}` | `app.chat` | `filter_message_mcp_app` | yes | `back/app/chat/router.py:780` |
+| GET | `/chat/rooms/{room_id}/messages/{message_id}/previews` | `app.chat` | `read_message_previews` | yes | `back/app/chat/router.py:918` |
+| GET | `/chat/rooms/{room_id}/messages/{message_id}/previews/content` | `app.chat` | `read_message_preview_content` | yes | `back/app/chat/router.py:1097` |
+| GET | `/chat/rooms/{room_id}/messages/{message_id}/previews/image` | `app.chat` | `read_message_preview_image` | yes | `back/app/chat/router.py:1044` |
+| POST | `/chat/rooms/{room_id}/messages/{message_id}/previews/repository` | `app.chat` | `open_message_directory_repository` | yes | `back/app/chat/router.py:1013` |
+| POST | `/chat/rooms/{room_id}/messages/{message_id}/speech` | `app.chat` | `read_message_speech` | yes | `back/app/chat/router.py:819` |
+| PATCH | `/chat/rooms/{room_id}/messages/{message_id}/topic` | `app.chat` | `update_message_topic` | yes | `back/app/chat/router.py:887` |
+| POST | `/chat/rooms/{room_id}/mute` | `app.chat` | `set_muted` | yes | `back/app/chat/router.py:1535` |
+| GET | `/chat/rooms/{room_id}/processes` | `app.chat` | `read_room_processes` | yes | `back/app/chat/router.py:1268` |
+| POST | `/chat/rooms/{room_id}/read` | `app.chat` | `mark_read` | yes | `back/app/chat/router.py:1527` |
+| GET | `/chat/rooms/{room_id}/repositories` | `app.chat` | `discover_room_repositories` | yes | `back/app/chat/router.py:974` |
+| POST | `/chat/rooms/{room_id}/repositories` | `app.chat` | `open_room_repository` | yes | `back/app/chat/router.py:990` |
+| GET | `/chat/rooms/{room_id}/speech/status` | `app.chat` | `read_message_speech_status` | yes | `back/app/chat/router.py:793` |
+| GET | `/chat/rooms/{room_id}/tasks` | `app.chat` | `read_room_tasks` | yes | `back/app/chat/router.py:1189` |
+| PATCH | `/chat/rooms/{room_id}/topic` | `app.chat` | `update_room_topic` | yes | `back/app/chat/router.py:687` |
+| GET | `/chat/status` | `app.chat` | `read_status` | yes | `back/app/chat/router.py:399` |
+| GET | `/chat/viewer-agents` | `app.chat` | `read_viewer_agents` | yes | `back/app/chat/router.py:528` |
 | POST | `/code/agents/{agent_id}/repository` | `app.code` | `open_agent_repository` | yes | `back/app/code/router.py:26` |
 | GET | `/code/rooms/{room_id}` | `app.code` | `room_workspaces` | yes | `back/app/code/router.py:52` |
 | POST | `/code/sessions/{identifier}/heartbeat` | `app.code` | `heartbeat` | yes | `back/app/code/router.py:99` |
@@ -1877,6 +1878,7 @@ No cyclic component detected.
 | POST | `/llm/anthropic/v1/messages` | `app.llm` | `anthropic_messages` | no | `back/app/llm/anthropic_router.py:283` |
 | POST | `/llm/anthropic/v1/messages/count_tokens` | `app.llm` | `anthropic_count_tokens` | no | `back/app/llm/anthropic_router.py:246` |
 | GET | `/llm/anthropic/v1/models` | `app.llm` | `anthropic_models` | no | `back/app/llm/anthropic_router.py:204` |
+| GET | `/llm/me/native-voices` | `app.llm` | `get_native_voices` | yes | `back/app/llm/personal_router.py:154` |
 | GET | `/llm/me/options` | `app.llm` | `get_options` | yes | `back/app/llm/personal_router.py:56` |
 | GET | `/llm/me/preferences` | `app.llm` | `get_preferences` | yes | `back/app/llm/personal_router.py:41` |
 | PUT | `/llm/me/preferences` | `app.llm` | `put_preferences` | yes | `back/app/llm/personal_router.py:47` |

@@ -156,6 +156,7 @@ async def test_http_preferences_and_audio_use_the_authenticated_user_without_doc
     client, monkeypatch
 ):
     assert (await client.get("/api/llm/me/preferences")).status_code == 401
+    assert (await client.get("/api/llm/me/native-voices")).status_code == 401
     assert (await client.post("/api/llm/me/speech", json={"html": "<p>Test</p>"})).status_code == 401
     assert (
         await client.post(
@@ -182,6 +183,12 @@ async def test_http_preferences_and_audio_use_the_authenticated_user_without_doc
         headers.append({"Authorization": f"Bearer {response.json()['access_token']}"})
     options = await client.get("/api/llm/me/options", headers=headers[0])
     assert options.status_code == 200
+    local_options = await client.get("/api/llm/me/options?include_native_voices=false", headers=headers[0])
+    assert local_options.status_code == 200
+    assert local_options.json()["profiles"] == options.json()["profiles"]
+    native_options = await client.get("/api/llm/me/native-voices", headers=headers[0])
+    assert native_options.status_code == 200
+    assert native_options.json()["native_voices"] == options.json()["native_voices"]
     profile_id = options.json()["profiles"][0]["id"]
     payload = {
         "profile_id": profile_id,
@@ -327,9 +334,18 @@ async def test_native_voice_is_persisted_and_cannot_be_used_as_a_tts_resource(db
     await db.commit()
     catalog = AsyncMock(return_value=[LLMModelInfo(id="voice:alloy", name="Alloy", resource_type="voice")])
     monkeypatch.setattr(personal_service.llm_provider_service, "list_resources", catalog)
+    local = await personal_service.selection_options(include_native_voices=False)
+    assert profile.id in {option.id for option in local.profiles}
+    assert models[1].id in {voice.id for voice in local.voices}
+    assert not local.native_voices and not local.native_voices_error
+    catalog.assert_not_awaited()
     options = await personal_service.selection_options()
     assert [(option.model_id, option.voice_code) for option in options.native_voices] == [(native.id, "voice:alloy")]
+    native_options = await personal_service.native_voice_options()
+    assert native_options.native_voices == options.native_voices
     catalog.side_effect = RuntimeError("Provider catalog unavailable")
+    failed = await personal_service.native_voice_options()
+    assert failed.native_voices_error and not failed.native_voices
     degraded = await personal_service.selection_options()
     assert degraded.native_voices_error and not degraded.native_voices
     assert models[1].id in {voice.id for voice in degraded.voices}

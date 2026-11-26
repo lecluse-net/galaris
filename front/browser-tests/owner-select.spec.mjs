@@ -6,11 +6,23 @@ const people = (kind, count) => Array.from({ length: count }, (_, index) => ({
 const me = { kind: 'user', id: 1, label: 'Synthetic current user', is_current_user: true }
 const picker = page => page.getByRole('combobox', { name: 'Owner', exact: true })
 
+test('an owner filter can select a team agent before any documents are visible for that agent', async ({ page }) => {
+  await jsonRoute(page, '**/api/agents/selection?scope=catalogue', [
+    { id: 8, label: 'Team Agent', teams: [{ id: 1, name: 'Research', order: 1 }] },
+  ])
+  await mount(page, 'app/share/components/OwnerSelect.vue', {
+    props: { modelValue: '', options: [me], includeTeamAgents: true, clearable: true },
+  })
+  await picker(page).click()
+  await page.getByRole('option', { name: 'Team Agent', exact: true }).click()
+  await expect.poll(() => page.evaluate(() => window.testApp.events.at(-1)?.value)).toBe('agent:8')
+})
+
 for (const width of [390, 1440]) for (const dark of [false, true]) {
 test(`owner choices group teams then agents and users (${width}px, dark=${dark})`, async ({ page }, testInfo) => {
   await page.setViewportSize({ width, height: 1000 })
   const teams = [{ id: 2, name: 'Research', order: 1 }, { id: 1, name: 'Support', order: 2 }]
-  await jsonRoute(page, '**/api/agents/selection?scope=management', [{ id: 7, label: 'Alice', has_avatar: false, teams }])
+  await jsonRoute(page, '**/api/agents/selection?scope=catalogue', [{ id: 7, label: 'Alice', has_avatar: false, teams }])
   await jsonRoute(page, '**/api/teams/human-selection', [{ id: 1, teams: [teams[0]] }, { id: 7, teams }])
   await mount(page, 'app/share/components/OwnerSelect.vue', { dark, props: {
     modelValue: 'user:1', options: [me, { kind: 'user', id: 7, label: 'Human Alice' }, { kind: 'agent', id: 7, label: 'Alice' }, { kind: 'user', id: 9, label: 'No team human' }],

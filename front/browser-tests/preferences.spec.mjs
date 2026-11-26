@@ -9,7 +9,8 @@ test('personal chat display preferences require an enabled accessible chat and r
   await jsonRoute(page, '**/api/mail/status', { enabled: false })
   await jsonRoute(page, '**/api/chat/identities', [])
   await jsonRoute(page, '**/api/auth/mfa/status', { enabled: false, setup_pending: false, recovery_codes_remaining: 0 })
-  await jsonRoute(page, '**/api/llm/me/options', { profiles: [], voices: [], native_voices: [] })
+  await jsonRoute(page, '**/api/llm/me/options?include_native_voices=false', { profiles: [], current_profile_id: null, voices: [] })
+  await jsonRoute(page, '**/api/llm/me/native-voices', { native_voices: [] })
   await jsonRoute(page, '**/api/llm/me/preferences', { profile_id: null, voice_llm_id: null, voice_mode: 'tts', voice_code: null })
   await page.route('**/api/auth/me', route => {
     if (fail) return route.fulfill({ status: 503, json: { detail: 'Unavailable' } })

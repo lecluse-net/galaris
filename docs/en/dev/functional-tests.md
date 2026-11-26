@@ -964,6 +964,10 @@ navigation, without opening a nested search modal.
 and agent portraits. Images and cards have no active links while ordinary text links remain
 usable. The scenario generates a real synthetic PDF for visual and link-annotation checks.
 
+`e2e/specs/agent-admin.spec.mjs` opens the Agents page with read privileges, shows profiles
+from two teams and selects a team agent in the Connections filter.
+`app/agent/tests/test_selection.py` verifies profile visibility,
+denied changes and loss of access when the shared membership is removed.
 `equations.spec.mjs` exercises inline/block equations with real MathLive: input, editing,
 cancellation, contextual actions, typing before/after, undoable deletion, reopening,
 read-only and mobile views, draft isolation on content changes

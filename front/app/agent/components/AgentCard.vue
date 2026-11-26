@@ -22,6 +22,7 @@
         <div class="agent-identity-section">
           <!-- Model profile -->
           <div
+            v-if="profileLabel"
             class="profile-name text-caption text-grey-7 text-right ellipsis q-mb-xs"
             :title="profileLabel"
           >
@@ -42,6 +43,7 @@
               {{ agent.job_title || $t('agent.noJobTitle') }}
             </div>
             <div
+              v-if="agent.user"
               class="agent-manager text-caption text-grey-7 ellipsis"
               :title="agent.user.display_name || agent.user.email"
             >

@@ -67,10 +67,10 @@ export interface AgentManagerInfo {
 // Agent interfaces
 export interface Agent {
     id: number
-    user_id: number
-    user: AgentManagerInfo
+    user_id?: number
+    user?: AgentManagerInfo
     is_owner: boolean
-    memory_item_id: string | null
+    memory_item_id?: string | null
     title_id: number
     team_ids: number[]
     code: string
@@ -79,11 +79,11 @@ export interface Agent {
     personality: string | null
     job_description: string | null
     job_title: string | null
-    agent_driver: string
-    task_harness_id: string | null
-    profile_id: number | null
-    fallback_profile_id: number | null
-    voice: string | null
+    agent_driver?: string
+    task_harness_id?: string | null
+    profile_id?: number | null
+    fallback_profile_id?: number | null
+    voice?: string | null
     profile?: LlmProfileInfo | null
     fallback_profile?: LlmProfileInfo | null
     has_avatar: boolean

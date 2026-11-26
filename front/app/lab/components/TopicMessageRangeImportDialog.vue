@@ -36,7 +36,10 @@
                     {{ agentInitials(scope.opt.label) }}
                   </q-avatar>
                 </q-item-section>
-                <q-item-section><q-item-label>{{ scope.opt.label }}</q-item-label></q-item-section>
+                <q-item-section>
+                  <q-item-label>{{ scope.opt.label }}</q-item-label>
+                  <q-item-label v-if="scope.opt.caption" caption>{{ scope.opt.caption }}</q-item-label>
+                </q-item-section>
               </q-item>
             </template>
           </q-select>
@@ -130,7 +133,7 @@
 </template>
 
 <script setup lang="ts">
-import { groupMemberOptions, usePersonMemberships } from '@/core/util/facade'
+import { groupMemberOptions, includeUnavailableMembers, usePersonMemberships } from '@/core/util/facade'
 import LabCaptureConfirmation from './LabCaptureConfirmation.vue'
 import { useCaptureConfirmation } from '../services/useCaptureConfirmation'
 import { computed, ref, watch } from 'vue'
@@ -165,12 +168,14 @@ const previewLoading = ref(false)
 const importing = ref(false)
 
 const teamMetadata = usePersonMemberships('agent')
-const agentOptions = computed(() => groupMemberOptions([...agents.value]
-  .sort((left, right) => left.label.localeCompare(right.label, locale.value, { sensitivity: 'base' }) || left.id - right.id)
-  .map((agent) => ({
-    label: `${agent.label} · ${t('evaluation.topicImport.messageCount', { count: agent.message_count })}`,
-    value: agent.id,
-  })), teamMetadata.members.value, t('agent.noGroup')))
+const agentOptions = computed(() => {
+  const eligible = [...agents.value]
+    .sort((left, right) => left.label.localeCompare(right.label, locale.value, { sensitivity: 'base' }) || left.id - right.id)
+    .map(agent => ({ label: `${agent.label} · ${t('evaluation.topicImport.messageCount', { count: agent.message_count })}`, value: agent.id }))
+  const members = teamMetadata.members.value
+  const visible = agentsLoading.value ? eligible : includeUnavailableMembers(eligible, members, t('agent.selectionUnavailable'))
+  return groupMemberOptions(visible, members, t('agent.noGroup'))
+})
 const selectedAgent = computed(() => (
   agents.value.find(agent => agent.id === agentId.value) ?? null
 ))

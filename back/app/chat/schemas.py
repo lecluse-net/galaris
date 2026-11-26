@@ -14,12 +14,14 @@ from app.messenger.contracts import DocumentFocus
 from app.messenger import (
     ChatViewerAgent,
     NativeMessengerAgent,
+    NativeMessengerAgentProfile,
     NativeMessengerMessage,
     NativeMessengerMessagePage,
     NativeMessengerIdentityMapping,
     NativeMessengerRoom,
     NativeMessengerRoomPage,
 )
+from app.services.facade import ConnectedExternalService
 
 
 class ChatStatus(BaseModel):
@@ -44,6 +46,10 @@ class ConversationControlCommand(BaseModel):
 class RecipientCatalog(BaseModel):
     agents: list[NativeMessengerAgent]
     total: int
+
+
+class ChatAgentProfile(NativeMessengerAgentProfile):
+    external_services: list[ConnectedExternalService]
 
 
 ChatCommandCode = Literal[

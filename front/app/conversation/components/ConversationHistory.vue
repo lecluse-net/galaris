@@ -25,7 +25,8 @@
           emit-value
           map-options
           :label="t('conversation.history.agentFilter')"
-          :options="agentOptions"
+          scope="catalogue"
+          :all-label="t('conversation.history.allAgents')"
           class="history-toolbar-filter"
           @update:model-value="filtersChanged"
         />
@@ -246,9 +247,7 @@ import { HistoryToolbar, MetricCard, startVisiblePolling, type SolaireColor } fr
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { QTableColumn, QTableProps } from 'quasar'
-import { AgentAvatar } from '@/app/agent'
-import { AgentSelect } from '@/app/agent'
-import { getAgentSelection, type AgentSelectionOption } from '@/app/agent'
+import { AgentAvatar, AgentSelect } from '@/app/agent'
 import { privileges, usePrivilegeStore } from '@/core/authorize'
 import type { LLMCall } from '@/app/llm/types'
 import { ConversationTurnDialog } from '@/core/util'
@@ -278,13 +277,8 @@ interface ConversationMetric {
 }
 
 const { t, te, locale } = useI18n()
-const agents = ref<AgentSelectionOption[]>([])
 const privilegeStore = usePrivilegeStore()
 const canFilterTopics = computed(() => privilegeStore.hasAnyPrivilege([privileges.TOPIC_ACCESS, privileges.TOPIC_EDIT]))
-async function loadAgents(): Promise<void> {
-  try { agents.value = await getAgentSelection('management') }
-  catch { error.value = t('common.anError') }
-}
 const messages = ref<ConversationMessage[]>([])
 const loading = ref(false)
 const error = ref('')
@@ -319,13 +313,6 @@ const columns = computed<QTableColumn<ConversationMessage>[]>(() => [
   { name: 'status', label: t('conversation.history.status'), field: 'round_status', align: 'left', style: 'width: 130px', headerStyle: 'width: 130px' },
 ])
 
-const agentOptions = computed(() => [
-  { label: t('conversation.history.allAgents'), value: null },
-  ...agents.value.map(agent => ({
-    label: agent.label,
-    value: agent.id,
-  })),
-])
 const statusOptions = computed(() => [
   { label: t('conversation.history.allStatuses'), value: null },
   ...(['IDLE', 'READY', 'RUNNING', 'WAITING_APPROVAL', 'PAUSED'] as ConversationStatus[]).map(status => ({
@@ -343,7 +330,6 @@ const detailTitle = computed(() => t('conversation.history.detail.turn'))
 
 let stopPolling: (() => void) | undefined
 onMounted(() => {
-  void loadAgents()
   void refresh()
   stopPolling = startVisiblePolling(async () => {
     if (listPending) return

@@ -3,7 +3,7 @@
     <p class="text-body2">{{ t('skills.personal.hint') }}</p>
     <div class="row q-col-gutter-md q-mb-md">
       <div class="col-12 col-md-4">
-        <AgentSelect v-model="ownerId" :options="agentOptions" :load-agents="false" emit-value map-options clearable outlined dense
+        <AgentSelect v-model="ownerId" scope="catalogue" emit-value map-options clearable outlined dense
           :label="t('skills.learning.agentFilter')" />
       </div>
       <div class="col-12 col-md-8 order-first">
@@ -180,7 +180,7 @@ import { apiErrorDetail } from '@/core/api'
 import { ActionContextMenu, CodeEditor, Markdown, type ContextAction } from '@/core/util'
 import { languageForSkillFile } from '../fileLanguage'
 import PersonalSkillStatus from './PersonalSkillStatus.vue'
-import { skillService, type PersonalSkill, type SkillAgent, type SkillFile, type SkillLearningEvidence } from '../services/skillService'
+import { skillService, type PersonalSkill, type SkillFile, type SkillLearningEvidence } from '../services/skillService'
 
 const { active } = defineProps<{ active: boolean }>()
 const emit = defineEmits<{ changed: [] }>()
@@ -192,10 +192,8 @@ const ownerId = ref<number | null>(null)
 const search = ref<string | null>('')
 const rows = ref<PersonalSkill[]>([])
 const learningEvidence = ref<SkillLearningEvidence[]>([])
-const agents = ref<SkillAgent[]>([])
 const ownerOptions = ref<{ value: number; label: string; hasAvatar: boolean }[]>([])
 const ownerDraft = ref<number | null>(null)
-const agentOptions = computed(() => agents.value.map(agent => ({ value: agent.id, label: agent.label })))
 const loading = ref(false)
 const error = ref(false)
 const pagination = ref({ page: 1, rowsPerPage: 50, rowsNumber: 0 })
@@ -218,16 +216,14 @@ async function reload(): Promise<void> {
   loading.value = true
   error.value = false
   try {
-    const [catalogue, owners, selection] = await Promise.all([
+    const [catalogue, selection] = await Promise.all([
       skillService.getPersonalSkills({ owner_agent_id: ownerId.value, search: search.value || '',
         page: pagination.value.page, page_size: pagination.value.rowsPerPage }),
-      skillService.getAgents(),
       canEdit.value ? getAgentSelection('management') : Promise.resolve([]),
     ])
     if (request !== generation) return
     rows.value = catalogue.data.items
     pagination.value.rowsNumber = catalogue.data.total
-    agents.value = owners.data
     ownerOptions.value = selection.map(agent => ({ value: agent.id, label: agent.label, hasAvatar: agent.has_avatar }))
   } catch {
     if (request === generation) error.value = true

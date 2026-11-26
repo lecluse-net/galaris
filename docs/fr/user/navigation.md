@@ -33,19 +33,21 @@ propre à chaque serveur HTTPS. Son installation et ses mises à jour sont disti
 
 ## Retrouver un travail et intervenir
 
-L’accueil regroupe les conversations non lues, les indicateurs de consommation et **Activité
-récente**. Il ne propose pas de seconde liste de tâches et de résultats à ouvrir.
-Les tâches, leurs attentes, erreurs et commandes de reprise se consultent dans
-**Superviser → Activité → Tâches** ; les autorisations restent dans **Superviser → Permissions**.
+L’accueil utilisateur regroupe vos équipes, les agents que vous pouvez contacter et des liens
+vers les espaces ouverts à votre rôle. Cliquez sur un agent pour consulter sa fiche. Les tâches,
+leurs attentes, erreurs et commandes de reprise se consultent dans **Superviser → Activité →
+Tâches**. Les autorisations restent dans **Superviser → Permissions**.
 
 Les recherches se font dans les écrans concernés : Documents, Discussion, Activité, Objectifs,
 Fichiers et Mémoire. La page Welcome (`/welcome`) propose **Réaliser votre première mission**
 après la configuration, pour préparer une demande et suivre son document.
 Voir le [guide de découverte](README.md).
 
-Welcome reste l’accueil par défaut jusqu’au clic sur **Configuration terminée — ouvrir l’accueil**,
-même si l’instance est préconfigurée. Le logo Galaris permet donc d’y revenir pendant la préparation.
-La confirmation est propre à votre compte ; `/welcome` reste disponible ensuite.
+Pour le rôle Administrateur, Welcome reste l’accueil par défaut jusqu’au clic sur
+**Configuration terminée — ouvrir l’accueil**, même si l’instance est préconfigurée. Après
+confirmation, l’accueil administrateur regroupe les conversations non lues, les indicateurs de
+consommation et **Activité récente**. La confirmation est propre à votre compte. `/welcome`
+reste disponible pour les étapes que votre rôle permet de consulter.
 
 Dans **Services → Connexions**, **Périmètres et autorisations** ouvre Permissions pour l’agent filtré,
 ou propose d’en sélectionner un. **Actualiser les outils** recharge les catalogues des services
@@ -258,7 +260,9 @@ Vous pouvez personnaliser ou supprimer son avatar ; les mises à jour conservent
 Le renommage ou la suppression de cet assistant ne déclenche pas sa recréation lors d'une mise à jour.
 
 **Configurer → Agents** (`/agent`) contient les onglets **Agents**, **Équipes** et
-**Civilités**, selon les droits. Pour créer un agent, ouvrez l’onglet **Agents**, puis
+**Civilités**, selon les droits. **Agents** affiche les agents dont vous êtes le manager
+et ceux de vos équipes. La vue **Tous les agents** rassemble ces fiches quand plusieurs
+onglets d’équipe sont disponibles. Pour créer un agent, ouvrez l’onglet **Agents**, puis
 **Nouvel Agent**. Pour modifier un agent existant, ouvrez sa fiche depuis la liste.
 Les onglets de cette fiche ne sont pas les onglets de la page : ils regroupent notamment
 le général, les modèles et le MCP selon les droits. Le choix du moteur des tâches appartient

@@ -58,7 +58,10 @@ async def test_selection_scopes_and_task_management_follow_authenticated_authori
     async with get_db_session() as db:
         # Signup also creates the administrator's default Galaris assistant.
         initial_agent_ids = list(await db.scalars(select(Agent.id)))
-        privileges = list((await db.scalars(select(Privilege).where(Privilege.code.in_(['TASK_ACCESS', 'TASK_EDIT', 'TEAM_ACCESS', 'CHAT_ACCESS'])))).all())
+        privileges = list((await db.scalars(select(Privilege).where(Privilege.code.in_([
+            'AGENT_ACCESS', 'AGENT_EDIT', 'TASK_ACCESS', 'TASK_EDIT', 'TEAM_ACCESS', 'CHAT_ACCESS',
+            'SKILL_ACCESS', 'MAIL_ACCESS',
+        ])))).all())
         role = Role(code=f"selection-{uuid4().hex}", display_name="Local manager", privileges=privileges)
         title = Title(label="Mx", gender="M")
         team = TeamModel(name="Shared team", order=20)
@@ -68,7 +71,8 @@ async def test_selection_scopes_and_task_management_follow_authenticated_authori
         await db.flush()
         db.add(Assignment(user_id=user_id, role_id=role.id, is_default=True))
         own = Agent(user_id=user_id, title_id=title.id, code='selection-a', first_name='Zoé', last_name='Exemple')
-        peer = Agent(user_id=admin_id, title_id=title.id, code='selection-b', first_name='Émile', last_name='Exemple')
+        peer = Agent(user_id=admin_id, title_id=title.id, code='selection-b', first_name='Émile',
+                     last_name='Exemple', job_title='Synthetic team specialist')
         outside = Agent(user_id=admin_id, title_id=title.id, code='selection-c', first_name='alice', last_name='Exemple')
         db.add_all([own, peer, outside])
         await db.flush()
@@ -93,7 +97,28 @@ async def test_selection_scopes_and_task_management_follow_authenticated_authori
     client.cookies.clear()
     login = await client.post('/api/auth/login-json', json={'email': email, 'password': password})
     human = {'Authorization': 'Bearer ' + login.json()['access_token'], 'X-Editorial-Profile-Version': '1'}
-    for scope, expected in [('management', ids[:1]), ('dialogue', ids[:2]), ('teams', initial_agent_ids + ids)]:
+    response = await client.get('/api/agents', headers=human)
+    assert response.status_code == 200
+    profiles = {item['id']: item for item in response.json()}
+    assert set(profiles) == set(ids[:2])
+    assert profiles[ids[0]]['user']['id'] == user_id
+    peer_profile = profiles[ids[1]]
+    assert peer_profile['job_title'] == 'Synthetic team specialist'
+    assert not peer_profile['is_owner']
+    assert not {'user', 'user_id', 'profile_id', 'task_harness_id', 'memory_item_id'} & peer_profile.keys()
+    assert (await client.get(f'/api/agents/{ids[1]}', headers=human)).json() == peer_profile
+    assert (await client.get(f'/api/agents/{ids[2]}', headers=human)).status_code == 404
+    assert (await client.put(f'/api/agents/{ids[1]}', headers=human, json={'job_title': 'Denied'})).status_code == 403
+    assert (await client.delete(f'/api/agents/{ids[1]}', headers=human)).status_code == 403
+    for path, parameter, outsider_status in [
+        ('/api/tasks/recent', 'agent_id', 200),
+        ('/api/mail/outbound', 'agent_id', 404), ('/api/skills/personal', 'owner_agent_id', 404),
+    ]:
+        assert (await client.get(path, params={parameter: ids[2]}, headers=human)).status_code == outsider_status
+        filtered = await client.get(path, params={parameter: ids[1]}, headers=human)
+        assert filtered.status_code == 200, filtered.text
+        assert filtered.json()['items'] == []
+    for scope, expected in [('management', ids[:1]), ('catalogue', ids[:2]), ('dialogue', ids[:2]), ('teams', initial_agent_ids + ids)]:
         response = await client.get('/api/agents/selection', params={'scope': scope}, headers=human)
         assert response.status_code == 200
         assert {item['id'] for item in response.json()} == set(expected)
@@ -104,7 +129,7 @@ async def test_selection_scopes_and_task_management_follow_authenticated_authori
         by_id = {item['id']: item for item in response.json()}
         if scope == 'management':
             own_version = by_id[ids[0]]['updated_at']
-        else:
+        elif scope != 'catalogue':
             assert all(item['updated_at'] is None for item in response.json())
         assert by_id[ids[0]]['teams'] == []
         if ids[1] in expected:
@@ -115,7 +140,7 @@ async def test_selection_scopes_and_task_management_follow_authenticated_authori
     portrait = b64decode("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR4nGP8/x8AAwMCAHwG0LwAAAAASUVORK5CYII=")
     assert (await client.post(f'/api/agents/{ids[0]}/avatar', headers=admin,
                              files={'file': ('portrait.png', portrait, 'image/png')})).status_code == 204
-    reopened = (await client.get('/api/agents/selection', headers=human)).json()
+    reopened = (await client.get('/api/agents/selection', params={'scope': 'management'}, headers=human)).json()
     current = next(item for item in reopened if item['id'] == ids[0])
     assert current['has_avatar'] and current['updated_at'] is not None
     assert current['updated_at'] != own_version
@@ -145,4 +170,7 @@ async def test_selection_scopes_and_task_management_follow_authenticated_authori
         await set_human_membership(team_id, user_id, False)
     response = await client.get('/api/agents/selection', params={'scope': 'dialogue'}, headers=human)
     assert [item['id'] for item in response.json()] == ids[:1]
+    assert (await client.get(f'/api/agents/{ids[1]}', headers=human)).status_code == 404
+    assert [item['id'] for item in (await client.get('/api/agents', headers=human)).json()] == ids[:1]
+    assert [item['id'] for item in (await client.get('/api/agents/selection', headers=human)).json()] == ids[:1]
     assert (await client.get('/api/agents/selection')).status_code == 401

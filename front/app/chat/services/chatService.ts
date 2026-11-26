@@ -1,5 +1,6 @@
 import { api, AUTH_TOKEN_CHANGED_EVENT, sessionGeneration } from '@/core/api'
-import { createSessionReadCache, invalidateSessionReads, readSessionImage, saveBlobAsResource } from '@/core/util/facade'
+import { createSessionReadCache, invalidateSessionReads, saveBlobAsResource } from '@/core/util/facade'
+import { agentDialogueService } from '@/app/agent/facade'
 import type { DocumentFocus } from '@/core/util'
 import type { DraftContent, DraftFile, DraftSnapshot, DraftSend } from '../drafts'
 import type { MessengerInteraction } from '../types'
@@ -81,10 +82,8 @@ export const chatService = {
   async clearIdentityMapping(toolId: number): Promise<void> { await api.delete(`${base}/identities/${toolId}`) },
   async viewerAgents(): Promise<ChatViewerAgent[]> { return (await api.get<ChatViewerAgent[]>(`${base}/viewer-agents`)).data },
   async recipients(search = '', documentId: string | null = null): Promise<RecipientCatalog> { return (await api.get<RecipientCatalog>(`${base}/recipients`, { params: { search, ...(documentId ? { document_id: documentId } : {}) } })).data },
-  async recipientPage(page = 1, pageSize = 50): Promise<RecipientCatalog & { total: number }> { return (await api.get<RecipientCatalog & { total: number }>(`${base}/recipients`, { params: { page, page_size: pageSize } })).data },
-  agentAvatarBlob(agentId: number, signal?: AbortSignal): Promise<Blob | null> {
-    return readSessionImage('agent-avatar', String(agentId), `${base}/agents/${agentId}/avatar`, { signal, endpoint: 'chat' })
-  },
+  recipientPage: agentDialogueService.page,
+  agentAvatarBlob: agentDialogueService.avatarBlob,
   async rooms(page = 1, pageSize = 50, search = '', agentId: number | null = null, includeExternal = false, includeArchived = false, recentDays: number | null = null, documentId: string | null = null, unreadOnly = false): Promise<Page<MessengerRoom>> { return (await api.get<Page<MessengerRoom>>(`${base}/rooms`, { params: { page, page_size: pageSize, search, agent_id: agentId, include_external: includeExternal, include_archived: includeArchived, ...(recentDays === null ? {} : { recent_days: recentDays }), ...(documentId ? { document_id: documentId } : {}), ...(unreadOnly ? { unread_only: true } : {}) } })).data },
   async room(roomId: string, agentId: number | null = null, documentId: string | null = null): Promise<MessengerRoom> { return (await api.get<MessengerRoom>(`${base}/rooms/${roomId}`, { params: { agent_id: agentId, ...(documentId ? { document_id: documentId } : {}) } })).data },
   async updateRoomPreferences(roomId: string, label: string, showLastMessage: boolean): Promise<MessengerRoom> { return (await api.patch<MessengerRoom>(`${base}/rooms/${roomId}`, { label, show_last_message: showLastMessage })).data },

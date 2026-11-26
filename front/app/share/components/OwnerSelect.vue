@@ -28,13 +28,17 @@
               <div v-for="group in team.groups" :key="group.key" role="group" :aria-label="t('resourceOwner.' + group.kind)">
                 <q-item-label header class="q-pl-lg">{{ t('resourceOwner.' + group.kind) }}</q-item-label>
                 <q-item v-for="option in group.visible" :key="ownerKey(option)" clickable role="option" :aria-label="displayName(option)"
-                  :aria-selected="model === ownerKey(option)" class="q-pl-lg" @click="select(ownerKey(option))">
+                  :aria-selected="model === ownerKey(option)" :disable="!canSelectOwner(option)" class="q-pl-lg" @click="select(option)">
                   <q-item-section avatar>
                     <slot name="avatar" :owner="option" size="28px">
                       <OwnerAvatar :owner="option" size="28px" />
                     </slot>
                   </q-item-section>
-                  <q-item-section><q-item-label>{{ displayName(option) }}</q-item-label><q-item-label v-if="option.subtitle || isMe(option)" caption>{{ option.subtitle || option.label }}</q-item-label></q-item-section>
+                  <q-item-section>
+                    <q-item-label>{{ displayName(option) }}</q-item-label>
+                    <q-item-label v-if="!canSelectOwner(option)" caption>{{ t('agent.selectionUnavailable') }}</q-item-label>
+                    <q-item-label v-else-if="option.subtitle || isMe(option)" caption>{{ option.subtitle || option.label }}</q-item-label>
+                  </q-item-section>
                 </q-item>
                 <div v-if="group.items.length > 50" class="row items-center justify-between q-px-sm q-pb-sm" role="group" :aria-label="t('resourceOwner.teamPages', { team: team.label, type: t('resourceOwner.' + group.kind) })">
                   <q-select :model-value="sizes[group.key] ?? 50" :options="[10, 20, 50, 100, 500]" dense borderless :aria-label="t('resourceOwner.perPage')" @update:model-value="value => { sizes[group.key] = value; pages[group.key] = 1 }" />
@@ -58,10 +62,10 @@ import { ownerKey, type OwnerOption } from '../owners'
 import { usePersonMemberships } from '@/core/util/facade'
 import { groupOwnersByTeam } from '../ownerGroups'
 
-const { options, current, currentUserId, label, readonly = false, disable = false, loading = false, clearable = false } = defineProps<{
+const { options, current, currentUserId, label, readonly = false, disable = false, loading = false, clearable = false, includeTeamAgents = false } = defineProps<{
   options: readonly OwnerOption[]; current?: OwnerOption | null; label?: string
   currentUserId?: number
-  readonly?: boolean; disable?: boolean; loading?: boolean; clearable?: boolean
+  readonly?: boolean; disable?: boolean; loading?: boolean; clearable?: boolean; includeTeamAgents?: boolean
 }>()
 const model = defineModel<string>({ required: true })
 const emit = defineEmits<{ open: [] }>()
@@ -73,9 +77,20 @@ const isMe = (option: OwnerOption): boolean => option.kind === 'user' && (option
 const displayName = (option: OwnerOption): string => isMe(option) ? t('resourceOwner.me') : option.label
 const normalize = (value: string): string => value.normalize('NFD').replace(/\p{M}/gu, '').toLocaleLowerCase(locale.value)
 const matches = (option: OwnerOption): boolean => normalize(`${displayName(option)} ${option.label} ${option.subtitle ?? ''}`).includes(normalize(query.value ?? ''))
-const selected = computed(() => options.find(option => ownerKey(option) === model.value) ?? (current && ownerKey(current) === model.value ? current : null))
+const availableOwnerKeys = computed(() => new Set(options.map(ownerKey)))
+const canSelectOwner = (owner: OwnerOption): boolean => includeTeamAgents || availableOwnerKeys.value.has(ownerKey(owner))
+const visibleOwners = computed(() => {
+  if (!includeTeamAgents && current?.kind !== 'agent' && !options.some(owner => owner.kind === 'agent')) return options
+  const existing = new Set(options.filter(option => option.kind === 'agent').map(option => option.id))
+  const agents = agentTeams.members.value.flatMap(agent => agent.label && !existing.has(agent.id)
+    ? [{ kind: 'agent' as const, id: agent.id, label: agent.label, has_avatar: agent.has_avatar }]
+    : [])
+  return [...options, ...agents]
+})
+const selected = computed(() => visibleOwners.value.find(option => canSelectOwner(option) && ownerKey(option) === model.value)
+  ?? (current && ownerKey(current) === model.value ? current : null))
 const teams = computed(() => groupOwnersByTeam(
-  options.filter(matches).sort((a, b) => Number(isMe(b)) - Number(isMe(a))
+  visibleOwners.value.filter(matches).sort((a, b) => Number(isMe(b)) - Number(isMe(a))
     || a.label.localeCompare(b.label, locale.value, { sensitivity: 'base' }) || a.id - b.id),
   { agent: agentTeams.members.value, user: userTeams.members.value }, t('agent.noGroup'),
 ).map(team => ({ ...team, groups: team.groups.map(group => {
@@ -86,7 +101,7 @@ const teams = computed(() => groupOwnersByTeam(
 }) })))
 function reset(): void { query.value = ''; pages.value = {}; void agentTeams.open(); void userTeams.open(); emit('open') }
 function show(): void { if (!readonly && !disable && !loading) open.value = true }
-function select(key: string): void { model.value = key; open.value = false }
+function select(owner: OwnerOption): void { if (canSelectOwner(owner)) { model.value = ownerKey(owner); open.value = false } }
 watch(query, () => { pages.value = {} })
 watch(() => options, () => { pages.value = {} })
 watch(() => [readonly, disable], () => { if (readonly || disable) open.value = false })

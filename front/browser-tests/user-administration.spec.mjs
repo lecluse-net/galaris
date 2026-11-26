@@ -32,9 +32,10 @@ test('the user directory combines text, role, team and status on the server', as
 })
 
 async function stubUserModels(page, userId) {
-  await jsonRoute(page, '**/api/llm/me/options', {
-    profiles: [{ id: 17, label: 'Research profile' }], current_profile_id: null, voices: [], native_voices: [],
+  await jsonRoute(page, '**/api/llm/me/options?include_native_voices=false', {
+    profiles: [{ id: 17, label: 'Research profile' }], current_profile_id: null, voices: [],
   })
+  await jsonRoute(page, '**/api/llm/me/native-voices', { native_voices: [] })
   await jsonRoute(page, `**/api/llm/users/${userId}/preferences`, { profile_id: null, voice_llm_id: null, voice_mode: 'tts', voice_code: null })
 }
 

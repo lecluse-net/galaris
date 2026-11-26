@@ -24,7 +24,7 @@
           </q-input>
           <AgentSelect
             v-model="selectedAgentId"
-            :options="agentOptions"
+            scope="catalogue"
             :label="$t('task.agentFilter')"
             clearable
             dense
@@ -193,13 +193,6 @@ function buildRootTasks(tasks: Task[]): Task[] {
     .filter(task => !task.parent_id || !ids.has(task.parent_id))
     .sort((left, right) => compareByDisplayedDate(left, right, -1))
 }
-
-const agentOptions = computed(() =>
-  agentStore.agents.map(e => ({
-    value: e.id,
-    label: e.label
-  }))
-)
 
 const pageSizeOptions = computed(() =>
   store.recentPageSizeOptions.map(size => ({

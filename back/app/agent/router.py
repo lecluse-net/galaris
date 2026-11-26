@@ -10,10 +10,11 @@ from core.authorize import Privileges
 from core.i18n import render_prompt, tr
 from .assertions import AgentOwnerAssertion
 from .contracts import AgentDriverError
+from .dialogue_service import current_dialogue_scope
 from .management_scope import AgentScopeDeniedError, current_management_scope
 from .schemas import (
     Title as TitleSchema, TitleCreate, TitleUpdate,
-    Agent as AgentSchema, AgentCreate, AgentUpdate,
+    Agent as AgentSchema, AgentCreate, AgentTeamProfile, AgentUpdate,
     AgentGroup as AgentGroupSchema, AgentGroupCreate, AgentGroupUpdate,
     AgentManagerInfo, ExecutorDriverInfo, AvatarGenerationRequest,
 )
@@ -45,7 +46,7 @@ async def _require_global_scope() -> None:
 
 @crud_router.get("/selection", response_model=list[AgentSelectionOption])
 @authorize()
-async def read_agent_selection(scope: AgentSelectionScope = "management") -> list[AgentSelectionOption]:
+async def read_agent_selection(scope: AgentSelectionScope = "catalogue") -> list[AgentSelectionOption]:
     """Authenticated display metadata never grants a domain operation."""
     if scope == "teams":
         user = await user_service.get_current_user()
@@ -199,20 +200,26 @@ async def read_executor_drivers() -> List[ExecutorDriverInfo]:
     ]
 
 
-@crud_router.get("", response_model=List[AgentSchema])
+@crud_router.get("", response_model=list[AgentSchema | AgentTeamProfile])
 @authorize(privileges=[Privileges.AGENT_ACCESS, Privileges.AGENT_EDIT])
 async def read_agents(
     skip: int = Query(default=0, ge=0),
     limit: int = Query(default=50, ge=1, le=500),
     agent_driver: str | None = Query(default=None),
-):
-    scope = await current_management_scope()
-    return await agent_service.get_all(
+) -> list[AgentSchema | AgentTeamProfile]:
+    managed = await current_management_scope()
+    # Filtering by runtime is a management operation. Team profiles have no runtime details.
+    visible = managed if managed.is_global or agent_driver is not None else await current_dialogue_scope()
+    agents = await agent_service.get_all(
         skip=skip,
         limit=limit,
         agent_driver=agent_driver,
-        agent_ids=scope.agent_ids,
+        agent_ids=visible.agent_ids,
     )
+    return [
+        AgentSchema.model_validate(agent) if managed.allows(agent.id) else AgentTeamProfile.model_validate(agent)
+        for agent in agents
+    ]
 
 
 @crud_router.get("/managers", response_model=List[AgentManagerInfo])
@@ -246,16 +253,18 @@ async def read_avatar_generation_availability() -> dict[str, bool]:
     return {"available": await avatar_generation_available()}
 
 
-@crud_router.get("/{id}", response_model=AgentSchema)
+@crud_router.get("/{id}", response_model=AgentSchema | AgentTeamProfile)
 @authorize(privileges=[Privileges.AGENT_ACCESS, Privileges.AGENT_EDIT])
 async def read_agent(
     id: int,
-):
-    scope = await current_management_scope()
-    agent = await agent_service.get(id, agent_ids=scope.agent_ids)
+) -> AgentSchema | AgentTeamProfile:
+    managed = (await current_management_scope()).allows(id)
+    if not managed and not (await current_dialogue_scope(agent_id=id)).allows(id):
+        raise HTTPException(status_code=404, detail=await _detail("agent_not_found"))
+    agent = await agent_service.get(id)
     if agent is None:
         raise HTTPException(status_code=404, detail=await _detail("agent_not_found"))
-    return agent
+    return AgentSchema.model_validate(agent) if managed else AgentTeamProfile.model_validate(agent)
 
 
 @crud_router.post("", dependencies=[Depends(require_editorial_client)], response_model=AgentSchema, status_code=status.HTTP_201_CREATED)
@@ -401,7 +410,7 @@ async def download_avatar(
     catalogue_access = user is not None and (
         await check_privilege(user, "TEAM_ACCESS", get_db())
     )
-    if not catalogue_access and not (await current_management_scope()).allows(id):
+    if not catalogue_access and not (await current_dialogue_scope(agent_id=id)).allows(id):
         raise HTTPException(status_code=404, detail=await _detail("agent_not_found"))
     avatar_data = await agent_service.get_avatar(id)
     if avatar_data is None:

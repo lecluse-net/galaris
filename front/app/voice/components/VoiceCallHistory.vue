@@ -25,7 +25,8 @@
           emit-value
           map-options
           :label="t('voice.history.agentFilter')"
-          :options="agentOptions"
+          scope="catalogue"
+          :all-label="t('voice.history.allAgents')"
           class="history-toolbar-filter"
           @update:model-value="filtersChanged"
         />
@@ -332,9 +333,7 @@ import { HistoryToolbar, MetricCard } from '@/core/util'
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { QTableColumn, QTableProps } from 'quasar'
-import { AgentAvatar } from '@/app/agent'
-import { AgentSelect } from '@/app/agent'
-import { getAgentSelection, type AgentSelectionOption } from '@/app/agent'
+import { AgentAvatar, AgentSelect } from '@/app/agent'
 import { privileges, usePrivilegeStore } from '@/core/authorize'
 import { websocket } from '@/core/websocket'
 import { ConversationTurnDialog } from '@/core/util'
@@ -356,13 +355,8 @@ import { TopicSelect } from '@/app/topic'
 type TableRequest = Parameters<NonNullable<QTableProps['onRequest']>>[0]
 
 const { t, locale } = useI18n()
-const agents = ref<AgentSelectionOption[]>([])
 const privilegeStore = usePrivilegeStore()
 const canFilterTopics = computed(() => privilegeStore.hasAnyPrivilege([privileges.TOPIC_ACCESS, privileges.TOPIC_EDIT]))
-async function loadAgents(): Promise<void> {
-  try { agents.value = await getAgentSelection('management') }
-  catch { error.value = t('common.anError') }
-}
 const conversations = ref<VoiceConversationDetailData[]>([])
 const loading = ref(false)
 let listRequest = 0
@@ -389,13 +383,6 @@ const columns = computed<QTableColumn<VoiceConversationDetailData>[]>(() => [
   { name: 'status', label: t('voice.history.status'), field: 'status', align: 'left', style: 'width: 140px', headerStyle: 'width: 140px' },
 ])
 
-const agentOptions = computed(() => [
-  { label: t('voice.history.allAgents'), value: null },
-  ...agents.value.map(agent => ({
-    label: agent.label,
-    value: agent.id,
-  })),
-])
 const statusOptions = computed(() => [
   { label: t('voice.history.allStatuses'), value: null },
   ...(['COMPLETED', 'CANCELLED', 'ERROR'] as VoiceConversationStatus[]).map(status => ({
@@ -557,7 +544,6 @@ function scheduleRealtimeRefresh(): void {
 }
 
 onMounted(() => {
-  void loadAgents()
   void load()
   const socket = websocket.createWebsocket()
   socket.on('connect', scheduleRealtimeRefresh)

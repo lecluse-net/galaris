@@ -5,7 +5,7 @@
       <q-tab name="outbound" icon="outbox" :label="t('mailJournal.outboundTab')" />
       <q-tab name="inbound" icon="inbox" :label="t('mailJournal.inboundTab')" />
     </q-tabs>
-    <MailInboundJournal v-if="tab === 'inbound'" :agents="agents" />
+    <MailInboundJournal v-if="tab === 'inbound'" />
     <div v-else>
 
     <div class="row q-col-gutter-md q-mb-lg">
@@ -24,7 +24,7 @@
       <div class="col-12 col-md-4">
         <AgentSelect
           v-model="agentId"
-          :options="agentOptions"
+          scope="catalogue"
           outlined
           dense
           clearable
@@ -244,8 +244,6 @@ const pendingLoading = ref(false)
 const historyLoading = ref(false)
 const search = ref('')
 const agentId = ref<number | null>(null)
-const agents = ref<Array<{ id: number; label: string }>>([])
-const agentOptions = computed(() => agents.value.map(agent => ({ label: agent.label, value: agent.id })))
 const pendingPagination = ref({ page: 1, rowsPerPage: 50, rowsNumber: 0 })
 const historyPagination = ref({ page: 1, rowsPerPage: 50, rowsNumber: 0 })
 const detailOpen = ref(false)
@@ -340,11 +338,6 @@ async function refreshAll(resetPages: boolean): Promise<void> {
     historyPagination.value.page = 1
   }
   await Promise.all([loadPending(), loadHistory()])
-  try {
-    agents.value = (await mailService.listDeliveryAgents()).data
-  } catch (error) {
-    $q.notify({ type: 'negative', message: `${t('mailJournal.loadError')}: ${errorMessage(error)}` })
-  }
 }
 
 function requestPending(request: { pagination: { page: number; rowsPerPage: number } }): void {

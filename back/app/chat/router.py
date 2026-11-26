@@ -56,6 +56,7 @@ from app.messenger import (
     get_chat_message,
     get_internal_room,
     internal_agent_avatar,
+    internal_agent_profile,
     is_kind_enabled,
     kind_from_mime,
     list_internal_agent_page,
@@ -79,6 +80,7 @@ from app.messenger import (
 )
 from app.messenger.interface import ObservedMessengerFile
 from app.messenger.contracts import DocumentFocus
+from app.services.facade import connected_external_services
 from app.conversation import (
     DeepActivityEvent, DeepRoomInfo, deep_events, deep_room_info, stop_deep_submission,
     control_round, ConversationControlConflict, ConversationControlResult,
@@ -120,6 +122,7 @@ from .schemas import (
     InteractionAnswer,
     ActiveCall,
     ArchiveUpdate,
+    ChatAgentProfile,
     ChatCommandCatalog,
     ChatInboxSummary,
     ConversationDocumentCreate,
@@ -544,6 +547,21 @@ async def read_agent_avatar(agent_id: int) -> Response:
         content=content,
         media_type=media_type,
         headers={"Cache-Control": "private, max-age=86400"},
+    )
+
+
+@router.get("/agents/{agent_id}/profile", response_model=ChatAgentProfile)
+@authorize(privileges=ACCESS, assertion=AgentDialogueAssertion)
+async def read_agent_profile(agent_id: int) -> ChatAgentProfile:
+    _require_enabled()
+    profile = await internal_agent_profile(agent_id)
+    if profile is None:
+        raise _not_found()
+    return ChatAgentProfile(
+        job_title=profile.job_title,
+        job_description=profile.job_description,
+        personality=profile.personality,
+        external_services=await connected_external_services(agent_id),
     )
 
 

@@ -41,7 +41,10 @@
               />
               <q-icon v-else name="person" />
             </q-item-section>
-            <q-item-section><q-item-label>{{ scope.opt.label }}</q-item-label></q-item-section>
+            <q-item-section>
+              <q-item-label>{{ scope.opt.label }}</q-item-label>
+              <q-item-label v-if="scope.opt.caption" caption>{{ scope.opt.caption }}</q-item-label>
+            </q-item-section>
           </q-item>
         </template>
       </AgentTeamSelect>

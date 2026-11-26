@@ -31,17 +31,18 @@ for each HTTPS server. Its installation and updates are independent of the serve
 
 ## Find work and take action
 
-Home groups unread conversations, usage indicators and **Recent activity**. It does not add
-a second list of Tasks and results to open. Tasks, waits, failures and recovery commands remain
-under **Monitor → Activity → Tasks**; approvals remain under **Monitor → Permissions**.
+The member home shows your teams, the agents you can contact, and links to the spaces available
+to your role. Select an agent to see their profile. Tasks, waits, failures and recovery commands
+remain under **Monitor → Activity → Tasks**. Approvals remain under **Monitor → Permissions**.
 
 Search within the relevant screens: Documents, Discussion, Activity, Goals, Files and Memory.
 Welcome (`/welcome`) offers **Complete your first mission** after setup, to prepare a request
 and follow its document. See the [discovery guide](README.md).
 
-Welcome remains the default home page until you select **Setup complete — open home**, even on a
-preconfigured instance. The Galaris logo returns to it during setup. Confirmation belongs to your
-account; `/welcome` remains available afterwards.
+For the Administrator role, Welcome remains the default home page until you select
+**Setup complete — open home**, even on a preconfigured instance. After confirmation, the
+administrator home shows unread conversations, usage indicators, and **Recent activity**.
+Confirmation belongs to your account. `/welcome` remains available for setup steps your role can view.
 
 In **Services → Connections**, **Scopes and permissions** opens Permissions for the filtered agent,
 or lets you select one. **Refresh tools** reloads connected service catalogues and rebuilds their
@@ -236,7 +237,9 @@ You can customize or remove its avatar; updates preserve your choice.
 Renaming or deleting this assistant never causes an update to recreate it.
 
 **Configure → Agents** (`/agent`) contains **Agents**, **Teams** and **Titles**, according
-to permissions. To create an agent, open **Agents**, then **New Agent**. Open an existing
+to permissions. **Agents** shows the agents you manage and those on your teams.
+**All agents** brings those profiles together when several team tabs are available.
+To create an agent, open **Agents**, then **New Agent**. Open an existing
 agent's record from the list to edit it. Tabs in that record differ from page tabs:
 they include general settings, models and MCP according to permissions. Choose the Task
 engine in the agent's record. The form appears as soon as it opens; selectors load afterward.

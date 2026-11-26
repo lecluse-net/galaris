@@ -9,7 +9,7 @@ from core.i18n import tr
 from core.user import get_current_user_id, get_user_record, register_admin_user_settings, require_web_session
 
 from . import personal_service, transcription_service
-from .personal_service import PersonalOptions, PersonalPreferences, PersonalSpeechError
+from .personal_service import NativeVoiceOptions, PersonalOptions, PersonalPreferences, PersonalSpeechError
 
 router = APIRouter(prefix="/llm/me", tags=["personal-llm"])
 user_router = APIRouter(prefix="/llm/users", tags=["user-llm"])
@@ -53,9 +53,9 @@ async def put_preferences(values: PersonalPreferences) -> PersonalPreferences:
 
 @router.get("/options", dependencies=[Depends(require_web_session)])
 @authorize()
-async def get_options() -> PersonalOptions:
+async def get_options(include_native_voices: bool = True) -> PersonalOptions:
     _user_id()
-    return await personal_service.selection_options()
+    return await personal_service.selection_options(include_native_voices=include_native_voices)
 
 
 async def _write_admin_preferences(user_id: int, payload: dict[str, object]) -> None:
@@ -147,3 +147,10 @@ async def speech(payload: SpeechRequest) -> Response:
             "X-Speech-Done": str(done).lower(),
         },
     )
+
+
+@router.get("/native-voices", dependencies=[Depends(require_web_session)])
+@authorize()
+async def get_native_voices() -> NativeVoiceOptions:
+    _user_id()
+    return await personal_service.native_voice_options()

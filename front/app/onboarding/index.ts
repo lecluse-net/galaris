@@ -1,4 +1,5 @@
 export { default as WelcomePage } from './components/WelcomePage.vue'
+export { useSetupAccess } from './setupAccess'
 export { useOnboardingStore, WELCOME_DISMISSAL_KEY } from './stores/onboardingStore'
 export type {
   OnboardingOverviewResponse,

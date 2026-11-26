@@ -188,7 +188,8 @@ for (const simple of [false, true]) for (const editable of [true, false]) test(`
 
 test('My profile saves the selected profile and voice without administrative privileges', async ({ page }) => {
   await jsonRoute(page, '**/api/auth/mfa/status', { enabled: false, setup_pending: false, recovery_codes_remaining: 0 })
-  await jsonRoute(page, '**/api/llm/me/options', { profiles: [{ id: 7, label: 'Personal profile' }], current_profile_id: 7, voices: [{ id: 9, label: 'My voice' }], native_voices: [] })
+  await jsonRoute(page, '**/api/llm/me/options?include_native_voices=false', { profiles: [{ id: 7, label: 'Personal profile' }], current_profile_id: 7, voices: [{ id: 9, label: 'My voice' }] })
+  await page.route('**/api/llm/me/native-voices', route => route.fulfill({ status: 503 }))
   let saved
   await page.route('**/api/llm/me/preferences', route => {
     if (route.request().method() === 'PUT') saved = route.request().postDataJSON()
@@ -201,15 +202,28 @@ test('My profile saves the selected profile and voice without administrative pri
   await page.getByRole('option', { name: 'My voice', exact: true }).click()
   await page.getByRole('form', { name: 'Models', exact: true }).getByRole('button', { name: 'Save', exact: true }).click()
   await expect.poll(() => saved).toEqual({ profile_id: 7, voice_llm_id: 9, voice_mode: 'tts', voice_code: null })
-  await expect(page.getByRole('status')).toHaveText('Preferences saved.')
+  await expect(page.getByRole('status').filter({ hasText: 'Profiles and TTS voices remain available.' })).toBeVisible()
+  await expect(page.getByRole('status').filter({ hasText: 'Preferences saved.' })).toBeVisible()
 })
 
 test('the user form saves native model and voice choices for the selected user', async ({ page }) => {
   const initial = { profile_id: 7, voice_llm_id: 9, voice_mode: 'tts', voice_code: null }
-  await jsonRoute(page, '**/api/llm/me/options', {
+  const localOptions = {
     profiles: [{ id: 7, label: 'Personal profile' }], current_profile_id: 7,
     voices: [{ id: 9, label: 'My voice' }],
+  }
+  const nativeOptions = {
     native_voices: [{ model_id: 11, voice_code: 'voice:alloy', label: 'Alloy', caption: 'Provider · Realtime model' }],
+  }
+  const pendingCatalog = Promise.withResolvers()
+  await jsonRoute(page, '**/api/llm/me/options?include_native_voices=false', localOptions)
+  await page.route('**/api/llm/me/options', async route => {
+    await pendingCatalog.promise
+    await route.fulfill({ json: { ...localOptions, ...nativeOptions } })
+  })
+  await page.route('**/api/llm/me/native-voices', async route => {
+    await pendingCatalog.promise
+    await route.fulfill({ json: nativeOptions })
   })
   let saved
   await page.route('**/api/llm/users/42/preferences', route => {
@@ -223,8 +237,17 @@ test('the user form saves native model and voice choices for the selected user',
   await editUser()
   const name = page.getByLabel('Display name', { exact: true })
   await name.fill('Updated display name')
-  await page.getByLabel('LLM profile', { exact: true }).click()
-  await page.getByRole('option', { name: 'Current profile — Personal profile', exact: true }).click()
+  try {
+    const profile = page.getByLabel('LLM profile', { exact: true })
+    await expect(profile).toBeEnabled()
+    await profile.click()
+    await page.getByRole('option', { name: 'Current profile — Personal profile', exact: true }).click()
+    await page.getByLabel('Voice / TTS', { exact: true }).click()
+    await expect(page.getByRole('option', { name: 'My voice', exact: true })).toBeVisible()
+    await page.keyboard.press('Escape')
+  } finally {
+    pendingCatalog.resolve()
+  }
   await page.getByLabel('Voice / TTS', { exact: true }).click()
   await page.getByRole('option', { name: /Alloy/ }).click()
   await expect(name).toHaveValue('Updated display name')

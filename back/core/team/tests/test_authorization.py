@@ -61,13 +61,21 @@ async def test_team_membership_controls_chat_without_granting_management_over_ht
         db.add_all([role, title])
         await db.flush()
         db.add(Assignment(user_id=user_id, role_id=role.id, is_default=True))
-        agent = Agent(user_id=admin_id, title_id=title.id, code="team-agent", first_name="Team", last_name="Agent", avatar=b"\x89PNG-test")
+        agent = Agent(user_id=admin_id, title_id=title.id, code="team-agent", first_name="Team", last_name="Agent",
+                      job_title="Analyst", job_description="<p>Prepare notes.</p>",
+                      personality="<p>Curious and precise.</p>", avatar=b"\x89PNG-test")
         db.add(agent)
         await db.flush()
         agent_id = agent.id
         tool = await db.scalar(select(ServiceModel).where(ServiceModel.code == "chat"))
         assert tool is not None
-        db.add(Connection(agent_id=agent_id, service_id=tool.id, active=True))
+        external = ServiceModel(code="synthetic_external", label="External knowledge base", rest_config={"base_url": "https://example.invalid"})
+        inactive = ServiceModel(code="synthetic_inactive", label="Inactive integration", rest_config={"base_url": "https://example.invalid"})
+        native = ServiceModel(code="synthetic_native", label="Native function", mcp_config=None)
+        db.add_all([external, inactive, native])
+        await db.flush()
+        db.add_all(Connection(agent_id=agent_id, service_id=service.id, active=active)
+                   for service, active in ((tool, True), (external, True), (inactive, False), (native, True)))
     # These actors represent separate browsers. Reusing the admin's refresh cookie
     # would intentionally revoke its session when logging in as the human.
     client.cookies.clear()
@@ -100,6 +108,9 @@ async def test_team_membership_controls_chat_without_granting_management_over_ht
     assert catalogue.status_code == 200, catalogue.text
     listed_agent = next(item for item in catalogue.json() if item["id"] == agent_id)
     assert listed_agent["has_avatar"] is True
+    profile_url = f"/api/chat/agents/{agent_id}/profile"
+    assert (await client.get(profile_url)).status_code == 401
+    assert (await client.get(profile_url, headers=human)).status_code == 403
     assert (await client.post("/api/chat/rooms", headers=human, json={"agent_id": agent_id})).status_code == 404
     # The manager can contact their agent without sharing a team.
     assert (await client.post("/api/chat/rooms", headers=admin, json={"agent_id": agent_id})).status_code == 201
@@ -109,6 +120,12 @@ async def test_team_membership_controls_chat_without_granting_management_over_ht
     assert (await client.put(agent_url, headers=human, json={"present": True})).status_code == 403
     assert (await client.put(member_url, headers=admin, json={"present": True})).status_code == 204
     assert (await client.put(agent_url, headers=admin, json={"present": True})).status_code == 204
+    profile = await client.get(profile_url, headers=human)
+    assert profile.status_code == 200, profile.text
+    assert profile.json() == {
+        "job_title": "Analyst", "job_description": "<p>Prepare notes.</p>", "personality": "<p>Curious and precise.</p>",
+        "external_services": [{"code": "synthetic_external", "label": "External knowledge base"}],
+    }
     team_list = (await client.get("/api/teams", headers=human)).json()
     listed = next(team for team in team_list if team["id"] == team_id)
     assert listed["human_count"] == 1
@@ -122,6 +139,7 @@ async def test_team_membership_controls_chat_without_granting_management_over_ht
     room_id = created_room.json()["id"]
     assert (await client.get(f"/api/agents/{agent_id}", headers=human)).status_code == 403
     assert (await client.put(member_url, headers=admin, json={"present": False})).status_code == 204
+    assert (await client.get(profile_url, headers=human)).status_code == 403
     history = await client.get(f"/api/chat/rooms/{room_id}", headers=human)
     assert history.status_code == 200, history.text
     assert not history.json()["writable"]

@@ -65,7 +65,7 @@ class AvatarGenerationRequest(BaseModel):
     instructions: str = Field(default="", max_length=4000)
 
 
-class AgentBase(BaseModel):
+class AgentIdentity(BaseModel):
     title_id: int
     code: str
     first_name: str
@@ -73,6 +73,9 @@ class AgentBase(BaseModel):
     personality: Optional[str] = None
     job_description: Optional[str] = None
     job_title: Optional[str] = None
+
+
+class AgentBase(AgentIdentity):
     agent_driver: str = "internal"
     profile_id: Optional[int] = None
     fallback_profile_id: Optional[int] = None
@@ -196,21 +199,15 @@ class LlmProfileInfo(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
-class Agent(AgentBase):
+class AgentReadIdentity(BaseModel):
     team_ids: list[int] = Field(default_factory=list[int])
     content_profile: str = "rich-text"
     content_profile_version: int = 1
     id: int
-    task_harness_id: Optional[UUID] = None
-    user_id: int
-    user: AgentManagerInfo
-    memory_item_id: Optional[UUID] = None
     title: Optional[Title] = None
     has_avatar: bool = False
     updated_at: datetime | None = None
     is_owner: bool = False
-    profile: Optional[LlmProfileInfo] = None
-    fallback_profile: Optional[LlmProfileInfo] = None
 
     @computed_field
     @property
@@ -226,5 +223,20 @@ class Agent(AgentBase):
     @property
     def avatar_uri(self) -> str | None:
         return f"galaris://agent/{self.id}/avatar" if self.has_avatar else None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class AgentTeamProfile(AgentIdentity, AgentReadIdentity):
+    """Presentation fields shared with a member of one of the agent's teams."""
+
+
+class Agent(AgentBase, AgentReadIdentity):
+    task_harness_id: Optional[UUID] = None
+    user_id: int
+    user: AgentManagerInfo
+    memory_item_id: Optional[UUID] = None
+    profile: Optional[LlmProfileInfo] = None
+    fallback_profile: Optional[LlmProfileInfo] = None
 
     model_config = ConfigDict(from_attributes=True, arbitrary_types_allowed=True)

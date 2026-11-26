@@ -3,7 +3,7 @@ import { notificationPrompt } from '../notification-prompt.mjs'
 import { test, expect } from '@playwright/test'
 import { collectPageErrors } from '../page-errors.mjs'
 
-test('connection consultation shows team connections in read-only mode', async ({ page, request }) => {
+test('agent consultation shows agents from each of the user’s teams', async ({ page, request }) => {
   const read = async response => {
     expect(response.ok(), await response.text()).toBeTruthy()
     return response.json()
@@ -17,7 +17,7 @@ test('connection consultation shows team connections in read-only mode', async (
   const privileges = await read(await request.get('/api/authorize/privileges', { headers }))
   const role = await read(await request.post('/api/authorize/roles', { headers, data: { code: `agent-reader-${unique}` } }))
   await read(await request.post(`/api/authorize/roles/${role.id}/privileges`, {
-    headers, data: { privilege_ids: ['CONNECTION_ACCESS'].map(code => privileges.find(privilege => privilege.code === code).id) },
+    headers, data: { privilege_ids: ['AGENT_ACCESS', 'CONNECTION_ACCESS'].map(code => privileges.find(privilege => privilege.code === code).id) },
   }))
   await read(await request.post('/api/authorize/assignments', { headers, data: { user_id: user.id, role_id: role.id, is_default: true } }))
   const basis = await read(await request.get(`/api/agents/${fixture.agent_id}`, { headers }))
@@ -43,6 +43,22 @@ test('connection consultation shows team connections in read-only mode', async (
   const session = await read(await page.request.post('/api/auth/login-json', { data: credentials }))
   await page.addInitScript(token => localStorage.setItem('access_token', token), session.access_token)
   const errors = collectPageErrors(page)
+  await page.goto('/agent')
+  const north = page.getByText('Synthetic North Agent', { exact: true })
+  const south = page.getByText('Synthetic South Agent', { exact: true })
+  await expect(north).toBeVisible()
+  await expect(south).toBeVisible()
+  await expect(page.locator('.agent-card')).toHaveCount(2)
+  await page.getByRole('tab', { name: teamNames[1], exact: true }).click()
+  await expect(north).toHaveCount(0)
+  await expect(south).toBeVisible()
+  await page.locator('.agent-card').getByText('Synthetic team profile', { exact: true }).click()
+  const profile = page.getByRole('dialog')
+  await expect(profile.getByText('Synthetic team profile', { exact: true })).toBeVisible()
+  await expect(profile.getByRole('button', { name: 'Save', exact: true })).toHaveCount(0)
+  await page.keyboard.press('Escape')
+  await expect(profile).toHaveCount(0)
+
   await page.goto('/services?tab=connections')
   const filter = page.getByRole('combobox', { name: 'Filter by agent', exact: true })
   await filter.click()

@@ -11,6 +11,8 @@ export interface PersonalLlmOptions {
   profiles: PersonalLlmOption[]
   current_profile_id: number | null
   voices: PersonalLlmOption[]
+}
+export interface NativeVoiceOptions {
   native_voices: { model_id: number; voice_code: string; label: string; caption: string }[]
   native_voices_error?: boolean
 }
@@ -24,7 +26,10 @@ export default {
     return (await api.get<PersonalLlmPreferences>(preferencesUrl(userId))).data
   },
   async options(): Promise<PersonalLlmOptions> {
-    return (await api.get<PersonalLlmOptions>('/llm/me/options')).data
+    return (await api.get<PersonalLlmOptions>('/llm/me/options', { params: { include_native_voices: false } })).data
+  },
+  async nativeVoices(): Promise<NativeVoiceOptions> {
+    return (await api.get<NativeVoiceOptions>('/llm/me/native-voices')).data
   },
   async save(values: PersonalLlmPreferences, userId?: number): Promise<void> {
     await api.put(preferencesUrl(userId), values)

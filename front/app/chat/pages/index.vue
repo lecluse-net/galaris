@@ -23,10 +23,10 @@
             <div v-if="homeRoomsError" role="alert" class="q-mt-md">
               {{ t('chat.error') }} <q-btn outline color="primary"  :label="t('chat.home.retry')" @click="homeRoomsRevision++" />
             </div>
-            <ChatHomePagination v-model:page="homeRoomsPage" v-model:page-size="homeRoomsPageSize" :total="homeRoomsTotal" :loading="loadingHomeRooms" :label="t('chat.home.conversationPages')" />
+            <ListPagination v-model:page="homeRoomsPage" v-model:page-size="homeRoomsPageSize" :total="homeRoomsTotal" :loading="loadingHomeRooms" :label="t('chat.home.conversationPages')" :page-size-label="t('chat.home.perPage')" />
           </section>
           <ChatWelcome v-if="canCreateRoom" :agents="homeAgents" :can-create="canCreateRoom" :loading="loadingRecipients" :error="recipientsError" @create="openCreate" @retry="recipientsRevision++">
-            <template #pagination><ChatHomePagination v-model:page="agentsPage" v-model:page-size="agentsPageSize" :total="agentsTotal" :loading="loadingRecipients" :label="t('chat.home.agentPages')" /></template>
+            <template #pagination><ListPagination v-model:page="agentsPage" v-model:page-size="agentsPageSize" :total="agentsTotal" :loading="loadingRecipients" :label="t('chat.home.agentPages')" :page-size-label="t('chat.home.perPage')" /></template>
           </ChatWelcome>
         </div>
       </main>
@@ -218,14 +218,13 @@ import ScrollToBottomButton from '../components/ScrollToBottomButton.vue'
 import { useDeepConversation } from '../useDeepConversation'
 const RoomCreateDialog = defineAsyncView(() => import('../components/RoomCreateDialog.vue'))
 import ChatWelcome from '../components/ChatWelcome.vue'
-import ChatHomePagination from '../components/ChatHomePagination.vue'
 import ConversationDocumentsPanel from '../components/ConversationDocumentsPanel.vue'
 import ConversationDocumentDialog from '../components/ConversationDocumentDialog.vue'
 import ConversationProcessesPanel from '../components/ConversationProcessesPanel.vue'
 import ChatDocumentPane from '../components/ChatDocumentPane.vue'
 import { CodeWorkspacePane, RepositoryBrowser, codeService, codeErrorTranslationKey, useCodeStore, type CodeWorkspace } from '../code'
 const ChatDocumentSearchDialog = defineAsyncView(() => import('../components/ChatDocumentSearchDialog.vue'))
-import { documentNavigationKey, resolveWorkingDocument, useDocumentHistory, type WorkingDocumentReference, type WorkingDocumentSnapshot } from '@/core/util'
+import { ListPagination, documentNavigationKey, resolveWorkingDocument, useDocumentHistory, type WorkingDocumentReference, type WorkingDocumentSnapshot } from '@/core/util'
 import type { ConversationDocumentReference } from '../types'
 import { useChatInboxStore } from '../stores/inbox'
 import { sourceTranslationKey } from '../sourcePresentation'

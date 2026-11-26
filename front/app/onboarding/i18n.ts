@@ -33,7 +33,7 @@ export default {
       mission: missionI18n.fr,
       eyebrow: 'Premiers pas',
       title: 'Bienvenue sur Galaris',
-      description: 'Préparez votre instance en quelques étapes. Un LLM utilisable et un premier agent constituent le socle ; messageries, outils, compétences et processus enrichissent ensuite ses capacités.',
+      description: 'Retrouvez les étapes de configuration auxquelles votre rôle donne accès.',
       loading: 'Vérification de la configuration…',
       progress: 'Configuration indispensable',
       progressCount: '{count} sur {total}',
@@ -54,9 +54,10 @@ export default {
       },
       ready: {
         title: 'Votre instance est prête',
+        available: 'Vous pouvez ouvrir l’accueil',
         loadError: 'Impossible de vérifier votre confirmation de configuration. Réessayez.',
         saveError: 'Votre confirmation n’a pas pu être enregistrée. Réessayez.',
-        description: 'Un LLM et un agent sont disponibles. Confirmez que la configuration vous convient pour ne plus afficher cette page à l’accueil. Vous pourrez la rouvrir à l’adresse /welcome.',
+        description: 'Vous pourrez retrouver ce parcours à tout moment à l’adresse /welcome.',
       },
       authentication: {
         title: 'Connectez-vous pour configurer Galaris',
@@ -73,6 +74,8 @@ export default {
         previous: 'Étape précédente',
         next: 'Étape suivante',
         home: 'Configuration terminée — ouvrir l’accueil',
+        openHome: 'Ouvrir l’accueil',
+        openSection: 'Ouvrir la page',
       },
       steps: {
         language: {
@@ -141,7 +144,7 @@ export default {
       mission: missionI18n.en,
       eyebrow: 'Getting started',
       title: 'Welcome to Galaris',
-      description: 'Prepare your instance in a few steps. A usable LLM and a first agent form the foundation; messaging, tools, skills, and processes then expand its capabilities.',
+      description: 'Find the setup steps available to your role.',
       loading: 'Checking configuration…',
       progress: 'Required configuration',
       progressCount: '{count} of {total}',
@@ -162,9 +165,10 @@ export default {
       },
       ready: {
         title: 'Your instance is ready',
+        available: 'Home is available',
         loadError: 'Unable to check your setup confirmation. Try again.',
         saveError: 'Your confirmation was not saved. Try again.',
-        description: 'An LLM and an agent are available. Confirm that setup is complete to stop showing this page at home. You can reopen it at /welcome.',
+        description: 'You can return to this setup guide anytime at /welcome.',
       },
       authentication: {
         title: 'Sign in to configure Galaris',
@@ -181,6 +185,8 @@ export default {
         previous: 'Previous step',
         next: 'Next step',
         home: 'Setup complete — open home',
+        openHome: 'Open home',
+        openSection: 'Open page',
       },
       steps: {
         language: {
@@ -248,15 +254,15 @@ export default {
     onboarding: {
       mission: missionI18n.zh,
       eyebrow: '开始使用', title: '欢迎使用 Galaris',
-      description: '只需几步即可准备好您的实例。可用的 LLM 和第一个智能体是基础；消息、工具、技能和流程随后会扩展其能力。',
+      description: '查看您的角色可以访问的设置步骤。',
       loading: '正在检查配置…', progress: '必需配置', progressCount: '{count}/{total}', stepNumber: '第 {current} 步，共 {total} 步',
       required: '必需', optional: '建议', tipsTitle: '需要准备的内容', permissionRequired: '您的账户没有完成此步骤所需的权限。请让管理员进行配置。',
       summary: { title: '设置流程', description: '您可以随时通过 /welcome 地址返回此页面。' },
       status: { configured: '已配置', required: '需要设置', recommended: '建议', restricted: '需要权限' },
-      ready: { title: '您的实例已就绪', description: 'LLM 和智能体均已可用。确认配置完成后，主页将不再显示此页面。您仍可通过 /welcome 重新打开它。', loadError: '无法检查您的配置确认。请重试。', saveError: '您的确认未能保存。请重试。' },
+      ready: { title: '您的实例已就绪', available: '您可以打开主页', description: '您可以随时通过 /welcome 返回此设置指南。', loadError: '无法检查您的配置确认。请重试。', saveError: '您的确认未能保存。请重试。' },
       authentication: { title: '登录以配置 Galaris', description: '只有已登录用户才能查看配置状态和执行设置操作。', action: '登录' },
       error: { title: '无法检查配置', description: 'Galaris 无法读取实例状态。请稍后重试。' },
-      actions: { retry: '重试', refresh: '重新检查', previous: '上一步', next: '下一步', home: '配置完成 — 打开主页' },
+      actions: { retry: '重试', refresh: '重新检查', previous: '上一步', next: '下一步', home: '配置完成 — 打开主页', openHome: '打开主页', openSection: '打开页面' },
       steps: {
         language: {
           title: '默认语言',

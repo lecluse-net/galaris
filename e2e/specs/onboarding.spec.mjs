@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test'
 import { collectPageErrors } from '../page-errors.mjs'
+import { withSidebarDismissal } from '../sidebar.mjs'
 
 const welcomeTest = test.extend({
   languageSetting: async ({ request }, use) => {
@@ -141,4 +142,66 @@ welcomeTest('welcome persists the default language and opens configuration pages
     await expect(page.getByRole('heading', { name: 'Agents', exact: true })).toBeVisible()
   }
   expect([...errors, ...pageErrors()]).toEqual([])
+})
+
+test('the member home opens an authorized agent profile while platform setup is incomplete', async ({ page, request }, testInfo) => {
+  const checked = async response => {
+    expect(response.ok(), await response.text()).toBeTruthy()
+    return response.status() === 204 ? undefined : response.json()
+  }
+  const fixture = await checked(await request.post('/api/__test/seed?llm_configured=false'))
+  const session = await checked(await request.post('/api/auth/login-json', {
+    data: { email: fixture.email, password: fixture.password },
+  }))
+  const headers = { Authorization: `Bearer ${session.access_token}`, 'X-Editorial-Profile-Version': '1' }
+  const credentials = { email: `synthetic-member-${fixture.agent_id}@example.com`, password: 'Synthetic-member-home-123' }
+  const member = await checked(await request.post('/api/auth/users', {
+    headers, data: { ...credentials, display_name: 'Synthetic member', language: 'en' },
+  }))
+  const role = await checked(await request.post('/api/authorize/roles', {
+    headers, data: { code: `member-home-${fixture.agent_id}` },
+  }))
+  const catalogue = await checked(await request.get('/api/authorize/privileges', { headers }))
+  await checked(await request.post(`/api/authorize/roles/${role.id}/privileges`, {
+    headers, data: { privilege_ids: catalogue.filter(item => ['CHAT_ACCESS', 'CHAT_SEND', 'DOCUMENT_ACCESS'].includes(item.code)).map(item => item.id) },
+  }))
+  await checked(await request.post('/api/authorize/assignments', { headers,
+    data: { user_id: member.id, role_id: role.id, is_default: true } }))
+  const team = await checked(await request.post('/api/teams', { headers, data: { name: 'Synthetic research team' } }))
+  await checked(await request.put(`/api/teams/${team.id}/humans/${member.id}`, { headers, data: { present: true } }))
+  await checked(await request.put(`/api/agents/teams/${team.id}/members/${fixture.agent_id}`, { headers, data: { present: true } }))
+  const agent = await checked(await request.put(`/api/agents/${fixture.agent_id}`, { headers, data: {
+    job_title: 'Research analyst', job_description: '<p>Prepare research briefs.</p>', personality: '<p>Curious and precise.</p>',
+  } }))
+
+  const pageErrors = collectPageErrors(page)
+  const onboardingRequests = []
+  page.on('request', request => {
+    if (new URL(request.url()).pathname === '/api/onboarding/overview') onboardingRequests.push(request.url())
+  })
+  await page.setViewportSize({ width: 1440, height: 900 })
+  await page.goto('/user/login')
+  await page.locator('input[type=email]').fill(credentials.email)
+  await page.locator('input[type=password]').fill(credentials.password)
+  await page.locator('button[type=submit]').click()
+  await expect(page.getByRole('region', { name: 'Your teams' })).toContainText(team.name)
+  const uses = page.getByRole('region', { name: 'What you can do' })
+  await expect(uses.getByRole('link', { name: 'Open Documents' })).toHaveAttribute('href', '/documents')
+  await expect(uses.getByRole('link', { name: 'Open Processes' })).toHaveCount(0)
+  await page.screenshot({ path: testInfo.outputPath('member-home-desktop.png') })
+
+  await page.setViewportSize({ width: 390, height: 900 })
+  const name = `${agent.first_name} ${agent.last_name}`
+  await withSidebarDismissal(page, () => page.getByRole('button', { name }).click())
+  const profile = page.getByRole('dialog', { name })
+  await expect(profile).toContainText('Research analyst')
+  await expect(profile).toContainText('Prepare research briefs.')
+  await expect(profile).toContainText('Curious and precise.')
+  await expect(profile).toContainText('No external tools connected.')
+  await page.screenshot({ path: testInfo.outputPath('member-profile-mobile.png') })
+  await page.keyboard.press('Escape')
+  await expect(profile).toHaveCount(0)
+  expect(onboardingRequests).toEqual([])
+  await pageErrors.settle()
+  expect(pageErrors()).toEqual([])
 })

@@ -55,7 +55,7 @@ export interface DeepSubmission {
 }
 export interface DeepRoom { enabled: boolean; submissions: DeepSubmission[] }
 export interface DeepEvent { sequence: number; kind: 'text' | 'activity' | 'failure'; payload: Record<string, unknown> }
-export interface MessengerAgent { agent_id: number; connection_id: number; code: string; display_name: string; active: boolean; suggested_room_label?: string }
+export type MessengerAgent = import('@/app/agent/facade').DialogueAgent
 export interface RecipientCatalog { agents: MessengerAgent[] }
 export interface MessengerMember { id: string; external_id: string; display_name: string; avatar_url: string | null; is_ai: boolean; agent_id: number | null; role: 'owner' | 'manager' | 'member'; joined_at: string | null; muted: boolean }
 export interface MessengerFile { id: string; uri: string; name: string; mime_type: string; size_bytes: number | null; kind: string }

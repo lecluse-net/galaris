@@ -6,7 +6,7 @@ from collections.abc import Collection
 from loguru import logger
 import yaml
 from pydantic import ValidationError
-from sqlalchemy import select
+from sqlalchemy import func, or_, select
 from sqlalchemy.orm import load_only
 
 from core.database import get_db
@@ -38,6 +38,7 @@ from .secrets import (
 from .schemas import (
     ConnectionParamDef,
     ConnectionSchema,
+    ConnectedExternalService,
     FileShareConfig,
     ListenerConfig,
     MessengerConfig,
@@ -61,6 +62,30 @@ async def get_service_codes(service_ids: set[int]) -> dict[int, str]:
         return {}
     rows = await get_db().execute(select(ServiceModel.id, ServiceModel.code).where(ServiceModel.id.in_(service_ids)))
     return {service_id: code for service_id, code in rows}
+
+
+async def connected_external_services(agent_id: int) -> list[ConnectedExternalService]:
+    """Project active external integrations without reading connection credentials."""
+    from app.connection import Connection
+    from .mandatory_services import INTEGRATED_SERVICE_CODES
+
+    external_protocols = (
+        ServiceModel.mcp_config, ServiceModel.rest_config, ServiceModel.file_share_config,
+        ServiceModel.messenger_config, ServiceModel.mail_config, ServiceModel.calendar_config,
+    )
+    query = (
+        select(ServiceModel.code, ServiceModel.label)
+        .join(Connection, Connection.service_id == ServiceModel.id)
+        .where(
+            Connection.agent_id == agent_id,
+            Connection.active.is_(True),
+            ServiceModel.code.not_in(INTEGRATED_SERVICE_CODES),
+            or_(*(func.jsonb_typeof(config) == "object" for config in external_protocols)),
+        )
+        .distinct()
+        .order_by(ServiceModel.label, ServiceModel.code)
+    )
+    return [ConnectedExternalService(code=code, label=label) for code, label in await get_db().execute(query)]
 
 
 def connection_schema_for_service(record: ServiceModel) -> Dict[str, Any]:

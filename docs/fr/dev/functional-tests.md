@@ -1095,6 +1095,10 @@ Les menus fusionnés conservent les liens web, la sélection de texte et l'uploa
 `galaris-links.spec.mjs` remplace les scénarios de l'ancienne recherche de liens par le
 sélecteur interne commun, notamment dans le formulaire Memory au menu réduit : conservation
 du texte et de sa mise en forme, annulation, fermeture, reprise après erreur et rejet d'une
+`e2e/specs/agent-admin.spec.mjs` ouvre la page Agents sans droits de gestion, affiche les
+fiches de deux équipes et sélectionne un agent d’équipe dans le filtre Connexions.
+`app/agent/tests/test_selection.py` vérifie les profils
+visibles, les refus de modification et la perte d’accès au retrait de l’équipe commune.
 sélection après changement de contenu. La navigation et la sélection multiple restent
 couvertes par `internal-file-picker.spec.mjs`.
 `agents.spec.mjs` couvre la carte insérée, son avatar, le choix lien/carte, la sauvegarde

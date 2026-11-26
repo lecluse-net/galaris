@@ -73,10 +73,6 @@ export const useOnboardingStore = withSessionScope(defineStore('onboarding', {
       return state.agents?.show ?? false
     },
 
-    skillsAccess: (state): boolean => state.skills?.has_privilege ?? false,
-
-    processesAccess: (state): boolean => state.processes?.has_privilege ?? false,
-
     /**
      * Whether at least one onboarding block should be displayed.
      */
@@ -89,14 +85,8 @@ export const useOnboardingStore = withSessionScope(defineStore('onboarding', {
       )
     },
 
-    /**
-     * Whether the initial setup must replace the authenticated home page.
-     *
-     * This is intentionally based on data rather than privileges: a user who
-     * cannot edit the missing resource still needs to understand why the
-     * instance is not ready.
-     */
-    needsInitialSetup: (state): boolean => {
+    /** Whether the instance is missing a prerequisite for the guided mission. */
+    instanceNeedsSetup: (state): boolean => {
       if (
         state.llmProvider === null
         || state.agents === null

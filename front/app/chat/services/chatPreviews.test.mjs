@@ -6,6 +6,7 @@ import { sessionReadCache } from '../../../test-support/session-read-cache.mjs'
 function service(get) {
   return loadTypescript(new URL('./chatService.ts', import.meta.url), {
     '@/core/api': { api: { get }, AUTH_TOKEN_CHANGED_EVENT: 'auth' },
+    '@/app/agent/facade': { agentDialogueService: {} },
     '@/core/util/facade': sessionReadCache(), axios: { isAxiosError: () => false },
   }).chatService
 }

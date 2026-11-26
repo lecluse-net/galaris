@@ -27,6 +27,12 @@ agrégats et ressources indirectes. Une ressource hors périmètre est traitée 
 cela évite d’en divulguer l’existence. Les opérations intrinsèquement globales exigent
 `AGENT_MANAGE_ALL`.
 
+Le catalogue HTTP des agents utilise aussi les équipes humaines communes pour la lecture des
+profils. Les membres de l’équipe reçoivent les champs de présentation (identité professionnelle,
+avatar, personnalité et fiche de poste). Le responsable assigné et le gestionnaire global
+reçoivent les champs de configuration. Le sélecteur `catalogue` suit la règle de lecture du
+profil. Le sélecteur `management` applique `AgentManagementScope` aux choix de gestion.
+
 L’aperçu et la fiche de lecture des connexions incluent aussi celles des agents d’une équipe
 commune. Cette lecture expose l’identité de l’agent et du service ainsi que l’état de la
 connexion. La configuration, les diagnostics et les mutations utilisent le périmètre de gestion.

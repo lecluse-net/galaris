@@ -62,13 +62,18 @@ aux utilisateurs de créer leur compte** les ouvre immédiatement ; les nouveaux
 restent sans droits jusqu’à l’attribution d’un rôle. Sa désactivation ferme le formulaire
 et l’API d’inscription, sans empêcher les comptes existants de se connecter.
 
-À la connexion, l’accueil affiche Welcome jusqu’à votre confirmation explicite, même si l’instance
-est déjà préconfigurée. Le logo Galaris vous ramène à ce parcours depuis les écrans de configuration.
-Une fois la langue par défaut, un LLM utilisable et un agent configurés, cliquez sur
-**Configuration terminée — ouvrir l’accueil** pour retrouver l’accueil habituel. Ce choix est
-enregistré pour votre compte, sur tous vos appareils ; un échec d’enregistrement laisse le parcours
-visible et permet de réessayer. `/welcome` reste accessible. Si un élément indispensable manque
-ensuite, le parcours réapparaît. Sans droit de configuration, il explique les accès nécessaires.
+À la connexion, l’accueil utilisateur présente **Vos équipes**, les agents que vous pouvez
+contacter et les usages ouverts par votre rôle. Ouvrez la fiche d’un agent pour consulter sa
+photo, sa fiche de poste, sa personnalité et ses outils externes connectés. Avec l’accès aux
+Documents, par exemple, une carte explique comment retrouver les résultats partagés et ouvre
+la bibliothèque.
+
+Avec le rôle Administrateur, l’accueil affiche Welcome jusqu’à votre confirmation, même si
+l’instance est déjà préconfigurée. Configurez la langue par défaut, un LLM utilisable et un agent,
+puis cliquez sur **Configuration terminée — ouvrir l’accueil**. Ce choix est enregistré pour votre
+compte sur tous vos appareils. En cas d’échec, le parcours reste visible et vous pouvez réessayer.
+Si un élément indispensable redevient indisponible, le parcours réapparaît. Vous pouvez aussi
+rouvrir `/welcome` pour consulter les étapes auxquelles votre rôle donne accès.
 
 L’étape LLM ouvre **Fournisseurs & modèles**. Elle n’est franchie que lorsqu’un modèle
 conversationnel est associé à un fournisseur actif dont les identifiants requis sont renseignés.
@@ -77,8 +82,7 @@ qui n’exige pas de clé peut valider l’étape sans clé ; un fournisseur OAu
 Cette vérification porte sur la configuration enregistrée ; testez la connexion pour vérifier
 que les identifiants sont valides.
 
-Le parcours de bienvenue présente sept étapes dans une timeline qui revient à la ligne selon
-la largeur disponible, sans défilement horizontal. Sélectionnez une étape pour
+Le parcours de bienvenue numérote les étapes visibles selon vos droits. Sélectionnez une étape pour
 afficher son contenu en dessous, ou utilisez **Étape précédente** et **Étape suivante**.
 La première étape, **Langue par défaut**, suit la même présentation : si la langue n’est pas
 renseignée, un sélecteur permet de la choisir avec les droits de gestion des paramètres ; sinon,
@@ -90,7 +94,7 @@ La barre latérale ne montre que les écrans autorisés par votre rôle :
 
 | Écran | À quoi il sert |
 |---|---|
-| Accueil | voir les agents disponibles, les tâches récentes et les étapes de configuration manquantes |
+| Accueil | retrouver vos équipes, vos interlocuteurs et les espaces accessibles avec votre rôle |
 | Agents | connaître le rôle, la personnalité et les capacités de chaque agent |
 | Suivi d’exécution | suivre séparément conversations texte, appels, tâches, processus et appels LLM en temps réel |
 | Objectifs | suivre les missions de fond, leurs cycles, preuves et résultats |
@@ -224,7 +228,7 @@ de la session et les solutions aux problèmes courants.
 ## Obtenir un premier document accompagné
 
 Sur la page Welcome (`/welcome`), **Réaliser votre première mission** est proposé après la configuration
-indispensable, choisissez un agent actif auquel vous avez accès en Discussion, puis une synthèse
+indispensable. Choisissez un agent actif auquel vous avez accès en Discussion, puis une synthèse
 de notes, une présentation de projet ou un plan de travail. Les exemples sont fictifs et modifiables.
 Le parcours vérifie les droits de création et d’envoi en Discussion, de suivi des tâches et de
 lecture des Documents avant de proposer le lancement.

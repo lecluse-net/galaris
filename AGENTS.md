@@ -96,9 +96,8 @@ a small change does not require a separate planning document.
 
 ### Bound the change and preserve consumers
 
-- When a new request can be accepted independently of work already in progress, start it
-  in a separate Git worktree from the appropriate committed base. Continue a follow-up
-  that depends on pending edits in the worktree that contains them.
+- Work in the current checkout. Never create or switch to a separate Git worktree for a
+  task. Keep each change scoped and preserve existing edits.
 - When several outcomes are in scope, finish the next verifiable one before starting an
   optional extension. If it is blocked, record the next observable outcome and the specific
   missing evidence in the existing plan, PR, or handoff so another session can resume it.

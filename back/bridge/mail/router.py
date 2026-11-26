@@ -11,7 +11,7 @@ from loguru import logger
 from core.authorize import Privileges, authorize, check_privilege
 from core.user import user_service, require_web_session
 from core.database import get_db
-from app.agent import current_management_scope
+from app.agent import current_dialogue_scope, current_management_scope
 from app.connection.facade import get_connection, has_any_active_tool_connection
 
 from .assertions import MailApproverAssertion
@@ -76,7 +76,7 @@ async def list_inbound_mail(
     from .inbound import list_receipts
 
     scope = await current_management_scope()
-    if agent_id is not None and not scope.allows(agent_id):
+    if agent_id is not None and not scope.allows(agent_id) and not (await current_dialogue_scope(agent_id=agent_id)).allows(agent_id):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
     return await list_receipts(current_user_id=_current_user_id(), agent_ids=scope.agent_ids,
         agent_id=agent_id, search=search, offset=offset, limit=limit, include_task=await _can_read_tasks())
@@ -141,7 +141,7 @@ async def list_outbound_mail(
     limit: int = Query(default=50, ge=1, le=500),
 ) -> MailDeliveryPage:
     management_scope = await current_management_scope()
-    if agent_id is not None and not management_scope.allows(agent_id):
+    if agent_id is not None and not management_scope.allows(agent_id) and not (await current_dialogue_scope(agent_id=agent_id)).allows(agent_id):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
     return await service.list_deliveries(
         current_user_id=_current_user_id(),

@@ -8,9 +8,10 @@ delegated scope; only `all` opens global scope.
 The requester of a delegated task can follow its result without gaining management of the
 recipient’s other tasks.
 
-Agent selectors use the scope of the action: managed agents in administration screens,
-allowed contacts in Chat, and the membership catalogue when composing a team. Their
-choices are checked again whenever the selector opens.
+The **Agents** page and profile lookup lists include the agents you manage and those on
+your teams. You can choose these agents in filters. Each screen applies its permissions to
+the results. When a visible agent is ineligible for an action, the selector shows it as
+**Unavailable for this action**. Choices are checked again whenever the selector opens.
 
 Agent dropdowns display a section for each team, in team order. An agent belonging to
 several teams appears in each section; agents without membership appear under **No team**.
@@ -63,7 +64,7 @@ In the **Agents** tab, **Add members**, between **Restart all** and **New Agent*
 the same editor for the current team's members, without a team selector. Select multiple
 humans or agents, click **Add** in their column, then **Save**. Other team memberships
 are preserved. The button requires team viewing and membership editing privileges and is
-disabled in the **No team** tab.
+available when a team is selected.
 
 Drag rows by their handle to reorder teams; dropping a row saves its position immediately.
 The handle also supports touch and the up/down arrow keys. New teams are appended to the list.

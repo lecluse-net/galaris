@@ -1,7 +1,7 @@
 import api from '@/core/api'
 
 export interface MissionAgent { agent_id: number; display_name: string; active: boolean; team_heading?: string; without_team?: boolean }
-interface AgentTeams { id: number; teams?: { id: number; name: string; order: number }[] }
+interface AgentTeams { id: number; label: string; teams?: { id: number; name: string; order: number }[] }
 export interface MissionJob { room: string; client: string; text: string; message: string | null }
 export interface MissionTask { id: string; label: string; status: string; paused: boolean }
 export interface MissionDocument { id: string; label: string; uri: string }
@@ -14,12 +14,15 @@ export const firstMissionService = {
     let memberships: AgentTeams[]
     try { memberships = (await api.get<AgentTeams[]>('/agents/selection', { params: { scope: 'dialogue' }, signal })).data }
     catch (error) { if (signal.aborted) throw error; return agents }
+    const eligible = new Set(agents.map(agent => agent.agent_id))
+    const visible = [...agents, ...memberships.filter(agent => agent.label && !eligible.has(agent.id))
+      .map(agent => ({ agent_id: agent.id, display_name: agent.label, active: false }))]
     const byId = new Map(memberships.map(agent => [agent.id, agent.teams ?? []]))
     const teams = [...new Map(memberships.flatMap(agent => (agent.teams ?? []).map(team => [team.id, team] as const))).values()]
       .sort((a, b) => a.order - b.order || a.id - b.id)
-    const unassigned = agents.filter(agent => !byId.get(agent.agent_id)?.length)
+    const unassigned = visible.filter(agent => !byId.get(agent.agent_id)?.length)
     return [
-      ...teams.flatMap(team => agents.filter(agent => byId.get(agent.agent_id)?.some(value => value.id === team.id))
+      ...teams.flatMap(team => visible.filter(agent => byId.get(agent.agent_id)?.some(value => value.id === team.id))
         .map((agent, index) => ({ ...agent, team_heading: index === 0 ? team.name : undefined }))),
       ...unassigned.map((agent, index) => ({ ...agent, without_team: index === 0 })),
     ]

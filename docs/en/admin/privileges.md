@@ -18,6 +18,10 @@ The following domains can be delegated independently. Where a route accepts its 
 another privilege. Resource permissions and managed-agent scope still apply;
 `AGENT_MANAGE_ALL` is a separate delegation.
 
+In the **Agents** catalogue, `AGENT_ACCESS` lets you view the profiles of the agents you
+manage and those on your teams. Agent management remains available to the assigned manager
+or to holders of global delegation, with the privileges required for the action.
+
 `CONNECTION_ACCESS` lets you view connections for your managed agents and agents on your
 teams. Outside your management scope, the view shows the service and status in read-only mode.
 
