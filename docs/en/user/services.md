@@ -58,6 +58,12 @@ When you add the REST protocol, the editor selects **No authentication**. If the
 credentials, link them to declared connection parameters.
 See [Enable a REST API](../admin/service-administration.md#rest-api).
 
+In a saved Service’s **REST** tab, **Generate a skill** assigns a task to the Galaris agent.
+It researches the provider’s public documentation, including OpenAPI or Swagger if available,
+and creates a generic skill with examples for using the Service. **Track the task** opens its
+progress and result. Find the generated skill in **Skills** and assign it to the relevant agents.
+Generation uses the Galaris agent’s web research and skill creation permissions.
+
 For example, to ask an agent to list GitLab projects, activate its GitLab Service
 connection and set the token. The agent finds that connection with `services_list`,
 then calls `rest_request` with the displayed `service_code` (for example `gitlab`) and the request

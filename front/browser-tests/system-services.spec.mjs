@@ -299,6 +299,15 @@ for (const width of [390, 1400]) {
     await routes(page)
     const rows = []
     const writes = []
+    const generationRequests = []
+    const generatedTask = '0b98f743-fc9a-4829-bec5-0bc4636a2fb9'
+    await page.route('**/api/services/91/generate-skill', async route => {
+      generationRequests.push(route.request().postDataJSON())
+      if (generationRequests.length === 1) {
+        return route.fulfill({ status: 503, json: { detail: 'Synthetic task admission failure' } })
+      }
+      return route.fulfill({ status: 202, json: { task_id: generatedTask } })
+    })
     await page.route('**/api/services', async route => {
       if (route.request().method() === 'GET') return route.fulfill({ json: rows })
       const body = route.request().postDataJSON()
@@ -313,7 +322,9 @@ for (const width of [390, 1400]) {
       Object.assign(rows[0], body, { has_api: !!body.rest_config })
       return route.fulfill({ json: rows[0] })
     })
-    await mount(page, 'app/services/components/ServicesList.vue', { privileges, dark: width === 390 })
+    await mount(page, 'app/services/components/ServicesList.vue', {
+      privileges: [...privileges, 'TASK_EDIT', 'SKILL_EDIT'], dark: width === 390,
+    })
     await page.getByRole('button', { name: 'New service', exact: true }).click()
     await page.getByRole('button', { name: 'Create a custom service', exact: true }).click()
     const dialog = page.getByRole('dialog')
@@ -337,6 +348,8 @@ for (const width of [390, 1400]) {
     await expect(dialog.getByLabel('Secret API token parameter', { exact: true })).toHaveCount(0)
     await expect(dialog.getByRole('group', { name: /^Parameter / })).toHaveCount(0)
     await expect(dialog.getByLabel('API base URL', { exact: true })).toHaveValue('')
+    const generate = dialog.getByRole('button', { name: 'Generate a skill', exact: true })
+    await expect(generate).toHaveCount(0)
     await dialog.getByLabel('API base URL', { exact: true }).fill('https://api.example.test/v1')
     await page.screenshot({ path: testInfo.outputPath('rest-no-auth.png'), animations: 'disabled' })
     await createButton.click()
@@ -400,6 +413,15 @@ for (const width of [390, 1400]) {
     await expect(dialog.getByLabel('API base URL', { exact: true })).toHaveValue('https://api.example.test/v1')
     await expect(dialog.getByText('token', { exact: true })).toBeVisible()
     await expect(dialog.getByText('x_synthetic', { exact: true })).toBeVisible()
+    await generate.click()
+    await expect(dialog.getByRole('alert')).toHaveText('Synthetic task admission failure')
+    await generate.click()
+    await expect(dialog.getByRole('link', { name: 'Track the task' })).toHaveAttribute('href', `/task?task_id=${generatedTask}`)
+    expect(generationRequests).toHaveLength(2)
+    expect(generationRequests[0]).toEqual({ operation_id: expect.any(String) })
+    expect(generationRequests[1]).toEqual(generationRequests[0])
+    expect(writes).toHaveLength(2)
+    await page.screenshot({ path: testInfo.outputPath('rest-skill-task.png'), animations: 'disabled' })
     await dialog.getByRole('button', { name: 'Save', exact: true }).click()
     await expect(dialog).toHaveCount(0)
     expect(writes[2].rest_config).toEqual(writes[1].rest_config)

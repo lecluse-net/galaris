@@ -17,7 +17,7 @@ tests restent l’autorité sur le comportement.
 - 30 paires de domaines directement bidirectionnelles ;
 - 1 composantes fortement connexes ;
 - 0 paires frontend directement bidirectionnelles ;
-- 846 handlers HTTP/WebSocket détectés ;
+- 847 handlers HTTP/WebSocket détectés ;
 - 212 tables SQLAlchemy détectées ;
 - 290 outils MCP natifs détectés ;
 - 59 pages Vue détectées.
@@ -533,7 +533,7 @@ tests restent l’autorité sur le comportement.
 | `app.process` | `core.storage` | `back/app/process/native_router.py`, `back/app/process/process_service.py`, `back/app/process/run_data.py`, `back/app/process/run_resources.py` |
 | `app.process` | `core.user` | `back/app/process/activity_controls.py`, `back/app/process/dataset_usage.py`, `back/app/process/events.py`, `back/app/process/facade.py`, `back/app/process/native_access.py`, `back/app/process/native_actors.py`, `back/app/process/native_definitions.py`, `back/app/process/process_service.py` |
 | `app.process` | `core.util` | `back/app/process/input_editing.py`, `back/app/process/native_router.py`, `back/app/process/process_service.py`, `back/app/process/run_data.py`, `back/app/process/run_resources.py` |
-| `app.services` | `app.agent` | `back/app/services/admin_service.py`, `back/app/services/agent_registry.py`, `back/app/services/authorization.py`, `back/app/services/authorization_notifications.py`, `back/app/services/authorization_presentation.py`, `back/app/services/authorization_router.py`, `back/app/services/builtin_merge.py`, `back/app/services/catalog.py`, `back/app/services/catalog_refresh_service.py`, `back/app/services/connection_functions.py`, `back/app/services/conversation_catalog.py`, `back/app/services/dbadmin.py`, `back/app/services/management_scope.py`, `back/app/services/mcp_loader.py`, `back/app/services/permission_catalog.py`, `back/app/services/resource_effects.py`, `back/app/services/router.py`, `back/app/services/runtime_authorization.py`, `back/app/services/runtime_permissions.py` |
+| `app.services` | `app.agent` | `back/app/services/admin_service.py`, `back/app/services/agent_registry.py`, `back/app/services/authorization.py`, `back/app/services/authorization_notifications.py`, `back/app/services/authorization_presentation.py`, `back/app/services/authorization_router.py`, `back/app/services/builtin_merge.py`, `back/app/services/catalog.py`, `back/app/services/catalog_refresh_service.py`, `back/app/services/connection_functions.py`, `back/app/services/conversation_catalog.py`, `back/app/services/dbadmin.py`, `back/app/services/management_scope.py`, `back/app/services/mcp_loader.py`, `back/app/services/permission_catalog.py`, `back/app/services/resource_effects.py`, `back/app/services/router.py`, `back/app/services/runtime_authorization.py`, `back/app/services/runtime_permissions.py`, `back/app/services/skill_generation.py` |
 | `app.services` | `app.connection` | `back/app/services/admin_access.py`, `back/app/services/admin_candidates.py`, `back/app/services/admin_contracts.py`, `back/app/services/admin_service.py`, `back/app/services/agent_registry.py`, `back/app/services/authorization.py`, `back/app/services/builtin_merge.py`, `back/app/services/connection_diagnostics.py`, `back/app/services/connection_functions.py`, `back/app/services/conversation_catalog.py`, `back/app/services/dbadmin.py`, `back/app/services/documentation_service.py`, `back/app/services/facade.py`, `back/app/services/management_scope.py`, `back/app/services/mandatory_services.py`, `back/app/services/mcp.py`, `back/app/services/mcp_authorization.py`, `back/app/services/mcp_loader.py`, `back/app/services/permission_catalog.py`, `back/app/services/protocols.py`, `back/app/services/rest.py`, `back/app/services/router.py`, `back/app/services/service.py`, `back/app/services/tool_inventory.py` |
 | `app.services` | `app.console` | `back/app/services/mcp_loader.py` |
 | `app.services` | `app.documentation` | `back/app/services/documentation_service.py` |
@@ -546,10 +546,10 @@ tests restent l’autorité sur le comportement.
 | `app.services` | `core.database` | `back/app/services/admin_service.py`, `back/app/services/administration_lock.py`, `back/app/services/authorization.py`, `back/app/services/authorization_models.py`, `back/app/services/authorization_notifications.py`, `back/app/services/authorization_presentation.py`, `back/app/services/authorization_router.py`, `back/app/services/authorization_views.py`, `back/app/services/catalog_refresh_service.py`, `back/app/services/conversation_catalog.py`, `back/app/services/deletion.py`, `back/app/services/desktop_relay.py`, `back/app/services/desktop_relay_models.py`, `back/app/services/documentation_service.py`, `back/app/services/facade.py`, `back/app/services/mandatory_services.py`, `back/app/services/mcp_loader.py`, `back/app/services/models.py`, `back/app/services/runtime_authorization.py`, `back/app/services/runtime_authorization_router.py`, `back/app/services/runtime_permissions.py`, `back/app/services/service.py`, `back/app/services/tool_inventory.py`, `back/app/services/tool_search_service.py` |
 | `app.services` | `core.dbadmin` | `back/app/services/capability_migration.py`, `back/app/services/dbadmin.py`, `back/app/services/mandatory_services.py`, `back/app/services/naming_migration.py`, `back/app/services/protocol_migration.py` |
 | `app.services` | `core.failure_journal` | `back/app/services/mcp_loader.py` |
-| `app.services` | `core.i18n` | `back/app/services/agent_registry.py`, `back/app/services/authorization_notifications.py`, `back/app/services/authorization_presentation.py`, `back/app/services/authorization_router.py`, `back/app/services/connection_diagnostics.py`, `back/app/services/connection_functions.py`, `back/app/services/mcp.py`, `back/app/services/mcp_diagnostics.py`, `back/app/services/mcp_loader.py`, `back/app/services/router.py`, `back/app/services/search_tool.py`, `back/app/services/service.py`, `back/app/services/tool_errors.py` |
+| `app.services` | `core.i18n` | `back/app/services/agent_registry.py`, `back/app/services/authorization_notifications.py`, `back/app/services/authorization_presentation.py`, `back/app/services/authorization_router.py`, `back/app/services/connection_diagnostics.py`, `back/app/services/connection_functions.py`, `back/app/services/mcp.py`, `back/app/services/mcp_diagnostics.py`, `back/app/services/mcp_loader.py`, `back/app/services/router.py`, `back/app/services/search_tool.py`, `back/app/services/service.py`, `back/app/services/skill_generation.py`, `back/app/services/tool_errors.py` |
 | `app.services` | `core.params` | `back/app/services/builtin_merge.py`, `back/app/services/mandatory_services.py`, `back/app/services/mcp_loader.py` |
 | `app.services` | `core.settings` | `back/app/services/router.py` |
-| `app.services` | `core.user` | `back/app/services/authorization.py`, `back/app/services/authorization_notifications.py`, `back/app/services/authorization_presentation.py`, `back/app/services/authorization_router.py`, `back/app/services/conversation_catalog.py`, `back/app/services/desktop_relay_router.py`, `back/app/services/router.py` |
+| `app.services` | `core.user` | `back/app/services/authorization.py`, `back/app/services/authorization_notifications.py`, `back/app/services/authorization_presentation.py`, `back/app/services/authorization_router.py`, `back/app/services/conversation_catalog.py`, `back/app/services/desktop_relay_router.py`, `back/app/services/router.py`, `back/app/services/skill_generation.py` |
 | `app.services` | `core.util` | `back/app/services/admin_candidates.py`, `back/app/services/admin_service.py`, `back/app/services/agent_registry.py`, `back/app/services/assertions.py`, `back/app/services/authorization.py`, `back/app/services/authorization_notifications.py`, `back/app/services/authorization_presentation.py`, `back/app/services/authorization_router.py`, `back/app/services/authorization_views.py`, `back/app/services/catalog.py`, `back/app/services/desktop_relay.py`, `back/app/services/mcp_authentication.py`, `back/app/services/rest_uploads.py`, `back/app/services/runtime_authorization.py`, `back/app/services/secrets.py`, `back/app/services/service.py` |
 | `app.share` | `core.database` | `back/app/share/models.py`, `back/app/share/service.py` |
 | `app.share` | `core.dbadmin` | `back/app/share/dbadmin.py` |
@@ -1997,28 +1997,29 @@ Aucune composante cyclique détectée.
 | POST | `/runtime-authorizations/receipt` | `app.services` | `action_receipt` | non | `back/app/services/runtime_authorization_router.py:96` |
 | GET | `/runtime-authorizations/{identifier}` | `app.services` | `action_status` | non | `back/app/services/runtime_authorization_router.py:84` |
 | GET | `/services` | `app.process` | `read_process_tools` | oui | `back/app/process/router.py:130` |
-| GET | `/services` | `app.services` | `list_services` | oui | `back/app/services/router.py:108` |
-| POST | `/services` | `app.services` | `create_service` | oui | `back/app/services/router.py:224` |
-| GET | `/services/agents/{agent_id}/mcp-tools` | `app.services` | `list_agent_mcp_tools` | oui | `back/app/services/router.py:130` |
-| GET | `/services/agents/{agent_id}/permissions` | `app.services` | `read_agent_permission_catalog` | oui | `back/app/services/router.py:139` |
-| GET | `/services/capabilities` | `app.services` | `list_supported_capabilities` | oui | `back/app/services/router.py:60` |
-| GET | `/services/catalog` | `app.services` | `service_catalogue` | oui | `back/app/services/router.py:48` |
-| POST | `/services/catalog/refresh` | `app.services` | `refresh_service_catalogue` | oui | `back/app/services/router.py:54` |
-| POST | `/services/import` | `app.services` | `import_service` | oui | `back/app/services/router.py:359` |
-| POST | `/services/mcp-candidates` | `app.services` | `prepare_mcp_candidate` | oui | `back/app/services/router.py:70` |
-| POST | `/services/test-mcp` | `app.services` | `test_mcp_connection` | oui | `back/app/services/router.py:152` |
-| GET | `/services/tool-inventory` | `app.services` | `list_tool_inventory` | oui | `back/app/services/router.py:119` |
+| GET | `/services` | `app.services` | `list_services` | oui | `back/app/services/router.py:110` |
+| POST | `/services` | `app.services` | `create_service` | oui | `back/app/services/router.py:226` |
+| GET | `/services/agents/{agent_id}/mcp-tools` | `app.services` | `list_agent_mcp_tools` | oui | `back/app/services/router.py:132` |
+| GET | `/services/agents/{agent_id}/permissions` | `app.services` | `read_agent_permission_catalog` | oui | `back/app/services/router.py:141` |
+| GET | `/services/capabilities` | `app.services` | `list_supported_capabilities` | oui | `back/app/services/router.py:62` |
+| GET | `/services/catalog` | `app.services` | `service_catalogue` | oui | `back/app/services/router.py:50` |
+| POST | `/services/catalog/refresh` | `app.services` | `refresh_service_catalogue` | oui | `back/app/services/router.py:56` |
+| POST | `/services/import` | `app.services` | `import_service` | oui | `back/app/services/router.py:387` |
+| POST | `/services/mcp-candidates` | `app.services` | `prepare_mcp_candidate` | oui | `back/app/services/router.py:72` |
+| POST | `/services/test-mcp` | `app.services` | `test_mcp_connection` | oui | `back/app/services/router.py:154` |
+| GET | `/services/tool-inventory` | `app.services` | `list_tool_inventory` | oui | `back/app/services/router.py:121` |
 | GET | `/services/{service_code}/health` | `app.process` | `read_process_tool_health` | oui | `back/app/process/router.py:136` |
-| DELETE | `/services/{service_id}` | `app.services` | `delete_service` | oui | `back/app/services/router.py:316` |
-| GET | `/services/{service_id}` | `app.services` | `get_service` | oui | `back/app/services/router.py:172` |
-| PUT | `/services/{service_id}` | `app.services` | `update_service` | oui | `back/app/services/router.py:240` |
-| GET | `/services/{service_id}/conversation-tools` | `app.services` | `read_conversation_tools` | oui | `back/app/services/router.py:262` |
-| PATCH | `/services/{service_id}/conversation-tools` | `app.services` | `update_conversation_tool` | oui | `back/app/services/router.py:288` |
-| POST | `/services/{service_id}/conversation-tools/discover` | `app.services` | `discover_conversation_tools` | oui | `back/app/services/router.py:269` |
-| GET | `/services/{service_id}/deletion-impact` | `app.services` | `service_deletion_impact` | oui | `back/app/services/router.py:304` |
-| GET | `/services/{service_id}/export` | `app.services` | `export_service` | oui | `back/app/services/router.py:333` |
-| GET | `/services/{service_id}/global-params` | `app.services` | `get_global_params` | oui | `back/app/services/router.py:184` |
-| PUT | `/services/{service_id}/global-params` | `app.services` | `update_global_params` | oui | `back/app/services/router.py:201` |
+| DELETE | `/services/{service_id}` | `app.services` | `delete_service` | oui | `back/app/services/router.py:344` |
+| GET | `/services/{service_id}` | `app.services` | `get_service` | oui | `back/app/services/router.py:174` |
+| PUT | `/services/{service_id}` | `app.services` | `update_service` | oui | `back/app/services/router.py:242` |
+| GET | `/services/{service_id}/conversation-tools` | `app.services` | `read_conversation_tools` | oui | `back/app/services/router.py:290` |
+| PATCH | `/services/{service_id}/conversation-tools` | `app.services` | `update_conversation_tool` | oui | `back/app/services/router.py:316` |
+| POST | `/services/{service_id}/conversation-tools/discover` | `app.services` | `discover_conversation_tools` | oui | `back/app/services/router.py:297` |
+| GET | `/services/{service_id}/deletion-impact` | `app.services` | `service_deletion_impact` | oui | `back/app/services/router.py:332` |
+| GET | `/services/{service_id}/export` | `app.services` | `export_service` | oui | `back/app/services/router.py:361` |
+| POST | `/services/{service_id}/generate-skill` | `app.services` | `request_service_skill` | oui | `back/app/services/router.py:269` |
+| GET | `/services/{service_id}/global-params` | `app.services` | `get_global_params` | oui | `back/app/services/router.py:186` |
+| PUT | `/services/{service_id}/global-params` | `app.services` | `update_global_params` | oui | `back/app/services/router.py:203` |
 | GET | `/skills` | `app.skill` | `list_skills` | oui | `back/app/skill/router.py:159` |
 | POST | `/skills` | `app.skill` | `create_skill` | oui | `back/app/skill/router.py:422` |
 | GET | `/skills/agents` | `app.skill` | `list_skill_agents` | oui | `back/app/skill/router.py:295` |

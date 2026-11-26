@@ -328,6 +328,8 @@
                       </div>
                     </q-tab-panel>
                   </q-tab-panels>
+                  <ServiceSkillGeneration v-if="canGenerateSkill && editingTool?.rest_config"
+                    :key="editingTool.id" :service-id="editingTool.id" :visible="activeTab === 'api'" />
                   <q-btn v-if="canEdit && activeCapability" color="negative" icon="delete" class="q-mt-md"
                     :label="$t('services.deleteProtocol')" @click="requestProtocolRemoval(activeCapability)" />
                 </template>
@@ -507,6 +509,7 @@ import { privileges, usePrivilegeStore } from '@/core/authorize'
 import ServiceGlobalParameters from './ServiceGlobalParameters.vue'
 import ServiceImportDialog from './ServiceImportDialog.vue'
 import ServiceMcpDiagnosticDialog from './ServiceMcpDiagnosticDialog.vue'
+import ServiceSkillGeneration from './ServiceSkillGeneration.vue'
 
 const $q = useQuasar()
 const { t, te } = useI18n()
@@ -515,6 +518,10 @@ const emit = defineEmits<{ deleted: [id: number] }>()
 const serviceRequests = storeRequests(serviceStore)
 const privilegeStore = usePrivilegeStore()
 const canEdit = computed(() => privilegeStore.hasPrivilege(privileges.SERVICE_EDIT))
+const canGenerateSkill = computed(() => canEdit.value
+  && privilegeStore.hasPrivilege(privileges.TASK_EDIT)
+  && privilegeStore.hasPrivilege(privileges.SKILL_EDIT)
+  && privilegeStore.hasPrivilege(privileges.AGENT_MANAGE_ALL))
 const search = ref<string | null>('')
 const origin = ref<ServiceOrigin>(SERVICE_ORIGINS[0])
 const catalogOpen = ref(false)

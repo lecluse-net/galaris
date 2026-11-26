@@ -1,11 +1,12 @@
 from typing import Annotated, Any, List
 import asyncio
+from uuid import UUID
 
 from fastapi import APIRouter, Body, Depends, HTTPException, Query, Response
 from loguru import logger
 from pydantic import BaseModel, Field, ValidationError
 
-from core.authorize import authorize, Privileges
+from core.authorize import authorize, Privileges, RequireAllPrivilegesAssertion
 from core.settings import settings
 from core.user import require_web_session
 from core.i18n import render_prompt, tr
@@ -31,6 +32,7 @@ from .deletion import DeletionConflict, ServiceDeletionImpact
 from .permission_catalog import AgentPermissionCatalog
 from .tool_inventory import ServiceToolInventory, read_tool_inventory
 from .capabilities import CapabilityDefinition
+from .skill_generation import GalarisAssistantUnavailable, generate_service_skill
 
 from .service_catalog import ServiceCatalog, compose_catalog, read_catalog, refresh_catalog
 
@@ -249,6 +251,32 @@ async def update_service(service_id: int, data: ServiceUpdate):
         )
     logger.info(f"Service updated: {record.code}")
     return _to_public(record)
+
+
+class ServiceSkillGenerationRequest(BaseModel):
+    operation_id: UUID
+
+
+class ServiceSkillGenerationReceipt(BaseModel):
+    task_id: UUID
+
+
+@router.post("/{service_id}/generate-skill", dependencies=[Depends(require_web_session)],
+    response_model=ServiceSkillGenerationReceipt, status_code=202)
+@authorize(privileges=Privileges.SERVICE_EDIT, assertion=RequireAllPrivilegesAssertion, params={
+    "required_privileges": [Privileges.TASK_EDIT, Privileges.SKILL_EDIT, Privileges.AGENT_MANAGE_ALL],
+})
+async def request_service_skill(service_id: int, data: ServiceSkillGenerationRequest) -> ServiceSkillGenerationReceipt:
+    record = await service.get_service_record_by_id(service_id)
+    if record is None:
+        raise HTTPException(status_code=404, detail=await _detail("tool_not_found", service_id=service_id))
+    if not record.rest_config:
+        raise HTTPException(status_code=409, detail=await _detail("skill_generation_rest_required"))
+    try:
+        task_id = await generate_service_skill(record, data.operation_id)
+    except GalarisAssistantUnavailable as exc:
+        raise HTTPException(status_code=409, detail=await _detail("skill_generation_agent_missing")) from exc
+    return ServiceSkillGenerationReceipt(task_id=task_id)
 
 
 class ConversationToolUpdate(BaseModel):

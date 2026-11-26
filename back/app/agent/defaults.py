@@ -18,6 +18,15 @@ from .models import Agent, Title
 from .observers import initialize_agent_creation, notify_agent_profile, project_agent_access
 
 
+async def installed_galaris_agent_id() -> int | None:
+    """Resolve the installation's assistant, even if a human renamed it."""
+    db = get_db()
+    identity = await db.scalar(select(Param.value).where(Param.name == Params.GALARIS_AGENT_ID))
+    if not identity or not identity.isdecimal():
+        return None
+    return await db.scalar(select(Agent.id).where(Agent.id == int(identity), Agent.deleted_at.is_(None)))
+
+
 async def _rows(session: AsyncSession) -> tuple[dict[str, object], ...]:
     # Signup and DbAdmin may overlap in different workers. The lock and all seed
     # effects belong to the same transaction; failed initialization can retry.

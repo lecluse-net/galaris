@@ -403,6 +403,11 @@ export default {
         return api.get(`/services/${id}`)
     },
 
+    async generateSkill(id: number, operationId: string): Promise<string> {
+        const { data } = await api.post<{ task_id: string }>(`/services/${id}/generate-skill`, { operation_id: operationId })
+        return data.task_id
+    },
+
     createService(data: ServiceCreate): Promise<AxiosResponse<Service>> {
         return api.post('/services', data)
     },

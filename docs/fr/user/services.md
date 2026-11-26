@@ -64,6 +64,13 @@ Quand vous ajoutez le protocole REST, l’éditeur sélectionne **Aucune authent
 Si l’API exige un identifiant, associez-le à un paramètre de connexion déclaré.
 Voir [Activer une API REST](../admin/service-administration.md#rest-api).
 
+Dans l’onglet **REST** d’un Service enregistré, **Générer une compétence** confie une tâche
+à l’agent Galaris. Il recherche la documentation publique du fournisseur, y compris OpenAPI ou
+Swagger si disponible, et crée une compétence générique avec des exemples d’utilisation du Service.
+**Suivre la tâche** ouvre son avancement et son résultat. Retrouvez la compétence dans la bibliothèque
+**Compétences** et attribuez-la aux agents concernés. La génération utilise les autorisations de
+recherche web et de création de compétences de l’agent Galaris.
+
 Pour demander à un agent de lire les projets GitLab, par exemple, activez sa connexion
 au Service GitLab et renseignez le jeton. L’agent retrouve cette connexion avec
 `services_list`, puis appelle `rest_request` avec le `service_code` affiché (par exemple `gitlab`) et la requête

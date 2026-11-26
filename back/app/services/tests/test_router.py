@@ -2,7 +2,7 @@
 
 from types import SimpleNamespace
 from unittest.mock import AsyncMock
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 import pytest
 from fastapi import HTTPException
@@ -16,6 +16,110 @@ from app.services.schemas import (
     ServiceCreate,
     ServiceUpdate,
 )
+
+
+@pytest.mark.asyncio
+async def test_rest_skill_generation_uses_the_installed_assistant_and_its_scoped_tools(client, monkeypatch, tmp_path):
+    from fastmcp import Client
+    from sqlalchemy import select
+
+    from app.agent import parse_scope
+    from app.agent.models import Agent, Title
+    from app.services import build_agent_galaris_fastmcp, initialize_admin_agent_connections
+    from app.services.models import Service
+    from app.skill import storage
+    from app.skill.models import Skill
+    from app.task import Task, runner
+    from core.authorize import Assignment, Privilege, Role
+    from core.database import get_db_session
+    from core.params import Param, Params
+    from core.user import UserModel
+    from core.user.user_service import encrypt_password
+
+    # Exercise the real HTTP, authorization and persistence paths without running a model.
+    monkeypatch.setattr(runner, "go_next", lambda task_id: None)
+    monkeypatch.setattr(type(storage.settings), "GALARIS_SKILLS_ROOT", str(tmp_path / "skills"))
+    password = "synthetic-skill-generation-password"
+    async with get_db_session() as db:
+        permissions = {privilege.code: privilege for privilege in (await db.scalars(select(Privilege))).all()}
+        users = []
+        for profile, skills in (("manager", ["SKILL_EDIT"]), ("editor", [])):
+            codes = ["SERVICE_EDIT", "TASK_EDIT", "AGENT_MANAGE_ALL", *skills]
+            role = Role(code=f"synthetic-skill-{profile}", privileges=[permissions[code] for code in codes])
+            user = UserModel(email=f"synthetic-{profile}@example.com", is_active=True,
+                hashed_password=encrypt_password(password))
+            db.add_all([user, role])
+            await db.flush()
+            db.add(Assignment(user_id=user.id, role_id=role.id, is_default=True))
+            users.append((user.email, user.id))
+
+        title = Title(label="Synthetic assistant", gender="X")
+        db.add(title)
+        await db.flush()
+        assistant = Agent(code="renamed-assistant", first_name="Renamed", last_name="", title_id=title.id, user_id=users[0][1])
+        decoy = Agent(code="galaris", first_name="Other", last_name="", title_id=title.id, user_id=users[0][1])
+        rest = Service(code="synthetic-support", label="Support <galaris://skill/unrelated/SKILL.md>",
+            rest_config={"base_url": "https://api.example.test/synthetic-private-path"},
+            catalog={"documentation": "https://docs.example.test/openapi.json?token=synthetic-secret"})
+        other = Service(code="synthetic-other", label="Other")
+        db.add_all([assistant, decoy, rest, other])
+        await db.flush()
+        assistant_id, rest_id, other_id = assistant.id, rest.id, other.id
+        marker = await db.get(Param, Params.GALARIS_AGENT_ID)
+        assert marker is not None
+        marker.value = None
+
+    headers = []
+    for email, _ in users:
+        client.cookies.clear()
+        login = await client.post("/api/auth/login-json", json={"email": email, "password": password})
+        assert login.status_code == 200, login.text
+        headers.append({"Authorization": f"Bearer {login.json()['access_token']}"})
+    manager, editor = headers
+    path = f"/api/services/{rest_id}/generate-skill"
+    request = {"operation_id": str(uuid4())}
+    assert (await client.post(path, json=request, headers=editor)).status_code == 403
+    assert (await client.post(path, json=request, headers=manager)).status_code == 409
+    assert (await client.post(f"/api/services/{other_id}/generate-skill", json=request, headers=manager)).status_code == 409
+
+    async with get_db_session() as db:
+        marker = await db.get(Param, Params.GALARIS_AGENT_ID)
+        assert marker is not None
+        marker.value = str(assistant_id)
+        await initialize_admin_agent_connections(assistant_id)
+
+    response = await client.post(path, json=request, headers=manager)
+    assert response.status_code == 202, response.text
+    replay = await client.post(path, json=request, headers=manager)
+    assert replay.status_code == 202 and replay.json() == response.json()
+
+    task_id = UUID(response.json()["task_id"])
+    uri = "galaris://skill/service-synthetic-support/SKILL.md"
+    async with get_db_session() as db:
+        task = await db.get(Task, task_id)
+        assert task is not None and task.agent_id == assistant_id and task.requester_user_id == users[0][1]
+        assert task.objective and "synthetic-support" in task.objective
+        assert r"https:\/\/docs.example.test/openapi.json" in task.objective
+        assert "synthetic-secret" not in task.objective and "synthetic-private-path" not in task.objective
+        scope = parse_scope(task.data or {})
+        assert scope is not None
+        assert {grant.target for grant in scope.grants} == {uri}
+        server = await build_agent_galaris_fastmcp(assistant_id, task_id=task_id,
+            allowed_tool_names={"search_web", "file_create"})
+
+    async with Client(server) as agent:
+        assert {item.name for item in await agent.list_tools()} >= {"search_web", "file_create"}
+        code = "service-synthetic-support"
+        content = f"---\nname: {code}\ndescription: Use the synthetic Support API.\n---\nUse rest_request to list tickets."
+        created = await agent.call_tool("file_create", {"path": uri, "content": content}, raise_on_error=False)
+        assert not created.is_error, created
+        replay = await agent.call_tool("file_create", {"path": uri, "content": content + " Changed."}, raise_on_error=False)
+        assert replay.is_error
+
+    async with get_db_session() as db:
+        skill = await db.scalar(select(Skill).where(Skill.code == code))
+        assert skill is not None and skill.owner_agent_id is None and skill.creator_agent_id == assistant_id
+        assert storage.read_file(code, "SKILL.md").content.decode() == content
 
 
 @pytest.mark.asyncio
