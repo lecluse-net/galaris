@@ -122,11 +122,18 @@ async def test_obsolete_process_markers_do_not_override_dataset_deletion_rights(
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("path,options", [("data://", {}), ("document://", {"document_format": "dataset"}), ("document://", {"document_format": "data"})])
-@pytest.mark.parametrize("empty", [None, "   "])
-async def test_missing_dataset_content_is_rejected_then_corrected_without_extra_resources(db, agents, path, options, empty):
+@pytest.mark.parametrize(("invalid_content", "message"), [
+    ({}, "content"),
+    ({"content": "   "}, "content"),
+    ({"content": r'{\"items\":[]}'}, "valid UTF-8 JSON"),
+    ({"content": "/w==", "encoding": "base64"}, "valid UTF-8 JSON"),
+])
+async def test_invalid_dataset_content_is_rejected_then_corrected_without_extra_resources(
+    db, agents, path, options, invalid_content, message,
+):
     from sqlalchemy import func
     from app.file_share.mcp import create_file
-    from app.services.contracts import ToolCallRejectedError
+    from app.services.contracts import ToolArgumentsRejectedError
     from app.services.mcp_loader import McpToolContext
     import json
 
@@ -134,11 +141,8 @@ async def test_missing_dataset_content_is_rejected_then_corrected_without_extra_
     tool_context = McpToolContext(agent_id=owner.id, runtime="internal")
     count = select(func.count()).select_from(Dataset).where(Dataset.owner_agent_id == owner.id)
     before = await db.scalar(count)
-    with pytest.raises(ToolCallRejectedError, match="content"):
-        if empty is None:
-            await create_file(tool_context, path, **options)
-        else:
-            await create_file(tool_context, path, content=empty, **options)
+    with pytest.raises(ToolArgumentsRejectedError, match=message):
+        await create_file(tool_context, path, **invalid_content, **options)
     assert await db.scalar(count) == before
     created = json.loads(await create_file(tool_context, path,
         content='{"items":[]}', name="Synthetic corrected inventory", **options))

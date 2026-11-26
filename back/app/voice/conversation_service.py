@@ -2,19 +2,65 @@
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+import asyncio
+from collections.abc import AsyncGenerator, Sequence
+from contextlib import asynccontextmanager
 from typing import Any
 from datetime import datetime, timezone
 from uuid import UUID, uuid4
 
-from sqlalchemy import select, update
+from loguru import logger
+from sqlalchemy import ColumnElement, and_, or_, select, update
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 
-from app.conversation import ConversationRound, ConversationRoundMessage
+from app.conversation import (
+    LEASE_SECONDS, VOICE_LEASE_PREFIX, ConversationLeaseLostError, ConversationRound, ConversationRoundMessage,
+    open_round_attempt, release_round_attempt, renew_round_lease,
+)
 from core import websocket
 from core.database import get_db
 
 from .models import VoiceConversationSession, VoiceConversationStatus, VoiceTurnStatus
+
+
+@asynccontextmanager
+async def keep_turn_lease(round_id: UUID, lease_token: UUID | None) -> AsyncGenerator[None]:
+    """Keep the live transport's claim through model preparation and streaming."""
+    if lease_token is None:
+        yield
+        return
+    from core.database import get_db_session
+
+    owner = asyncio.current_task()
+    if owner is None:
+        raise RuntimeError("Voice inference requires a live asyncio task.")
+    lease_lost = False
+
+    async def renew() -> None:
+        nonlocal lease_lost
+        while True:
+            await asyncio.sleep(LEASE_SECONDS / 6)
+            try:
+                async with get_db_session():
+                    renewed = await renew_round_lease(round_id, lease_token)
+            except Exception:
+                renewed = False
+            if not renewed:
+                lease_lost = True
+                logger.warning("Voice round {} lost its execution lease.", round_id)
+                owner.cancel()
+                return
+
+    heartbeat = asyncio.create_task(renew(), name=f"voice-round-lease:{round_id}")
+    try:
+        yield
+    except asyncio.CancelledError:
+        if lease_lost:
+            raise ConversationLeaseLostError(f"Voice round lease lost for {round_id}") from None
+        raise
+    finally:
+        heartbeat.cancel()
+        await asyncio.gather(heartbeat, return_exceptions=True)
 
 
 async def save_turn_checkpoint(turn_id: UUID, checkpoint: Any) -> None:
@@ -465,10 +511,9 @@ async def finish_session(
         active_round.status = VoiceTurnStatus.INTERRUPTED.value
         active_round.finished_at = session.finished_at
         active_round.interrupted_at = session.finished_at
-        active_round.encrypted_checkpoint = None
-        active_round.lease_token = None
-        active_round.lease_owner = None
-        active_round.lease_expires_at = None
+        if not active_round.effect_started:
+            active_round.encrypted_checkpoint = None
+        await release_round_attempt(active_round, "INTERRUPTED")
         await invalidate_authorization_context(
             owner_agent, f"voice:{session.id}:round:{active_round.id}"
         )
@@ -487,6 +532,7 @@ async def _pending_round(session_id: UUID) -> ConversationRound | None:
             ),
             ConversationRound.resolved_by_round_id.is_(None),
             ConversationRound.effective_objective.is_not(None),
+            ConversationRound.effect_started.is_(False),
         )
         .order_by(ConversationRound.sequence.desc())
         .limit(1)
@@ -522,27 +568,38 @@ async def start_turn(
     if session.status != VoiceConversationStatus.ACTIVE.value:
         raise RuntimeError(f"Voice session {session_id} is not active.")
 
+    from app.agent import conversation_driver_for_agent
+    from app.services.facade import invalidate_authorization_context
+
+    _, owner_agent, _ = await message_context(session)
+    driver_code = await conversation_driver_for_agent(owner_agent)
+    previous_status: ColumnElement[bool] = ConversationRound.status == "WAITING_APPROVAL"
+    if driver_code == "claude_embedded":
+        previous_status = or_(previous_status, and_(
+            ConversationRound.driver_code == "claude_embedded",
+            ConversationRound.status.in_(("RUNNING", "CLAIMED", "FROZEN")),
+        ))
     waiting = list(
         (
             await db.scalars(
                 select(ConversationRound)
                 .where(
                     ConversationRound.voice_session_id == session.id,
-                    ConversationRound.status == "WAITING_APPROVAL",
+                    previous_status,
                 )
                 .with_for_update()
             )
         ).all()
     )
-    from app.services.facade import invalidate_authorization_context
-
     for previous in waiting:
-        _, owner_agent, _ = await message_context(session)
         await invalidate_authorization_context(
             owner_agent, f"voice:{session.id}:round:{previous.id}"
         )
         previous.status = VoiceTurnStatus.INTERRUPTED.value
-        previous.encrypted_checkpoint = None
+        previous.finished_at = previous.interrupted_at = _now()
+        if not previous.effect_started:
+            previous.encrypted_checkpoint = None
+        await release_round_attempt(previous, "INTERRUPTED")
     source = await _pending_round(session.id)
     round_ = ConversationRound(
         id=run_id,
@@ -550,6 +607,7 @@ async def start_turn(
         voice_session_id=session.id,
         sequence=session.next_sequence,
         language=language,
+        driver_code=driver_code,
         source_round_id=source.id if source is not None else None,
         effective_objective=_combine_objective(
             source.effective_objective if source is not None else None,
@@ -564,6 +622,8 @@ async def start_turn(
     session.next_sequence += 1
     db.add(round_)
     await db.flush()
+    if driver_code == "claude_embedded":
+        open_round_attempt(round_, f"{VOICE_LEASE_PREFIX}{session.id}")
     if source is not None:
         source.resolved_by_round_id = round_.id
 
@@ -638,6 +698,7 @@ async def complete_turn(
         if round_ is not None and round_.status == "RUNNING":
             round_.status = VoiceTurnStatus.WAITING_APPROVAL.value
             round_.execution_result = execution_result
+            await release_round_attempt(round_, "WAITING_APPROVAL")
             await get_db().commit()
             await _publish_round_activity(round_.id)
         return
@@ -716,12 +777,18 @@ async def _finish_turn(
 
     finished_at = _now()
     round_.status = status.value
-    round_.encrypted_checkpoint = None
+    if status == VoiceTurnStatus.COMPLETED or not round_.effect_started:
+        round_.encrypted_checkpoint = None
     round_.execution_result = execution_result
     round_.last_error = (error or "").strip()[:4000] or None
     round_.first_text_at = first_text_at
     round_.first_audio_at = first_audio_at
     round_.finished_at = finished_at
+    await release_round_attempt(round_, {
+        VoiceTurnStatus.COMPLETED: "SUCCESS",
+        VoiceTurnStatus.INTERRUPTED: "INTERRUPTED",
+        VoiceTurnStatus.FAILED: "ERROR",
+    }[status], round_.last_error)
     if status == VoiceTurnStatus.INTERRUPTED:
         round_.interrupted_at = finished_at
     if status == VoiceTurnStatus.COMPLETED:

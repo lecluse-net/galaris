@@ -8,17 +8,24 @@ from core.dbadmin import DbAdminReconciler, DbAdminRegistry
 
 from .models import AgentHarness, Harness
 from .registry import all_providers
+from .service import embedded_driver_specs
 
 
 async def _backfill_selected_harnesses(session: AsyncSession) -> None:
     """Keep bridge selections out of the reusable OpenAI Messages table."""
 
     providers = {provider.code: provider for provider in all_providers()}
+    embedded_codes = set(embedded_driver_specs())
     assignments = list((await session.scalars(select(AgentHarness))).all())
     assigned_agents = {assignment.agent_id for assignment in assignments}
 
     for assignment in assignments:
         agent = await session.get(Agent, assignment.agent_id)
+        if (agent is not None and agent.agent_driver in embedded_codes
+                and (assignment.provider_metadata or {}).get("target_internal")):
+            # The assignment remains the cleanup receipt of the previous remote actor.
+            # The selected embedded driver lives on the Agent and already took effect.
+            continue
         harness = (
             await session.get(Harness, assignment.harness_id)
             if assignment.harness_id is not None
@@ -47,7 +54,7 @@ async def _backfill_selected_harnesses(session: AsyncSession) -> None:
         (
             await session.scalars(
                 select(Agent).where(
-                    Agent.agent_driver != "internal",
+                    Agent.agent_driver.not_in(embedded_codes),
                     Agent.id.not_in(assigned_agents),
                 )
             )

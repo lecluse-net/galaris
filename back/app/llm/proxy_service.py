@@ -15,10 +15,14 @@ import anyio
 from fastapi.responses import JSONResponse, StreamingResponse
 from loguru import logger
 
+from app.agent.contracts import ChildWaitRequested
 from core.database import get_db_session
 from core.i18n import render_prompt, t, tr
 from . import llm_call_service, llm_provider_service, llm_service, model_usages
 from core.util import as_dict, as_list
+from .call_capture import text_call_capture
+from .embedded_runtime import EmbeddedRequestLimitExceeded
+from .models import LLMCall
 from .provider_models import LLM
 from .correlation import current_deep_session
 from .provider_facade import (
@@ -62,6 +66,7 @@ async def require_managed_runtime_context(managed_runtime_request: bool, task_id
 async def _send_best_effort(
     client: httpx.AsyncClient, endpoint: str, headers: dict[str, str],
     body: dict[str, Any], *, stream: bool,
+    before_retry: Callable[[httpx.Response, dict[str, Any]], Awaitable[None]] | None = None,
 ) -> httpx.Response:
     from copy import deepcopy
     from .request_parameters import PAYLOAD_PARAMETERS
@@ -109,6 +114,8 @@ async def _send_best_effort(
         # Each retry removes an existing field, so nested negotiation is bounded too.
         del parent[path[-1]]
         await response.aclose()
+        if before_retry is not None:
+            await before_retry(response, forwarded)
 
 
 async def _run_stream_cleanup(
@@ -439,6 +446,7 @@ async def proxy_chat_completion(
     force_reasoning_effort: bool = False,
     sdk_request: bool = False,
     request_timeout: dict[str, float | None] | None = None,
+    retain_image_preview: bool = True,
 ) -> JSONResponse | StreamingResponse:
     # Route to the selected provider, record the trace, and forward the payload. The gateway never
     # manufactures an LLM answer. Provider policies adapt generation controls after routing;
@@ -530,29 +538,47 @@ async def proxy_chat_completion(
                 purpose = LLMCallPurpose.PROCESS_EXEC
 
         deadline = LLMCallDeadline()
-        call = await llm_call_service.create_running_call(
-            purpose=purpose,
-            task_id=task_id,
-            task_attempt_id=task_attempt_id,
-            agent_run_id=agent_run_id,
-            conversation_round_id=conversation_round_id,
-            process_run_id=process_run_id,
-            requester_user_id=requester_user_id,
-            agent_id=agent_id,
-            llm_id=llm.id,
-            provider_name=provider.name,
-            provider_code=provider.catalog_code or (
-                provider.provider_type
-                if provider.provider_type != "openai_compatible"
-                else None
-            ),
-            requested_model=requested_model,
-            effective_model=llm.llm_name,
-            reasoning_effort=applied_reasoning,
-            stream=stream,
-            request_body=body,
-            is_subscription=bool(getattr(llm, "is_subscription", False)),
+        from .image_trace import compact_trace_images
+
+        async def start_call(trace_body: dict[str, Any]) -> LLMCall:
+            return await llm_call_service.create_running_call(
+                purpose=purpose,
+                task_id=task_id,
+                task_attempt_id=task_attempt_id,
+                agent_run_id=agent_run_id,
+                conversation_round_id=conversation_round_id,
+                process_run_id=process_run_id,
+                requester_user_id=requester_user_id,
+                agent_id=agent_id,
+                llm_id=llm.id,
+                provider_name=provider.name,
+                provider_code=provider.catalog_code or (
+                    provider.provider_type
+                    if provider.provider_type != "openai_compatible"
+                    else None
+                ),
+                requested_model=requested_model,
+                effective_model=llm.llm_name,
+                reasoning_effort=applied_reasoning,
+                stream=stream,
+                request_body=trace_body if retain_image_preview else compact_trace_images(trace_body, retain_preview=False),
+                is_subscription=bool(getattr(llm, "is_subscription", False)),
+                sdk_request=sdk_request,
+            )
+
+        call = await start_call(body)
+
+    async def restart_call(rejected: httpx.Response, retry_body: dict[str, Any]) -> None:
+        nonlocal call
+        await llm_call_service.finalize_call(
+            call.id, trace={"upstream_request_id": rejected.headers.get("x-request-id")}, status="error",
+            error=f"Provider rejected the request (HTTP {rejected.status_code}).",
         )
+        async with get_db_session():
+            call = await start_call(retry_body)
+
+    capture = text_call_capture.get()
+    before_retry = restart_call if capture is not None and capture.embedded_origin is not None else None
 
     forwarded["model"] = llm.llm_name
     forwarded.pop("galaris_task_id", None)
@@ -602,9 +628,12 @@ async def proxy_chat_completion(
                 if api_key:
                     headers["Authorization"] = f"Bearer {api_key}"
                 endpoint = f"{base_url}/chat/completions"
-            upstream = await _send_best_effort(client, endpoint, headers, forwarded, stream=upstream_stream)
+            upstream = await _send_best_effort(
+                client, endpoint, headers, forwarded, stream=upstream_stream, before_retry=before_retry,
+            )
             if transport is not None and upstream.status_code == 401:
                 await upstream.aclose()
+                rejected = upstream
                 async with get_db_session():
                     prepared = await transport.prepare_request(
                         provider.id,
@@ -616,11 +645,15 @@ async def proxy_chat_completion(
                 headers = prepared.headers
                 forwarded = prepared.body
                 endpoint = prepared.endpoint
-                upstream = await _send_best_effort(client, endpoint, headers, forwarded, stream=upstream_stream)
+                if before_retry is not None:
+                    await before_retry(rejected, forwarded)
+                upstream = await _send_best_effort(
+                    client, endpoint, headers, forwarded, stream=upstream_stream, before_retry=before_retry,
+                )
     except asyncio.CancelledError:
         await _finish_cancelled_request(client, call.id, llm)
         raise
-    except ProviderAuthenticationError as exc:
+    except (ProviderAuthenticationError, EmbeddedRequestLimitExceeded, ChildWaitRequested) as exc:
         await client.aclose()
         await llm_call_service.finalize_call(
             call.id,
@@ -1026,6 +1059,7 @@ async def proxy_responses(
             purpose=purpose,
             task_id=task_id,
             task_attempt_id=task_attempt_id,
+            sdk_request=sdk_request,
             agent_run_id=agent_run_id,
             conversation_round_id=conversation_round_id,
             process_run_id=process_run_id,

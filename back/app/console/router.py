@@ -6,7 +6,7 @@ import asyncssh
 from fastapi import APIRouter, HTTPException, status
 from loguru import logger
 
-from app.agent import AgentOwnerAssertion, agent_service, current_management_scope
+from app.agent import AgentOwnerAssertion, agent_service, current_management_scope, resolve_tool_profile
 from app.connection import connection_service
 from app.services import service
 from core.authorize import Privileges, authorize
@@ -134,10 +134,10 @@ async def provision_embedded(data: EmbeddedProvisionRequest) -> EmbeddedProvisio
     agent = await agent_service.get(data.agent_id)
     if agent is None:
         raise HTTPException(status_code=404, detail="Agent not found")
-    if agent.agent_driver != "internal":
+    if not resolve_tool_profile(agent.agent_driver).console_execution:
         raise HTTPException(
             status_code=400,
-            detail="SSH console provisioning is available only with the internal harness",
+            detail="The selected harness does not support SSH console provisioning",
         )
     try:
         return await provision_embedded_console(agent)

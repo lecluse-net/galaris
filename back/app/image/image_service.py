@@ -44,6 +44,7 @@ async def _proxy_completion_json(
     *,
     task_id: UUID | None = None,
     agent_id: int | None = None,
+    retain_image_preview: bool = True,
 ) -> Dict[str, Any]:
     response = await proxy_chat_completion(
         body,
@@ -57,6 +58,7 @@ async def _proxy_completion_json(
         # Image generation and vision use explicitly configured specialist models. The task
         # remains correlated for supervision, but a high-effort executor must not replace them.
         route_executor_model=False,
+        retain_image_preview=retain_image_preview,
     )
     if not isinstance(response, JSONResponse):
         raise RuntimeError(
@@ -200,6 +202,10 @@ async def generate_image_bytes(
     return got
 
 
+async def has_vision_model(agent_id: int) -> bool:
+    return await llm_service.get_vision_llm(agent_id=agent_id) is not None
+
+
 async def describe_image(
     data: bytes,
     mime: Optional[str] = None,
@@ -208,6 +214,7 @@ async def describe_image(
     language: str | None = None,
     task_id: UUID | None = None,
     agent_id: int | None = None,
+    retain_image_preview: bool = True,
 ) -> str:
     """Describe or analyze an image through the configured vision model."""
     lang = language if is_supported(language) else default_language()
@@ -240,6 +247,7 @@ async def describe_image(
         lang,
         task_id=task_id,
         agent_id=agent_id,
+        retain_image_preview=retain_image_preview,
     )
 
     choices = as_list(payload.get("choices"))

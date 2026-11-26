@@ -149,6 +149,24 @@ def test_tool_error_is_marked_in_band_and_images_become_vision_payload() -> None
     assert tool["content"] == "[tool_error] échec"
 
 
+def test_pdf_is_forwarded_with_its_label_and_counted_as_media() -> None:
+    data = "UEZERGF0YQ=="
+    request = MessageRequest.model_validate({**BASIC_REQUEST, "messages": [{"role": "user", "content": [
+        {"type": "text", "text": "Document file://synthetic.pdf"},
+        {"type": "document", "source": {"type": "base64", "media_type": "application/pdf", "data": data}},
+        {"type": "text", "text": "Exact question about that document."},
+    ]}]})
+    _, user = translate_to_openai(request)["messages"]
+    assert user["content"] == [
+        {"type": "text", "text": "Document file://synthetic.pdf"},
+        {"type": "file", "file": {"filename": "attachment.pdf", "file_data": f"data:application/pdf;base64,{data}"}},
+        {"type": "text", "text": "Exact question about that document."},
+    ]
+    larger = request.model_dump()
+    larger["messages"][0]["content"][1]["source"]["data"] = "QUFB" * 120_000
+    assert anthropic_input_tokens(request) == anthropic_input_tokens(MessageRequest.model_validate(larger))
+
+
 # ───────────────────────── token estimation ─────────────────────────
 
 

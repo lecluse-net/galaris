@@ -17,6 +17,28 @@ from app.services.models import Service
 
 
 @pytest.mark.asyncio
+async def test_queue_groups_children_and_delegations_under_the_requesting_human(db):
+    from core.user.models import User
+    from app.task.facade import task_admission_roots
+
+    users = [User(email=f"scheduler-{i}@example.test", hashed_password="unused") for i in range(2)]
+    db.add_all(users)
+    await db.flush()
+    roots = [Task(id=uuid4(), label="Synthetic mission", requester_user_id=user.id) for user in users]
+    child = Task(id=uuid4(), label="Child", parent_id=roots[0].id)
+    delegated = Task(id=uuid4(), label="Delegated", source_task_id=child.id)
+    db.add_all([*roots, child, delegated])
+    await db.flush()
+    assert await task_admission_roots({roots[1].id, child.id, delegated.id}) == {
+        roots[1].id: (roots[1].id, users[1].id), child.id: (roots[0].id, users[0].id),
+        delegated.id: (roots[0].id, users[0].id),
+    }
+    roots[0].source_task_id = delegated.id
+    await db.flush()
+    assert await task_admission_roots({delegated.id, roots[1].id}) == {roots[1].id: (roots[1].id, users[1].id)}
+
+
+@pytest.mark.asyncio
 async def test_batch_activity_excludes_other_runs_auxiliary_calls_and_unmanaged_agents(db):
     title = Title(label="Mx", gender="M")
     db.add(title)
@@ -160,20 +182,12 @@ async def test_tool_results_are_scoped_to_the_exact_task_under_parallel_runs(
     assert "result" not in second_call.tool_calls[0]
 
 
-def test_task_owned_calls_can_retain_conversation_and_process_provenance() -> None:
-    predicates = llm_call_service.task_owned_call_predicates()
-
-    assert len(predicates) == 2
-    assert all("conversation_round_id" not in str(item) for item in predicates)
-    process_predicate = str(predicates[0])
-    assert "process_run_id IS NULL" in process_predicate
-    assert "purpose IN" in process_predicate
-
-
 @pytest.mark.asyncio
-async def test_one_call_is_visible_from_both_task_and_conversation_round(
+async def test_task_owned_calls_can_retain_conversation_and_process_provenance(
     db: AsyncSession,
 ) -> None:
+    from app.process.models import ProcessDefinition, ProcessRun
+
     suffix = uuid4().hex[:10]
     title = Title(label=f"LLM lineage {suffix}", gender="X")
     tool = Service(
@@ -215,6 +229,14 @@ async def test_one_call_is_visible_from_both_task_and_conversation_round(
     )
     db.add(task)
     await db.flush()
+    definition = ProcessDefinition(agent_id=agent.id, service_id=tool.id, engine_process_id=f"workflow-{suffix}",
+                                   label="Synthetic lineage process")
+    db.add(definition)
+    await db.flush()
+    run = ProcessRun(process_id=definition.id, launcher_agent_id=agent.id, engine_code="fake", status="running",
+                     correlation_id=uuid4().hex, callback_token="synthetic", launch_snapshot={}, task_id=task.id)
+    db.add(run)
+    await db.flush()
     db.add(
         ConversationTaskLink(
             round_id=round_.id,
@@ -225,13 +247,16 @@ async def test_one_call_is_visible_from_both_task_and_conversation_round(
     call = LLMCall(
         task_id=task.id,
         conversation_round_id=round_.id,
+        process_run_id=run.id,
         agent_id=agent.id,
         purpose="agent.dispatch",
         provider_name="test-provider",
         requested_model="test-model",
         effective_model="test-model",
     )
-    db.add(call)
+    background = LLMCall(task_id=task.id, process_run_id=run.id, purpose="process.exec", agent_id=agent.id,
+                         provider_name="test-provider", requested_model="test-model", effective_model="test-model")
+    db.add_all([call, background])
     await db.commit()
 
     assert [item.id for item in await llm_call_service.list_calls(task_id=task.id)] == [
@@ -243,6 +268,7 @@ async def test_one_call_is_visible_from_both_task_and_conversation_round(
             conversation_round_id=round_.id
         )
     ] == [call.id]
+    assert {item.id for item in await llm_call_service.list_calls(process_run_id=run.id)} == {call.id, background.id}
 
 
 @pytest.mark.asyncio
@@ -275,7 +301,7 @@ async def test_task_call_lineage_binds_current_attempt_and_conversation_round(
     db.add_all([task, attempt])
     await db.commit()
 
-    objective, attempt_id, resolved_round_id, resolved_process_run_id = (
+    objective, attempt_id, resolved_round_id, resolved_process_run_id, requester = (
         await llm_call_service._task_call_lineage(  # pyright: ignore[reportPrivateUsage]
             task_id=task_id,
             agent_id=None,
@@ -287,6 +313,7 @@ async def test_task_call_lineage_binds_current_attempt_and_conversation_round(
     assert attempt_id == attempt.id
     assert resolved_round_id == round_id
     assert resolved_process_run_id == process_run_id
+    assert requester == task.requester_user_id
 
     # The request has been admitted. A newer lease must not relabel its call
     # when the inference worker records it later.
@@ -302,7 +329,7 @@ async def test_task_call_lineage_binds_current_attempt_and_conversation_round(
         task_id=task_id, agent_id=None, conversation_round_id=None,
         admitted_attempt_id=attempt.id,
     )
-    assert admitted == (objective, attempt.id, round_id, process_run_id)
+    assert admitted == (objective, attempt.id, round_id, process_run_id, requester)
     with pytest.raises(ValueError, match="does not belong to the task"):
         await llm_call_service._task_call_lineage(  # pyright: ignore[reportPrivateUsage]
             task_id=task_id, agent_id=None, conversation_round_id=None,

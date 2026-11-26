@@ -1,11 +1,11 @@
-"""Provision the embedded SSH console for internal agents."""
+"""Provision the embedded SSH console for compatible agent drivers."""
 
 from __future__ import annotations
 
 import asyncssh
 from loguru import logger
 
-from app.agent import Agent, get_agent_record
+from app.agent import Agent, get_agent_record, resolve_tool_profile
 from app.connection import connection_service
 from app.services import service
 
@@ -17,8 +17,8 @@ from .ssh_client import SshExecutionTransport
 
 
 async def provision_embedded_console(agent: Agent) -> EmbeddedProvisionResult:
-    if agent.agent_driver != "internal":
-        raise ValueError("SSH console provisioning is available only with the internal harness")
+    if not resolve_tool_profile(agent.agent_driver).console_execution:
+        raise ValueError("The selected harness does not support SSH console provisioning")
     tool = await service.get_service_record("console")
     if tool is None:
         raise RuntimeError("The built-in console tool has not been synchronized yet")
@@ -133,7 +133,7 @@ async def provision_new_agent_console(agent_id: int, action: str) -> None:
     if action != "create":
         return
     agent = await get_agent_record(agent_id)
-    if agent is None or agent.agent_driver != "internal":
+    if agent is None or not resolve_tool_profile(agent.agent_driver).console_execution:
         return
     tool = await service.get_service_record("console")
     if tool is None:

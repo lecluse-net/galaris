@@ -16,19 +16,23 @@ from datetime import datetime, timezone
 
 from pydantic_ai import ModelRetry, ApprovalRequired, DeferredToolResults, ToolDenied
 from pydantic_ai.messages import ModelMessage
+from app.agent import HarnessCheckpointError, HarnessExecutionError
 from app.services.facade import AuthorizationClosed, AuthorizationRequired, authorization_status
 from pydantic_core import to_jsonable_python
 from app.services.contracts import ToolExecutionContext, tool_execution
 from .checkpoint_policy import AMENDMENT_RESUME_KEY, RECORDED_TOOL_STATUSES
 from .recovery_metrics import observe_recovery
+from .task_tool_scope import CONSOLE_RECOVERY_TOOLS, console_replay_key
 from .tool_results import TOOL_ERROR_SCHEMA, compact_tool_return, decode_tool_result, reported_tool_failure
 
 from app.agent.contracts import (
     AgentRunCheckpoint,
     AgentRunRequest,
     ExecutionResult,
+    HarnessFailure,
     ToolConcurrencyPolicy,
     ToolEffectPolicy,
+    WAITING_FOR_CONSOLE_RECEIPT,
 )
 
 _CHECKPOINT_VERSION = 5
@@ -135,7 +139,7 @@ def _returned_tool_error(
     return error
 
 
-class UnsafeCheckpointError(RuntimeError):
+class UnsafeCheckpointError(HarnessCheckpointError):
     """Raised when a previous process died during a potentially effectful call."""
 
 
@@ -232,6 +236,7 @@ class HarnessRunCheckpoint:
     history: list[Any] = field(default_factory=list[Any])
     _compatible: bool = True
     _replay: dict[str, deque[dict[str, Any]]] = field(default_factory=lambda: defaultdict(deque))
+    _recorded_console: dict[str, dict[str, Any]] = field(default_factory=dict[str, dict[str, Any]])
     _lock: asyncio.Lock = field(default_factory=asyncio.Lock)
     _repaired: bool = False
     waiting_for_children: bool = False
@@ -283,6 +288,12 @@ class HarnessRunCheckpoint:
         if isinstance(raw_history_value, list):
             self.history = list(cast(list[object], raw_history_value))
         for effect in self.effects:
+            self._retain_console_receipt(effect)
+            if (self.request.attempt_id is not None and self.request.task_id is not None
+                    and effect.get("tool_name") in CONSOLE_RECOVERY_TOOLS and effect.get("status") == "error_reported"
+                    and effect.get("outcome") == "unknown"):
+                effect["status"] = "outcome_unknown"
+                self._repaired = True
             if (
                 effect.get("status") == "failed"
                 and effect.get("outcome") != "rejected"
@@ -294,6 +305,30 @@ class HarnessRunCheckpoint:
                 "effect_policy"
             ) not in {"read", "idempotent"}:
                 self._replay[str(effect.get("signature") or "")].append(effect)
+
+    def _retain_console_receipt(self, effect: dict[str, Any]) -> None:
+        arguments = effect.get("arguments")
+        if (effect.get("tool_name") in CONSOLE_RECOVERY_TOOLS and effect.get("status") == "completed"
+                and effect.get("recovery_scope") and isinstance(arguments, dict)):
+            key = console_replay_key(cast(dict[str, Any], arguments))
+            self._recorded_console[key] = effect
+
+    def recorded_console_effects(self) -> tuple[dict[str, Any], ...]:
+        """Return settled Console effects from attempts before the current stream."""
+        return tuple(self._recorded_console.values())
+
+    def console_failure(self) -> HarnessFailure | None:
+        if self.request.task_id is None or self.request.attempt_id is None:
+            return None
+        pending = [effect for effect in self.effects
+                   if effect.get("tool_name") in CONSOLE_RECOVERY_TOOLS and effect.get("status") == "outcome_unknown"]
+        if not pending:
+            return None
+        reconcilable = bool(self.recovery_scope) and all(
+            effect.get("operation_id") and effect.get("recovery_scope") == self.recovery_scope for effect in pending
+        )
+        return HarnessFailure(code="effect_unknown", retry="reconcile" if reconcilable else "never",
+                              message="The task needs its original Console receipt before another model request.")
 
     @property
     def runtime_run_id(self) -> str:
@@ -449,6 +484,7 @@ class HarnessRunCheckpoint:
                         effect["status"] = "completed"
                         effect["outcome"] = "returned"
                         effect["result"] = _jsonable(result)
+                        self._retain_console_receipt(effect)
                         if not already_queued:
                             self._replay[str(effect.get("signature") or "")].append(effect)
                         self._append_recovered_result(effect)
@@ -590,6 +626,11 @@ class HarnessRunCheckpoint:
             self._replace_tool_return(result, effect)
 
     def take_replay(self, name: str, arguments: dict[str, Any]) -> tuple[bool, Any]:
+        if name in CONSOLE_RECOVERY_TOOLS:
+            previous = self._recorded_console.get(console_replay_key(arguments))
+            if previous is not None:
+                observe_recovery("replayed", run_id=self.runtime_run_id, operation_id=str(previous.get("id") or ""))
+                return True, previous.get("result")
         queue = self._replay.get(_signature(name, arguments))
         if not queue:
             return False, None
@@ -757,7 +798,9 @@ class HarnessRunCheckpoint:
                     else:
                         effect["error"] = retry_error
                     if tool_error_outcome is not None:
-                        effect["status"] = "error_reported"
+                        effect["status"] = ("outcome_unknown" if tool_error_outcome == "unknown"
+                            and name in CONSOLE_RECOVERY_TOOLS and self.request.task_id is not None
+                            and self.request.attempt_id is not None else "error_reported")
                         effect["outcome"] = tool_error_outcome
                     break
 
@@ -848,6 +891,17 @@ class HarnessRunCheckpoint:
             self.history = self._dump_messages(messages)
             await self._save(status="interrupted")
 
+    async def begin_run(self) -> None:
+        """Record a replay-safe boundary before the first inference or tool."""
+        async with self._lock:
+            await self._save()
+
+    async def finish_run(self, result: ExecutionResult) -> None:
+        """Keep the result until the Task scheduler applies the answer or child wait."""
+        async with self._lock:
+            status = "waiting_for_children" if result.disposition == "waiting_for_children" else "completed"
+            await self._save(status=status, final_result=result)
+
     @staticmethod
     def _dump_messages(messages: list[Any]) -> list[Any]:
         from pydantic_ai import messages as model_messages
@@ -858,11 +912,12 @@ class HarnessRunCheckpoint:
         )
         return list(cast(list[Any], dumped))
 
-    async def _save(self, *, status: str = "running") -> None:
+    async def _save(self, *, status: str = "running", final_result: ExecutionResult | None = None) -> None:
         if self.request.save_checkpoint is None:
             return
-        result = self.result_factory() if self.result_factory is not None else None
-        if result is not None:
+        result = final_result
+        if result is None and self.result_factory is not None:
+            result = self.result_factory()
             recorded = Counter(result.tools_used)
             completed: Counter[str] = Counter()
             for effect in self.effects:
@@ -875,7 +930,7 @@ class HarnessRunCheckpoint:
             AgentRunCheckpoint(
                 driver_code="internal",
                 runtime_run_id=self.runtime_run_id,
-                status=status,
+                status=WAITING_FOR_CONSOLE_RECEIPT if self.console_failure() is not None else status,
                 result=result.model_copy(deep=True) if result is not None else None,
                 data={
                     "version": _CHECKPOINT_VERSION,
@@ -1008,6 +1063,8 @@ def wrap_toolsets(
             execution: ToolExecutionContext | None = None
             try:
                 async with scheduler.slot(concurrency_policy):
+                    if checkpoint is not None and (failure := checkpoint.console_failure()) is not None:
+                        raise HarnessExecutionError(failure)
                     signature = _signature(name, tool_args)
                     if signature in argument_rejections:
                         result = deepcopy(argument_rejections[signature])
@@ -1061,6 +1118,8 @@ def wrap_toolsets(
                                 tool_call_id=ctx.tool_call_id,
                                 tool_error_outcome=tool_error_outcome,
                             )
+                            if tool_error_outcome == "unknown" and (failure := checkpoint.console_failure()) is not None:
+                                raise HarnessExecutionError(failure)
                     else:
                         execution = ToolExecutionContext(uuid4(), name)
                         try:

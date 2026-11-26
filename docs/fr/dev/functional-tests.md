@@ -2866,6 +2866,12 @@ locaux ; ils ne prouvent pas la réception sur un compte distant réel.
 
 Les autres providers déclarés sont `openrouter`, `mammouth`, `anthropic`, `deepseek`,
 `fireworks`, `groq`, `mistral`, `models_dev`, `together`, `cerebras`, `google`, `xai`, `nvidia`,
+`front/browser-tests/agents.spec.mjs` exerce aussi la fiche Agent lors d’une bascule de
+harnais. Une tâche active bloque toute écriture, même si d’autres tâches sont en pause.
+Fermer le dialogue conserve les tâches en pause. Dans le cas où elles sont seules à
+bloquer, la confirmation les termine avant l’enregistrement. Le parcours couvre aussi
+la bascule sans tâche bloquante et le refus d’enregistrer si la vérification échoue.
+
 `huggingface`, `cohere`, `perplexity`, `elevenlabs`, `sunoapi`, `byteplus`, `azure_speech`,
 `ollama`. La suite partagée ne qualifie pas exhaustivement toutes leurs opérations. Ajouter
 un cas spécifique lorsqu’une différence de protocole le justifie, pas une copie du workflow
@@ -3269,6 +3275,11 @@ la grille qui ignorait les relations.
 enfants non chargés et le plafond de quatre fois le diamètre. Les parcours `memory.spec.mjs`
 vérifient le masquage/réaffichage en 3D sur mobile et desktop ; `memory-3d.spec.mjs` vérifie
 les compteurs d'enfants différés et d'items hors cadrage, la taille réelle des pixels de dossiers
+`back/tests/test_embedded_claude_lineage.py` traverse l’API agent compatible OpenAI en
+JSON et en SSE avec chacun des deux harnais embarqués. Le scénario vérifie le résultat,
+la session rattachée au demandeur, la fin unique du flux et la correspondance entre les
+reçus fournisseur et les tentatives de dispatch et d’exécution de la tâche.
+
 avec 84 enfants non chargés et le maintien de tous leurs textes malgré le budget ordinaire et les chevauchements.
 Les scénarios ECharts de simulation, de caméra et de repli 2D sont retirés avec ce moteur.
 La navigation, le contenu, la pagination, les filtres et la réouverture restent couverts par

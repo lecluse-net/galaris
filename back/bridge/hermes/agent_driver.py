@@ -23,6 +23,7 @@ HERMES_DRIVER = AgentDriverSpec(
     ),
     manages_runtime=True,
     supports_cancellation=True,
+    deep_model_source="managed_gateway",
     checkpoint_policy_path="bridge.hermes.checkpoint_policy:create_policy",
     execution_capabilities=frozenset(
         {

@@ -12,7 +12,7 @@ from app.llm.handlers.openai_compatible import OpenAICompatibleHandler
 from app.llm.provider_facade import ProviderConnection
 
 
-_REALTIME_VOICES: tuple[tuple[str, str], ...] = (
+REALTIME_VOICES: tuple[tuple[str, str], ...] = (
     ("alloy", "Alloy"),
     ("ash", "Ash"),
     ("ballad", "Ballad"),
@@ -65,7 +65,7 @@ class OpenAIResourceDiscovery:
                 "speech",
                 resource_type="voice",
             )
-            for voice, label in _REALTIME_VOICES
+            for voice, label in REALTIME_VOICES
         )
         return resources
 

@@ -11,11 +11,11 @@ from app.harness import runtime
 from app.harness.skills import (
     _MAX_INLINE_SKILL_INSTRUCTIONS_CHARS,
     _build_capability,
-    _capability_instructions,
-    _read_skill_resource,
     _section_schema_values,
-    build_internal_skill_capabilities,
     build_eager_skill_capabilities,
+    build_internal_skill_capabilities,
+    read_skill_resource,
+    skill_guide_instructions,
 )
 from app.skill import skill_service, storage
 
@@ -167,9 +167,9 @@ async def test_assigned_skills_become_deferred_capabilities(
         read_tool.description
     )
     assert "without translating or paraphrasing" in read_tool.description
-    assert "references/guide.md" in _read_skill_resource("research")
-    assert _read_skill_resource("research", "references/guide.md") == "Use primary sources.\n"
-    missing = _read_skill_resource("research", "../secret")
+    assert "references/guide.md" in read_skill_resource("research")
+    assert read_skill_resource("research", "references/guide.md") == "Use primary sources.\n"
+    missing = read_skill_resource("research", "../secret")
     assert "Unable to read resource" in missing
     assert "Available files: SKILL.md, references/guide.md" in missing
     assert "Do not retry the same missing path" in missing
@@ -207,7 +207,7 @@ def test_large_skill_capability_uses_progressive_section_loading(
     (directory / "SKILL.md").write_text(guide, encoding="utf-8")
     monkeypatch.setattr(type(storage.settings), "GALARIS_SKILLS_ROOT", str(root))
 
-    compact = _capability_instructions("large-guide", guide, "skill_large_guide_read_file")
+    compact = skill_guide_instructions("large-guide", guide, "skill_large_guide_read_file")
 
     assert len(guide) > _MAX_INLINE_SKILL_INSTRUCTIONS_CHARS
     assert len(compact) < 2_000
@@ -216,12 +216,12 @@ def test_large_skill_capability_uses_progressive_section_loading(
     assert 'path="SKILL.md"' in compact
     assert "never guess" in compact
     assert "never translate or paraphrase" in compact
-    audio = _read_skill_resource("large-guide", "SKILL.md", "## Audio transcription")
+    audio = read_skill_resource("large-guide", "SKILL.md", "## Audio transcription")
     assert "Use audio_transcribe" in audio
     assert "Never read the original multimedia file" in audio
     assert "Verbose console documentation" not in audio
-    assert _read_skill_resource("large-guide", section="Audio transcription") == audio
-    assert "Section 'Unknown' not found" in _read_skill_resource("large-guide", section="Unknown")
+    assert read_skill_resource("large-guide", section="Audio transcription") == audio
+    assert "Section 'Unknown' not found" in read_skill_resource("large-guide", section="Unknown")
     assert _section_schema_values("large-guide") == (
         "Large guide",
         "Audio transcription",
@@ -290,7 +290,7 @@ async def test_skill_reader_can_recover_after_two_invalid_resource_guesses(
 
 def test_galaris_capability_teaches_document_attachment_workflow() -> None:
     guide = " ".join(
-        _read_skill_resource("galaris", "SKILL.md", "Long-term memory").split()
+        read_skill_resource("galaris", "SKILL.md", "Long-term memory").split()
     )
 
     assert '`file_list("document://<uuid>/attachments/")`' in guide

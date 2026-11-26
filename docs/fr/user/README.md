@@ -189,6 +189,10 @@ Les gestionnaires d'agents peuvent choisir un **Profil principal** et un **Profi
 (secours)** dans **Agents → Modifier → Modèles**. Ce profil secondaire prend la priorité
 sur le réglage global. La bascule reprend le modèle du même usage dans le profil de secours,
 si cet usage est renseigné. La conversation ou la tâche conserve le travail déjà effectué.
+Avec les harnais embarqués, la tâche continue sur le modèle de secours après un résultat d’outil
+tant que ce modèle est disponible dans le profil de secours. Si une tâche à effort élevé démarre
+sur le modèle standard faute de modèle élevé, elle utilise le secours standard. Une nouvelle
+tâche évalue à nouveau son profil principal.
 Les détails de la bascule apparaissent dans les journaux d'appels LLM.
 [Règles de bascule](../reference/functional-catalogue.md#fallback-profiles)
 
@@ -828,6 +832,9 @@ en indiquant les sections, leurs durées et les paroles à reprendre, puis une d
 L'agent suit la génération jusqu'à ce que le fichier soit enregistré à cette destination.
 Un incident temporaire de suivi laisse la génération en attente pendant la reprise automatique.
 Voir le [guide Multimédia](../components/multimedia.md).
+Quand Claude Agent répond avec une voix OpenAI compatible, le détail du tour affiche la réponse
+de Claude et les appels modèle qui l’ont produite.
+
 
 ### Générer une vidéo à partir d'images avec Seedance
 

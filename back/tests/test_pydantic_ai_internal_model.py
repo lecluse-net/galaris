@@ -4,7 +4,7 @@ import json
 from collections.abc import AsyncIterator
 from typing import Any
 from unittest.mock import AsyncMock
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 import pytest
 from fastapi.responses import JSONResponse, StreamingResponse
@@ -135,6 +135,7 @@ async def test_internal_model_routes_pydantic_ai_requests_through_llm_call_proxy
         *,
         purpose: str | None = None,
         task_id: Any,
+        task_attempt_id: UUID | None = None,
         agent_run_id: Any = None,
         conversation_round_id: Any = None,
         agent_id: int | None = None,
@@ -146,6 +147,7 @@ async def test_internal_model_routes_pydantic_ai_requests_through_llm_call_proxy
     ) -> StreamingResponse:
         captured["body"] = body
         captured["task_id"] = task_id
+        captured["task_attempt_id"] = task_attempt_id
         captured["agent_run_id"] = agent_run_id
         captured["conversation_round_id"] = conversation_round_id
         captured["agent_id"] = agent_id
@@ -178,11 +180,14 @@ async def test_internal_model_routes_pydantic_ai_requests_through_llm_call_proxy
         fake_proxy_chat_completion,
     )
     task_id = uuid4()
+    task_attempt_id = uuid4()
     agent_run_id = uuid4()
     conversation_round_id = uuid4()
     llm = LLM(
         id=12,
         llm_provider_id=3,
+        provider=LLMProvider(id=3, name="Synthetic provider", provider_type="openai_compatible",
+                             base_url="https://provider.test/v1"),
         code="stable-code",
         llm_name="provider-model",
         label="Provider model",
@@ -190,6 +195,7 @@ async def test_internal_model_routes_pydantic_ai_requests_through_llm_call_proxy
     model = await pydantic_ai_utils.build_model_for_llm(
         llm,
         task_id=task_id,
+        task_attempt_id=task_attempt_id,
         agent_run_id=agent_run_id,
         conversation_round_id=conversation_round_id,
         agent_id=7,
@@ -206,6 +212,7 @@ async def test_internal_model_routes_pydantic_ai_requests_through_llm_call_proxy
     assert captured["body"]["temperature"] == 0.2
     assert captured["body"]["max_tokens"] == 256
     assert captured["task_id"] == task_id
+    assert captured["task_attempt_id"] == task_attempt_id
     assert captured["agent_run_id"] == agent_run_id
     assert captured["conversation_round_id"] == conversation_round_id
     assert captured["agent_id"] == 7

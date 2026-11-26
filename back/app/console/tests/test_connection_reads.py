@@ -137,8 +137,9 @@ async def test_console_resolution_keeps_secrets_globals_errors_and_freshness(db)
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("driver", ["internal", "claude_embedded"])
 @pytest.mark.parametrize("count", [41, 501])
-async def test_executor_availability_batches_agents_and_keeps_effective_host_rules(db, count):
+async def test_executor_availability_batches_agents_and_keeps_effective_host_rules(db, count, driver):
     """Cover the former mocked driver/activation cases through real configuration reads."""
     agents = await owners(db, count=count, driver="hermes")
     tool = await db.scalar(select(Service).where(Service.code == "console"))
@@ -157,7 +158,7 @@ async def test_executor_availability_batches_agents_and_keeps_effective_host_rul
     save_report("console-executor-reads" if count == 41 else "console-executor-large-reads", report)
 
     agent = await db.get(Agent, agent_ids[-1])
-    agent.agent_driver = "internal"
+    agent.agent_driver = driver
     await db.commit()
     assert await is_embedded_executor_in_use() is True
     connection = await db.get(Connection, connection_ids[-1])

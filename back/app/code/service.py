@@ -17,7 +17,7 @@ from core.database import get_db
 from core.settings import settings
 from core.user import current_web_session_family, get_current_user, get_user_record, web_session_active
 
-from .contracts import CodeConnection, CodeRuntimeNotConfiguredError, CodeSessionUnavailableError, RepositoryCandidates, WorkspaceTarget, Mode, RUNTIME_CONFIGURATION_LOCK_OFFSET, runtime
+from .contracts import CodeConnection, CodeRuntimeNotConfiguredError, CodeSessionUnavailableError, RepositoryCandidates, RepositoryReferenceError, WorkspaceTarget, Mode, RUNTIME_CONFIGURATION_LOCK_OFFSET, runtime
 from .models import CodeConversationLink, CodeDisplayRequest, CodeGrant, CodeSession, CodeWorkspace
 from .schemas import SessionInfo, WorkspaceInfo
 
@@ -91,11 +91,18 @@ async def register_repository(reference: str, agent_id: int) -> CodeWorkspace:
 
 
 async def _register_repository(reference: str, agent_id: int, user_id: int | None = None) -> CodeWorkspace:
-    parsed = urlsplit(reference)
+    try:
+        parsed = urlsplit(reference)
+    except ValueError as exc:
+        raise RepositoryReferenceError("Use a console:// directory or galaris://code/<uuid>") from exc
     if parsed.scheme == "galaris" and parsed.netloc == "code" and not parsed.query and not parsed.fragment:
-        return await workspace_for_agent(UUID(parsed.path.strip("/")), agent_id)
+        try:
+            workspace_id = UUID(parsed.path.strip("/"))
+        except ValueError as exc:
+            raise RepositoryReferenceError("Use a valid galaris://code/<uuid> reference") from exc
+        return await workspace_for_agent(workspace_id, agent_id)
     if parsed.scheme != "console" or parsed.query or parsed.fragment or parsed.username:
-        raise ValueError("Use a console:// directory or galaris://code/<uuid>")
+        raise RepositoryReferenceError("Use a console:// directory or galaris://code/<uuid>")
     path = unquote(parsed.netloc + parsed.path).rstrip("/") or "."
     config = await runtime().connection_for_agent(agent_id)
     if config.owner_user_id is None:

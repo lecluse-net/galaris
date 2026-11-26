@@ -9,6 +9,7 @@ from core.database import get_db
 from core.authorize import Privileges
 from core.i18n import render_prompt, tr
 from .assertions import AgentOwnerAssertion
+from .contracts import AgentDriverError
 from .management_scope import AgentScopeDeniedError, current_management_scope
 from .schemas import (
     Title as TitleSchema, TitleCreate, TitleUpdate,
@@ -183,6 +184,7 @@ async def read_executor_drivers() -> List[ExecutorDriverInfo]:
             label_key=driver.label_key,
             available=statuses[driver.code].available,
             manages_runtime=driver.manages_runtime,
+            transport=driver.transport,
             enabled=statuses[driver.code].enabled,
             configured=statuses[driver.code].configured,
             ready=statuses[driver.code].ready,
@@ -274,7 +276,7 @@ async def create_agent(
         created = await agent_service.create(agent)
     except AgentScopeDeniedError as e:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(e)) from e
-    except ValueError as e:
+    except (ValueError, AgentDriverError) as e:
         logger.warning("Agent creation rejected for '{}': {}", agent.code, e)
         raise HTTPException(status_code=400, detail=str(e))
     except Exception:

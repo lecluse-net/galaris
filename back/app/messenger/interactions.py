@@ -16,6 +16,7 @@ from sqlalchemy import String, cast as sql_cast, delete, or_, select, update
 from sqlalchemy.sql.elements import ColumnElement
 
 from app.messenger.facade import MessengerFacade
+from app.messenger.interface import ChoiceRejected
 from app.messenger.models import Interaction, Message, MessengerUser, RoomUser
 from app.messenger.events import interaction_changed
 from core.database import get_db
@@ -568,11 +569,11 @@ async def resolve_pending_choice(
     normalized_reference = reference.strip().lstrip("#").upper()
     normalized_option = option_id.strip()
     if not normalized_reference:
-        raise ValueError("reference is required")
+        raise ChoiceRejected("reference is required")
     if not normalized_option:
-        raise ValueError("option_id is required")
+        raise ChoiceRejected("option_id is required")
     if not room_id.strip():
-        raise ValueError("room_id is required")
+        raise ChoiceRejected("room_id is required")
 
     user_clause: ColumnElement[bool] = (
         or_(Interaction.user_id.is_(None), Interaction.user_id == user_id)
@@ -593,7 +594,7 @@ async def resolve_pending_choice(
         .execution_options(populate_existing=True)
     )
     if record is None:
-        raise ValueError("Pending choice not found in this conversation scope.")
+        raise ChoiceRejected("Pending choice not found in this conversation scope.")
 
     option = next(
         (
@@ -604,15 +605,15 @@ async def resolve_pending_choice(
         None,
     )
     if option is None:
-        raise ValueError("option_id is not available for this pending choice.")
+        raise ChoiceRejected("option_id is not available for this pending choice.")
 
     existing = _resolution_from_record(record)
     if record.status in {"PROCESSING", "RESOLVED"}:
         if existing is None or existing.option_id != option.id:
-            raise ValueError("This choice was already captured with another option.")
+            raise ChoiceRejected("This choice was already captured with another option.")
         return existing, record.status == "RESOLVED"
     if record.status != "PENDING" or record.has_expired(datetime.now(timezone.utc)):
-        raise ValueError("This choice is no longer pending.")
+        raise ChoiceRejected("This choice is no longer pending.")
 
     if not await _recipient_authorized(record):
         raise PermissionError("Permission decision access is required.")

@@ -28,6 +28,7 @@ from .contracts import (
     public_ai_result,
 )
 from .controller import register_controller
+from .checkpoint_journal import RoundCheckpointWriter
 from .process_interactions import ProcessHumanMessenger
 from .management_service import delete_round
 from .contracts import ConversationControlAction, ConversationControlConflict, ConversationControlResult
@@ -80,17 +81,33 @@ from .models import (
     ConversationRoundMessage,
     ConversationTaskLink,
 )
-from .service import linked_work_snapshot, control_round
+from .service import (
+    LEASE_SECONDS, VOICE_LEASE_PREFIX, ConversationLeaseLostError, admit_round_inference,
+    authorize_round_inference, control_round, linked_work_snapshot, mark_effect_if_fresh,
+    open_round_attempt, release_round_attempt, renew_round_lease,
+)
 from .contact_authorization import pause_for_contact_authorization as pause_for_contact_authorization
 from .deep import (
-    DeepActivityEvent, DeepRoomInfo, admit_deep_input, authorize_deep_runtime, deep_events, deep_room_info, deep_session_agent,
+    DeepActivityEvent, DeepRoomInfo, admit_deep_input, authorize_deep_runtime, authorize_embedded_deep_inference,
+    deep_events, deep_room_info, deep_session_agent,
     deep_running, register_deep_listener, register_deep_workspace_access, start_deep, stop_deep,
     stop_deep_submission,
 )
 
 __all__ = [
+    "authorize_round_inference",
+    "admit_round_inference",
+    "open_round_attempt",
+    "release_round_attempt",
+    "renew_round_lease",
+    "mark_effect_if_fresh",
+    "LEASE_SECONDS",
+    "VOICE_LEASE_PREFIX",
+    "ConversationLeaseLostError",
+    "RoundCheckpointWriter",
     "DeepSession",
-    "DeepActivityEvent", "DeepRoomInfo", "admit_deep_input", "authorize_deep_runtime", "deep_events", "deep_room_info",
+    "DeepActivityEvent", "DeepRoomInfo", "admit_deep_input", "authorize_deep_runtime", "authorize_embedded_deep_inference",
+    "deep_events", "deep_room_info",
     "deep_session_agent", "deep_running", "register_deep_listener", "register_deep_workspace_access",
     "start_deep", "stop_deep", "stop_deep_submission",
     "delete_round",

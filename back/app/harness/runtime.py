@@ -53,7 +53,7 @@ from app.llm import pydantic_ai_utils as _llm_pydantic_ai_utils
 from app.agent.contracts import TaskMessage as Message
 from app.agent.contracts import AIMessage, AgentUsage, normalize_tool_name
 from app.agent import ReasoningPatternGuard, message_author_kind, message_history_role, message_history_text
-from app.agent.contracts import ReasoningDegenerationError
+from app.agent.contracts import ChildWaitRequested, ReasoningDegenerationError
 from app.agent.conversation_context import (
     LeadingMessageMetadataFilter,
     message_prompt,
@@ -140,10 +140,6 @@ class RepeatedDocumentReadError(RuntimeError):
 
 class IncompleteModelResponseError(RuntimeError):
     """Raised when a provider marks a terminal response as incomplete or filtered."""
-
-
-class ChildWaitRequested(RuntimeError):
-    """The completed tool batch created a durable coordination wait."""
 
 
 def _empty_model_output_failure(
@@ -355,7 +351,7 @@ def _compact_resource_read_return(
         key: resource[key]
         for key in (
             "uri", "encoding", "media_type", "indexing_status", "start", "end",
-            "total", "next_offset", "revision", "etag", "offset_unit",
+            "total", "next_offset", "revision", "etag", "offset_unit", "selector",
             "content_profile", "content_profile_version",
         )
         if key in resource
@@ -935,8 +931,8 @@ class AgentRuntime(ABC):
         on_model_activity: Callable[[], Awaitable[None]] | None = None,
         native_history: str | None = None,
         save_native_history: Callable[[str], None] | None = None,
-    ) -> AsyncIterator[AIMessage]:
-        """Run the agent and stream messages.
+    ) -> AsyncGenerator[AIMessage, None]:
+        """Run the agent and stream messages until exhausted or closed by its owner.
 
         ``self_id`` distinguishes assistant history, ``images`` supplies native multimodal
         parts, and ``input_files`` references short-lived files materialized for this run.
@@ -1019,15 +1015,14 @@ class Agent(AgentRuntime):
             self.llm,
             enable_native_media=True,
             task_id=self._task_id,
+            task_attempt_id=self._checkpoint.request.attempt_id if self._task_id is not None and self._checkpoint else None,
             agent_run_id=self._agent_run_id,
             conversation_round_id=self._conversation_round_id,
             agent_id=self._agent_id,
             purpose=self._purpose,
             reasoning_effort=self._reasoning_effort,
-            model_field=(model_usages.EXECUTOR_HIGH
-                         if self._checkpoint is not None
-                         and self._checkpoint.request.model.requested_effort == "high"
-                         and not self._checkpoint.request.model.fallback_used else None),
+            model_field=(model_usages.EXECUTOR_HIGH if self._checkpoint is not None
+                         and self._checkpoint.request.model.executor_profile_effort == "high" else None),
         )
         self._model = model
 
@@ -1310,7 +1305,7 @@ class Agent(AgentRuntime):
         on_model_activity: Callable[[], Awaitable[None]] | None = None,
         native_history: str | None = None,
         save_native_history: Callable[[str], None] | None = None,
-    ) -> AsyncIterator[AIMessage]:  # type: ignore
+    ) -> AsyncGenerator[AIMessage, None]:  # type: ignore
         """Run in streaming mode and yield each partial or tool message in real time."""
 
         if self._agent is None:
@@ -1401,6 +1396,13 @@ class Agent(AgentRuntime):
         state = _StreamState(observe_text_no_progress=self._real_time)
         captured_messages: list[_pydantic_messages.ModelMessage] = []
         run_usage = RunUsage()
+        tool_call_limit = runtime_settings.TASK_AGENT_MAX_TOOL_CALLS
+        if active_checkpoint is not None and active_checkpoint.request.task_id is not None:
+            tool_call_limit = active_checkpoint.request.limits.tool_call_limit or tool_call_limit
+            # The SDK counts calls from the resumed approval batch when it runs
+            # them. Seed only the prior calls it will not count again.
+            resumed_calls = len(deferred_results.approvals) if deferred_results is not None else 0
+            run_usage.tool_calls = len(active_checkpoint.effects) - resumed_calls
         try:
             while True:
                 try:
@@ -1420,7 +1422,7 @@ class Agent(AgentRuntime):
                                 usage=run_usage,
                                 usage_limits=UsageLimits(
                                     request_limit=runtime_settings.TASK_AGENT_MAX_REQUESTS,
-                                    tool_calls_limit=runtime_settings.TASK_AGENT_MAX_TOOL_CALLS,
+                                    tool_calls_limit=tool_call_limit,
                                     count_tokens_before_request=True,
                                 ),
                             ) as event_stream:
@@ -1580,6 +1582,7 @@ class Agent(AgentRuntime):
                 # Provider call IDs are local to a model response, not to this run.
                 # Keep them for correlation, but give each emitted result its own identity.
                 msg.stream_id = f"tool:{uuid4().hex}"
+                msg.stream_mode = "snapshot"
                 if not msg.success:
                     await self._record_tool_failure(event, tool_call_event, msg)
                 repeated = _observe_tool_result(state, msg, event.part.content)

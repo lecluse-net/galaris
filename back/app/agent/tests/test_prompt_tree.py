@@ -196,7 +196,7 @@ def test_conversation_action_policy_covers_the_four_decision_paths() -> None:
     assert "remember, correct, or forget durable memory" in policy
     assert "must not create a Task solely" in policy
     assert "Assigned Process" in policy
-    assert "absolute priority" in policy
+    assert "priority over creating or amending a Task" in policy
     assert "Background Task" in policy
     assert "contact a third party" in policy
     task_introduction = policy.split("- **Background Task:**", 1)[0].rstrip().splitlines()[-1]

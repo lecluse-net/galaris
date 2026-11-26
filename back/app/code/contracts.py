@@ -17,6 +17,10 @@ class CodeSessionUnavailableError(RuntimeError):
     """The runtime has stopped this session; explicit authorized recovery is needed."""
 
 
+class RepositoryReferenceError(ValueError):
+    """The repository reference was rejected before discovery or registration."""
+
+
 class RuntimeEndpoint(BaseModel):
     url: str
     credential: str

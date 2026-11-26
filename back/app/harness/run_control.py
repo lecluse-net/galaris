@@ -9,6 +9,8 @@ from uuid import UUID
 
 from loguru import logger
 
+from app.agent.contracts import HarnessCancellationReceipt
+
 Cleanup = Callable[[], Awaitable[None]]
 CancelRequest = Callable[[], None]
 CallRecoveryRequest = Callable[[], bool]
@@ -50,6 +52,7 @@ class RunResources:
 class _ActiveRun:
     task: asyncio.Task[object]
     resources: RunResources
+    driver_code: str
     cancel_request: CancelRequest | None = None
     call_recovery_request: CallRecoveryRequest | None = None
 
@@ -62,11 +65,12 @@ async def register(
     run_id: UUID,
     task_id: UUID | None,
     resources: RunResources,
+    *, driver_code: str = "internal",
 ) -> None:
     current = asyncio.current_task()
     if current is None:
         raise RuntimeError("A harness run must execute inside an asyncio task.")
-    active = _ActiveRun(task=current, resources=resources)
+    active = _ActiveRun(task=current, resources=resources, driver_code=driver_code)
     async with _registry_lock:
         if run_id in _active_runs:
             raise RuntimeError(f"Harness run {run_id} is already active.")
@@ -101,12 +105,12 @@ async def set_cancel_request(
             active.cancel_request = cancel_request
 
 
-async def cancel(run_id: UUID) -> None:
+async def cancel(run_id: UUID, *, driver_code: str = "internal") -> None:
     """Cancel one live run and wait until its resource cleanup has completed."""
 
     async with _registry_lock:
         active = _active_runs.get(run_id)
-    if active is None:
+    if active is None or active.driver_code != driver_code:
         # Cancellation races are expected: scheduler cancellation may already have
         # completed the coroutine before the explicit driver request arrives.
         return
@@ -145,6 +149,15 @@ async def request_call_recovery(run_id: UUID) -> bool:
         return active.call_recovery_request()
 
 
-def is_active(run_id: UUID) -> bool:
+def is_active(run_id: UUID, *, driver_code: str = "internal") -> bool:
     active = _active_runs.get(run_id)
-    return active is not None and not active.task.done()
+    return active is not None and active.driver_code == driver_code and not active.task.done()
+
+
+async def request_cancellation(run_id: UUID, *, driver_code: str = "internal") -> HarnessCancellationReceipt:
+    was_active = is_active(run_id, driver_code=driver_code)
+    await cancel(run_id, driver_code=driver_code)
+    return HarnessCancellationReceipt(
+        run_id=run_id, scope="local",
+        state="confirmed" if was_active and not is_active(run_id, driver_code=driver_code) else "unknown",
+    )

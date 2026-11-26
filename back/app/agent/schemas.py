@@ -12,6 +12,7 @@ class ExecutorDriverInfo(BaseModel):
     label_key: str
     available: bool
     manages_runtime: bool
+    transport: str = ""
     enabled: bool = True
     configured: bool = True
     ready: bool = True

@@ -76,3 +76,4 @@ canoniques, sans journal d'implémentation.
 Supprimer un plan réalisé/absorbé et corriger ses liens entrants.
 Regrouper les mesures communes ; une recette usuelle avant publication ne suffit pas
 à maintenir un ancien plan. Préserver intentions non réalisées et blocages explicites.
+| [deux-harnais-internes.md](deux-harnais-internes.md) | `in-progress` | Chaque harnais embarqué gère sa conversation. DSH et Codex confient leurs rounds à Claude. Filiation exacte des appels LLM, parité et benchmark pour décider du maintien de Pydantic AI, indépendamment du portage Rust. |

@@ -9,6 +9,11 @@ class DocumentAccess:
 from collections.abc import Awaitable, Callable, Mapping
 from uuid import UUID
 
+
+class DatasetCreationContentError(ValueError):
+    """Dataset content was rejected before any creation effect."""
+
+
 @dataclass(frozen=True, slots=True)
 class DatasetDocumentGrant:
     """One Dataset-owned grant mirrored for historical document readers."""

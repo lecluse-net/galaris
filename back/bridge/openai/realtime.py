@@ -19,19 +19,20 @@ from app.llm.provider_facade import (
 )
 from core.util import as_dict, as_list
 
+from .resources import REALTIME_VOICES
 
-def _websocket_url(base_url: str, model: str) -> str:
+
+def websocket_url(base_url: str, model: str | None) -> str:
     parsed = urlsplit(base_url.rstrip("/"))
     scheme = {"http": "ws", "https": "wss"}.get(parsed.scheme)
     if scheme is None or not parsed.netloc:
         raise RuntimeError("the Realtime provider has no valid WebSocket endpoint")
     path = f"{parsed.path.rstrip('/')}/realtime"
-    return urlunsplit(
-        (scheme, parsed.netloc, path, f"model={quote(model, safe='')}", "")
-    )
+    query = "intent=transcription" if model is None else f"model={quote(model, safe='')}"
+    return urlunsplit((scheme, parsed.netloc, path, query, ""))
 
 
-def _decode_payload(raw: str | bytes) -> dict[str, Any]:
+def decode_realtime_event(raw: str | bytes) -> dict[str, Any]:
     try:
         decoded = raw.decode("utf-8") if isinstance(raw, bytes) else raw
         payload = json.loads(decoded)
@@ -47,7 +48,7 @@ def _response_identifier(payload: dict[str, Any]) -> str:
     return str(payload.get("response_id") or response.get("id") or "")
 
 
-def _raise_provider_error(payload: dict[str, Any], fallback: str) -> None:
+def raise_realtime_error(payload: dict[str, Any], fallback: str) -> None:
     if payload.get("type") != "error":
         raise RuntimeError(fallback)
     error = as_dict(payload.get("error"))
@@ -105,7 +106,7 @@ class OpenAIRealtimeSession:
         socket: ClientConnection | None = None
         try:
             socket = await connect(
-                _websocket_url(connection.base_url, model),
+                websocket_url(connection.base_url, model),
                 additional_headers={"Authorization": f"Bearer {api_key}"},
                 open_timeout=10,
                 close_timeout=2,
@@ -114,9 +115,9 @@ class OpenAIRealtimeSession:
                 max_queue=128,
             )
             session = cls(socket)
-            created = _decode_payload(await asyncio.wait_for(socket.recv(), timeout=10))
+            created = decode_realtime_event(await asyncio.wait_for(socket.recv(), timeout=10))
             if created.get("type") != "session.created":
-                _raise_provider_error(
+                raise_realtime_error(
                     created,
                     "the Realtime provider did not create a session",
                 )
@@ -163,11 +164,11 @@ class OpenAIRealtimeSession:
                     }
                 )
             )
-            updated = _decode_payload(
+            updated = decode_realtime_event(
                 await asyncio.wait_for(socket.recv(), timeout=10)
             )
             if updated.get("type") != "session.updated":
-                _raise_provider_error(
+                raise_realtime_error(
                     updated,
                     "the Realtime provider did not apply session settings",
                 )
@@ -194,7 +195,7 @@ class OpenAIRealtimeSession:
         if not self._pending.empty():
             return self._pending.get_nowait()
         while True:
-            payload = _decode_payload(await self._connection.recv())
+            payload = decode_realtime_event(await self._connection.recv())
             event_type = str(payload.get("type") or "")
             if event_type == "session.updated":
                 return RealtimeConversationEvent(kind="session_ready")
@@ -326,6 +327,11 @@ class OpenAIRealtimeSession:
 
 
 class OpenAIRealtime:
+    def speech_model_for_voice(self, voice: str) -> str | None:
+        if any(voice == code for code, _ in REALTIME_VOICES):
+            return "gpt-4o-mini-tts"
+        return None
+
     async def create_realtime_session(
         self,
         connection: ProviderConnection,

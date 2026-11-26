@@ -12,6 +12,7 @@ services:
       target: prod-stage
       args:
         GALARIS_BUILD_VERSION: ${RELEASE_BUILD_REF}
+        GALARIS_BUILD_REVISION: ${RELEASE_BUILD_REF}
   frontend:
     image: galaris-release-front:${RELEASE_BUILD_REF}
     build:

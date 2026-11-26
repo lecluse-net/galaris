@@ -65,9 +65,9 @@ async def test_context_instructions_advertise_only_effectively_available_tools(
     advertisement = AgentToolAdvertisement(
         text=(
             "Only the following native Galaris MCP functions are available in this run.\n\n"
-            "- `galaris`: `process_list`, `process_get`, `process_start`"
+            "- `file_sharing`: `file_list`, `file_read`\n- `process`: `process_start`"
         ),
-        tool_names=frozenset({"process_list", "process_get", "process_start"}),
+        tool_names=frozenset({"file_list", "file_read", "process_start"}),
     )
     tool_builder = AsyncMock(return_value=advertisement)
     process_builder = AsyncMock(return_value="## Business processes\n\n- invoice-recording")
@@ -100,12 +100,12 @@ async def test_context_instructions_advertise_only_effectively_available_tools(
     assert "Rigoureuse et signe ses travaux Ada." in instructions
     assert "Produire des analyses vérifiables." in instructions
     assert "authorship or signature preferences" in instructions
-    assert "process_list" in instructions
+    assert "file_read" in instructions
     assert "invoice-recording" in instructions
     assert "assigned `galaris` skill" in instructions
     assert "image_generate" not in instructions
     assert "messenger_room_send_message" not in instructions
-    assert "task_stop" not in instructions
+    assert "task_cancel" not in instructions
     assert instructions.index("Current run constraint.") < instructions.index(
         "FINAL EXECUTOR SUFFIX"
     )

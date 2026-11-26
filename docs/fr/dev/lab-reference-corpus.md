@@ -50,6 +50,54 @@ arrête les admissions, conserve les observations et n'autorise aucune conclusio
 
 Pour reprendre les seules évaluations manquantes avec les mêmes limites :
 `BENCHMARK_EVIDENCE_DIR=artifacts/operating-benchmark.<identifiant> make benchmark-operating-knowledge ARGS='--max-cost 5 --resume --run'`.
+
+## Comparaison des harnais embarqués
+
+Dans une instance isolée démarrée avec `APP_ENV=qualification`, créez deux agents de test avec les mêmes instructions,
+le même gestionnaire, les mêmes équipes, le même profil explicite et les mêmes droits effectifs.
+Activez Claude embarqué et attribuez `internal` à l’un et `claude_embedded` à l’autre. Utilisez
+uniquement des données synthétiques et des Services de test. Renseignez les identifiants, le
+modèle commun et la révision candidate dans une copie de `back/lab-embedded-harnesses.example.json`.
+Renseignez le modèle et l’effort du manifeste dans les usages **Texte faible** et **Texte standard** du profil.
+Choisissez le plafond du fournisseur au niveau de son compte de test. Le plafond monétaire du
+manifeste s’applique au coût observé entre les essais et le dernier essai peut le dépasser.
+
+Figez d’abord la campagne dans un nouveau rapport sous `artifacts/`.
+
+```bash
+make benchmark-embedded-harnesses ARGS='--campaign - --output -' \
+  < artifacts/harness-campaign.json > artifacts/harness-preview.jsonl
+```
+
+Sur cette même instance, ajoutez `--run` et fournissez dans `LAB_ACCESS_TOKEN` un jeton API dédié
+de l’utilisateur de test. Son rôle doit permettre de lire les agents, connexions, modèles, rounds,
+appels LLM et Documents Données, ainsi que de créer et exécuter des travaux dans Chat et Tâches.
+Un jeton de session du navigateur peut expirer pendant la campagne. Révoquez le jeton dédié après les essais et
+écrivez le rapport dans un nouveau fichier JSONL.
+Les essais alternent l’ordre des harnais, utilisent une nouvelle salle pour chaque conversation
+multi-tours et une nouvelle tâche pour chaque objectif. Le rapport conserve le moteur observé,
+les identifiants des appels physiques, les coûts et les résultats divergents. Il mesure
+séparément le délai avant le premier jeton fournisseur et celui avant le premier texte ou appel
+d’outil enregistré par Galaris. La médiane, le p95 et le nombre d’observations sont indiqués
+pour chaque mesure. Le corpus d’exemple exerce un parcours Chat, une tâche directe
+et une création de Document Données.
+
+La comparaison s’interrompt si la configuration du modèle, les tarifs appliqués, l’endpoint
+ou la configuration du fournisseur changent. Les horodatages et diagnostics des tentatives
+de synchronisation tarifaire ne changent pas l’empreinte.
+
+Pour échantillonner plusieurs entrées dans un scénario, fournissez `variants` avec une entrée par
+répétition. Chaque variante possède ses propres `turns` et reprend le même type d’oracle métier.
+Les deux harnais reçoivent la même variante. Le rapport conserve son empreinte et le nombre
+d’entrées distinctes. Les répétitions d’une même entrée renseignent la reproductibilité et la
+latence. Le calcul d’un intervalle de réussite utilise des entrées distinctes.
+
+Pour une tâche avec `expected_dataset`, activez `file_create` pour les deux agents. Chaque paire
+reçoit le même titre inédit et les mêmes données JSON. Le rapport vérifie séparément la réponse
+et la présence d’un seul nouveau document avec le propriétaire, le contenu et la révision attendus.
+Le reçu de création de l’outil doit désigner ce document. Une tâche déclarée réussie dont l’effet
+ou la réponse ne satisfait pas ces contrôles est comptée comme un faux succès.
+La décision de retrait exige la campagne étendue, les pannes et reprises, et les mesures de charge.
 Une observation déjà publiée, même échouée, n'est pas rejouée. Le recalcul local des contrôles
 (`benchmark_operating_knowledge.py --output <répertoire> --max-cost 5 --rescore`) ne rappelle
 aucun modèle et conserve les scores originaux ainsi que le motif d'une correction d'oracle.

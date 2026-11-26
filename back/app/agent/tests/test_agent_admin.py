@@ -650,6 +650,7 @@ async def test_harness_mcp_selection_blockers_supervision_and_cleanup(db, admin_
     db.add_all([target, harness])
     await db.flush()
     task = Task(label="Synthetic pending work", agent_id=target.id, status=TaskStatus.CREATE)
+    from core.params import runtime_settings
     db.add(task)
     await db.commit()
     ctx = mcp_loader.McpToolContext(caller.id, "internal")
@@ -669,6 +670,9 @@ async def test_harness_mcp_selection_blockers_supervision_and_cleanup(db, admin_
     state = await harness_mcp.agent_harness_status(ctx, target.id)
     assert state["status"] == "ready" and state["available_actions"] == []
     with pytest.raises(harness_service.HarnessConflictError):
+    monkeypatch.setattr(runtime_settings, "HARNESS_CLAUDE_EMBEDDED_ENABLED", True)
+    with pytest.raises(harness_service.HarnessConflictError, match="non-terminal Tasks"):
+        await harness_mcp.agent_harness_reset(ctx, target.id, driver_code="claude_embedded")
         await harness_mcp.agent_harness_action(ctx, target.id, "stop")
     with pytest.raises(harness_service.HarnessConflictError):
         await harness_mcp.agent_harness_logs(ctx, target.id)
@@ -678,3 +682,10 @@ async def test_harness_mcp_selection_blockers_supervision_and_cleanup(db, admin_
     reset = await harness_mcp.agent_harness_reset(ctx, target.id)
     assert reset["operation_status"] == ("error" if cleanup_fails else "completed")
     assert reset["internal"]
+    if not cleanup_fails:
+        embedded = await harness_mcp.agent_harness_reset(ctx, target.id, driver_code="claude_embedded")
+        assert embedded["operation_status"] == "completed" and embedded["driver_code"] == "claude_embedded"
+        monkeypatch.setattr(runtime_settings, "HARNESS_CLAUDE_EMBEDDED_ENABLED", False)
+        assert (await harness_mcp.agent_harness_get(ctx, target.id))["driver_code"] == "claude_embedded"
+        status = await harness_mcp.agent_harness_status(ctx, target.id)
+        assert status["status"] == "disabled" and status["available_actions"] == []

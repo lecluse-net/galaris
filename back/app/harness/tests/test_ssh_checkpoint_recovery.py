@@ -1,6 +1,7 @@
 """A lost real SSH response must survive DB reload without another shell effect."""
 
 import asyncio
+import shlex
 import shutil
 import tempfile
 from datetime import datetime, timedelta, timezone
@@ -11,6 +12,7 @@ from uuid import UUID, uuid4
 
 import asyncssh
 import pytest
+import pytest_asyncio
 from fastmcp import FastMCP
 from pydantic import SecretStr
 from pydantic_ai.mcp import MCPToolset
@@ -27,16 +29,15 @@ from app.services.contracts import current_tool_execution
 from app.services.execution_evidence import ExecutionEvidenceMiddleware
 
 
-@pytest.mark.asyncio
-async def test_lost_ssh_ack_recovers_from_database_and_never_repeats_command(db):
+@pytest_asyncio.fixture
+async def ssh_with_lost_acknowledgement():
     class Authentication(asyncssh.SSHServer):
         def begin_auth(self, username):
             return False
 
-    dropped = False
+    operations: list[UUID] = []
 
     async def serve(process):
-        nonlocal dropped
         child = await asyncio.create_subprocess_shell(
             process.command,
             stdin=asyncio.subprocess.PIPE,
@@ -44,10 +45,13 @@ async def test_lost_ssh_ack_recovers_from_database_and_never_repeats_command(db)
             stderr=asyncio.subprocess.PIPE,
         )
         out, err = await child.communicate()
-        if " start --cwd " in process.command and not dropped:
-            dropped = True
-            process.channel.abort()  # The helper dispatched the command; its response is lost.
-            return
+        if " start --cwd " in process.command:
+            # SSH wraps the helper command in a quoted argument to bash -c.
+            arguments = shlex.split(shlex.split(process.command)[-1])
+            operations.append(UUID(arguments[arguments.index("--run-id") + 1]))
+            if len(operations) == 1:
+                process.channel.abort()  # The helper dispatched the command; its response is lost.
+                return
         process.stdout.write(out)
         process.stderr.write(err)
         process.exit(child.returncode)
@@ -71,8 +75,9 @@ async def test_lost_ssh_ack_recovers_from_database_and_never_repeats_command(db)
         private_key=SecretStr(client_key.export_private_key().decode()),
         known_host_key=host_key.export_public_key().decode(),
     )
-    helper_directory = tempfile.TemporaryDirectory(prefix="ssh-helper-", dir=Path.home())
-    deployed_helper = Path(helper_directory.name) / "galaris-exec"
+    directory = tempfile.TemporaryDirectory(prefix="ssh-recovery-", dir=Path.home())
+    work = Path(directory.name)
+    deployed_helper = work / "galaris-exec"
     deployed_helper.write_bytes(
         (Path(__file__).parents[2] / "console" / "assets" / "galaris-exec").read_bytes()
     )
@@ -85,6 +90,19 @@ async def test_lost_ssh_ack_recovers_from_database_and_never_repeats_command(db)
         value._helper_version = "2"
         return value
 
+    try:
+        yield SimpleNamespace(config=config, transport=transport, helper=deployed_helper, work=work, operations=operations)
+    finally:
+        listener.close()
+        await listener.wait_closed()
+        for operation_id in operations:
+            shutil.rmtree(Path.home() / ".galaris" / "sessions" / str(operation_id), ignore_errors=True)
+        directory.cleanup()
+
+
+@pytest.mark.asyncio
+async def test_lost_ssh_ack_recovers_from_database_and_never_repeats_command(db, ssh_with_lost_acknowledgement):
+    transport = ssh_with_lost_acknowledgement.transport
     first_transport, resumed_transport = transport(), transport()
     token = uuid4()
     task = Task(
@@ -139,7 +157,6 @@ async def test_lost_ssh_ack_recovers_from_database_and_never_repeats_command(db)
         )
         return result.model_dump(mode="json")
 
-    operation_id = None
     try:
         with tempfile.TemporaryDirectory(prefix="ssh-recovery-", dir=Path.home()) as work:
             arguments = {"command": "printf x >> effect; printf receipt", "cwd": work}
@@ -186,16 +203,10 @@ async def test_lost_ssh_ack_recovers_from_database_and_never_repeats_command(db)
             replayed, output = resumed.take_replay("console_exec", arguments)
             assert replayed and output["stdout"] == "receipt"
             assert Path(work, "effect").read_text() == "x"
+            assert ssh_with_lost_acknowledgement.operations == [operation_id]
             await db.refresh(attempt)
             assert attempt.data["agent_checkpoint"]["data"]["effects"][0]["status"] == "completed"
             assert len(resumed.restored_messages()[-1].parts) == 1
     finally:
         await first_transport.close()
         await resumed_transport.close()
-        listener.close()
-        await listener.wait_closed()
-        helper_directory.cleanup()
-        if operation_id is not None:
-            shutil.rmtree(
-                Path.home() / ".galaris" / "sessions" / str(operation_id), ignore_errors=True
-            )

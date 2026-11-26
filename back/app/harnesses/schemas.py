@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Literal
+from typing import Annotated, Any, Literal
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, StrictBool, computed_field, field_validator, model_validator
@@ -116,6 +116,17 @@ class HarnessSelectionUpdate(BaseModel):
     harness_id: UUID
 
 
+EmbeddedDriverCode = Annotated[str, Field(min_length=1, max_length=50, pattern=r"^[a-z0-9_]+$")]
+
+
+class EmbeddedHarnessSelectionUpdate(BaseModel):
+    """Select a driver provided directly by the backend installation."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    driver_code: EmbeddedDriverCode
+
+
 class HarnessRead(BaseModel):
     id: UUID | None = None
     harness_id: UUID | None = None
@@ -217,6 +228,8 @@ class HarnessTaskBlockers(BaseModel):
 
 
 __all__ = [
+    "EmbeddedDriverCode",
+    "EmbeddedHarnessSelectionUpdate",
     "HarnessActionResult",
     "HarnessCatalogCreate",
     "HarnessCatalogRead",

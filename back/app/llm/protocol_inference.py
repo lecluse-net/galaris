@@ -21,17 +21,21 @@ from pydantic_ai.exceptions import ModelHTTPError
 from pydantic_ai.models import ModelRequestParameters
 from pydantic_ai.models.openai import OpenAIChatModel, OpenAIResponsesModel
 from pydantic_ai.providers.openai import OpenAIProvider
-from sqlalchemy import select
+from sqlalchemy import and_, or_, select
 
-from app.agent.contracts import AIResult
+from app.agent.contracts import AIResult, ChildWaitRequested
 from core.database import get_db, release_db_transaction
 from core.util import as_dict, as_list
-from . import inference_execution as execution, inference_store, llm_service, proxy_service
+from . import inference_execution as execution, inference_store, llm_service, model_usages, proxy_service
 from .accounting_scope import record_persisted_call_cost
 from .call_capture import TextCallCapture, text_call_capture
 from .contracts import InferenceEvent, ProtocolInferenceRequest
+from .embedded_runtime import (
+    EmbeddedDeepInference, EmbeddedInferenceOrigin, EmbeddedRequestLimitExceeded, EmbeddedTaskInference, bind_embedded_call,
+    current_media_inference_origin,
+)
 from .correlation import current_deep_session
-from .models import LLMCall, LLMCallEvent
+from .models import LLMCall, LLMCallEvent, LLMInferenceAttempt
 from .provider_models import LLM
 from .subscription_policy import (
     MailSubscriptionAccessError, SubscriptionAccessError, allows_automatic_subscription_fallback,
@@ -186,7 +190,8 @@ class _ProtocolTransport(httpx2.AsyncBaseTransport):
         if source.protocol == "chat":
             response = await proxy_service.proxy_chat_completion(
                 body, unwrap_deferred_tools=source.unwrap_deferred_tools,
-                preserve_message_history=source.preserve_message_history, **options,
+                preserve_message_history=source.preserve_message_history,
+                retain_image_preview=source.retain_image_preview, **options,
             )
         else:
             response = await proxy_service.proxy_responses(
@@ -216,7 +221,18 @@ async def run_protocol(
     async def publish(payload: dict[str, Any]) -> None:
         await on_event(InferenceEvent.model_validate(payload))
 
-    capture = TextCallCapture(request=request.model_dump(mode="json"), publish=publish)
+    trace_request = request.model_dump(mode="json")
+    if not request.retain_image_preview:
+        from .image_trace import compact_trace_images
+
+        trace_request = await asyncio.to_thread(compact_trace_images, trace_request, retain_preview=False)
+    capture = TextCallCapture(request=trace_request, publish=publish)
+    origin = request.embedded_origin
+    if isinstance(origin, EmbeddedDeepInference):
+        if (request.deep_session_id != origin.session_id or request.agent_run_id != origin.run_id
+                or request.task_id is not None or request.conversation_round_id is not None or request.process_run_id is not None):
+            raise ValueError("Deep inference lineage does not match the admitted submission.")
+    capture.embedded_origin = origin
     token = text_call_capture.set(capture)
     result = AIResult(prompt=request.prompt, system_prompt=request.system_prompt)
     native = None
@@ -292,10 +308,11 @@ async def _read_wire(attempt_id: UUID, cursor: int) -> list[tuple[int, dict[str,
 async def _generation_completed(attempt_id: UUID | None) -> bool:
     if attempt_id is None:
         return False
-    statuses = list(await get_db().scalars(select(LLMCall.status).where(
+    statuses = set(await get_db().scalars(select(LLMCall.status).where(
         LLMCall.inference_attempt_id == attempt_id,
     ).execution_options(include_historized=True)))
-    return bool(statuses) and all(status == "completed" for status in statuses)
+    # Pre-generation rejections can precede the one successful provider response.
+    return "completed" in statuses and "running" not in statuses
 
 
 def _raise_failure(result: AIResult | None) -> None:
@@ -319,6 +336,10 @@ def _raise_failure(result: AIResult | None) -> None:
         raise httpx.TransportError(message)
     if kind == "LookupError":
         raise LookupError(message)
+    if kind == "EmbeddedRequestLimitExceeded":
+        raise EmbeddedRequestLimitExceeded(message)
+    if kind == "ChildWaitRequested":
+        raise ChildWaitRequested(message)
     if kind in {"ValueError", "TypeError"}:
         raise ValueError(message)
     raise RuntimeError(message)
@@ -423,6 +444,44 @@ async def protocol_response(request: ProtocolInferenceRequest) -> JSONResponse |
             await cleanup()
 
 
+async def _previous_fallback_reason(
+    origin: EmbeddedInferenceOrigin, *, profile_id: int, secondary_id: int,
+) -> str | None:
+    # The SDK may reissue the request after a stream failure. Use the durable
+    # failure classification without replacing fragments on the original stream.
+    failure = LLMInferenceAttempt.result["metadata"]
+    row = (await get_db().execute(select(
+        LLMCall.fallback_reason, failure["error"].astext,
+    ).outerjoin(LLMInferenceAttempt, LLMInferenceAttempt.id == LLMCall.inference_attempt_id).where(
+        LLMCall.agent_id == origin.agent_id,
+        LLMCall.agent_run_id == origin.run_id,
+        LLMCall.correlation_ref == origin.correlation_ref,
+        LLMCall.purpose == origin.purpose,
+        LLMCall.fallback_profile_id == profile_id,
+        or_(
+            and_(LLMCall.fallback_from_llm_id == origin.model_id, LLMCall.llm_id == secondary_id,
+                 LLMCall.fallback_reason.is_not(None)),
+            and_(LLMCall.llm_id == origin.model_id, LLMCall.stream.is_(True), LLMCall.status == "error",
+                 failure["provider_unavailable"].as_boolean().is_(True)),
+        ),
+    ).order_by(LLMCall.started_at.desc()).limit(1).execution_options(include_historized=True))).one_or_none()
+    if row is None:
+        return None
+    recorded_reason, error = row
+    return recorded_reason or profile_fallback_reason(ProviderUnavailableError(error or "Provider stream interrupted."))
+
+
+async def _fallback_response(
+    request: ProtocolInferenceRequest, fallback: tuple[int, LLM, ReasoningEffort | None], reason: str,
+) -> JSONResponse | StreamingResponse:
+    profile_id, secondary, effort = fallback
+    route = ProfileFallbackRoute(profile_id=profile_id, from_llm_id=request.llm_id, reason=reason)
+    with fallback_route_scope(route):
+        return await protocol_response(request.model_copy(update={
+            "llm_id": secondary.id, "reasoning_effort": effort, "profile_fallback": route,
+        }, deep=True))
+
+
 async def _request(
     body: dict[str, Any], *, protocol: Literal["chat", "responses", "compact"],
     task_id: UUID | None, agent_id: int | None = None, agent_run_id: UUID | None = None,
@@ -433,10 +492,26 @@ async def _request(
     reasoning_effort: ReasoningEffort | None = None, force_reasoning_effort: bool = False,
     sdk_request: bool = False, unwrap_deferred_tools: bool = False,
     request_timeout: dict[str, float | None] | None = None,
+    retain_image_preview: bool = True,
     preserve_message_history: bool = False,
     profile_model: bool = False,
+    embedded_origin: EmbeddedInferenceOrigin | None = None, correlation_ref: str | None = None,
 ) -> JSONResponse | StreamingResponse:
     deep_session_id = current_deep_session()
+    media_origin = current_media_inference_origin(purpose)
+    if media_origin is not None:
+        if embedded_origin is not None and embedded_origin != media_origin:
+            raise PermissionError("The specialist call belongs to a different embedded attempt.")
+        lineage = bind_embedded_call(
+            media_origin, task_id=task_id, task_attempt_id=task_attempt_id, agent_id=agent_id, agent_run_id=agent_run_id,
+            conversation_round_id=conversation_round_id, process_run_id=process_run_id, deep_session_id=deep_session_id,
+        )
+        embedded_origin = media_origin
+        agent_id, agent_run_id = media_origin.agent_id, media_origin.run_id
+        task_id, task_attempt_id = lineage.task_id, lineage.task_attempt_id
+        conversation_round_id, deep_session_id = lineage.round_id, lineage.deep_session_id
+        correlation_ref = media_origin.correlation_ref
+        route_executor_model = False
     await proxy_service.require_managed_runtime_context(managed_runtime_request, task_id)
     async def resolve() -> tuple[LLM, ReasoningEffort | None]:
         if profile_model:
@@ -476,15 +551,17 @@ async def _request(
         request = ProtocolInferenceRequest(
             llm_id=llm.id, task_id=task_id, agent_id=agent_id, agent_run_id=agent_run_id,
             task_attempt_id=task_attempt_id,
+            embedded_origin=embedded_origin,
             deep_session_id=deep_session_id,
             conversation_round_id=conversation_round_id, process_run_id=process_run_id,
             prompt=prompt, system_prompt=system_prompt, purpose=purpose or "",
             reasoning_effort=effort, body=payload, protocol=protocol,
             sdk_request=sdk_request, managed_runtime_request=managed_runtime_request,
             force_reasoning_effort=force_reasoning_effort, unwrap_deferred_tools=unwrap_deferred_tools,
+            retain_image_preview=retain_image_preview,
             preserve_message_history=preserve_message_history,
             request_timeout=request_timeout,
-            correlation_ref=str(payload.get("model")) if profile_model else None,
+            correlation_ref=str(payload.get("model")) if profile_model else correlation_ref,
             profile_fallback=profile_fallback_route.get(),
         )
         # SDK model wrappers own failover once they have an explicit route.
@@ -492,11 +569,25 @@ async def _request(
         # never splice another provider into an already published wire stream.
         fallback = None
         if protocol != "compact" and request.profile_fallback is None and not profile_model:
+            origin = request.embedded_origin
+            model_field = None
+            if isinstance(origin, EmbeddedTaskInference) and purpose == origin.purpose:
+                if origin.executor_profile_effort == "high":
+                    model_field = model_usages.EXECUTOR_HIGH
+                elif origin.executor_profile_effort == "standard":
+                    model_field = model_usages.EXECUTOR
             fallback = await execution.transaction(lambda: llm_service.get_agent_fallback_model(
-                agent_id, llm.id, model_field=None, purpose=purpose,
+                agent_id, llm.id, model_field=model_field, purpose=purpose,
             ))
             if fallback is not None:
                 request.profile_fallback = ProfileFallbackRoute(profile_id=fallback[0])
+                if origin is not None and purpose == origin.purpose:
+                    profile_id, secondary, _ = fallback
+                    previous_reason = await execution.transaction(lambda: _previous_fallback_reason(
+                        origin, profile_id=profile_id, secondary_id=secondary.id,
+                    ))
+                    if previous_reason is not None:
+                        return await _fallback_response(request, fallback, previous_reason)
         failure: Exception | None = None
         allow_subscription_fallback = fallback is not None and allows_automatic_subscription_fallback(fallback[1])
         try:
@@ -514,16 +605,7 @@ async def _request(
                 raise
             failure = exc
         assert fallback is not None and failure is not None
-        profile_id, secondary, secondary_effort = fallback
-        request = request.model_copy(update={
-            "llm_id": secondary.id, "reasoning_effort": secondary_effort,
-            "profile_fallback": ProfileFallbackRoute(
-                profile_id=profile_id, from_llm_id=llm.id,
-                reason=profile_fallback_reason(failure),
-            ),
-        }, deep=True)
-        with fallback_route_scope(request.profile_fallback):
-            return await protocol_response(request)
+        return await _fallback_response(request, fallback, profile_fallback_reason(failure))
 
     from .document_input import has_documents, route_documents
 

@@ -1,0 +1,53 @@
+{
+  "image_revision": "replace-with-the-candidate-image-revision",
+  "internal_agent": 101,
+  "claude_agent": 102,
+  "model_id": 17,
+  "model_site": "local",
+  "reasoning_effort": "low",
+  "repetitions": 5,
+  "max_legs": 30,
+  "max_observed_cost": 0.50,
+  "operation_timeout": 120,
+  "cases": [
+    {
+      "key": "chat-retains-reference",
+      "family": "conversation",
+      "turns": [
+        {
+          "prompt": "For this conversation, my imaginary parcel reference is FERN-204. For this reply, write exactly READY and nothing else.",
+          "expected": "READY"
+        },
+        {
+          "prompt": "What was the parcel reference in my previous message? Reply with the reference only, with no markup.",
+          "expected": "FERN-204"
+        }
+      ]
+    },
+    {
+      "key": "task-apply-unit-rule",
+      "family": "task",
+      "turns": [
+        {
+          "prompt": "A synthetic warehouse has four bins of 23 washers each and one bin of 7. Count the washers. Return only the integer, with no markup or punctuation.",
+          "expected": "99"
+        }
+      ]
+    },
+    {
+      "key": "task-create-dataset",
+      "family": "task",
+      "expected_dataset": {
+        "warehouse": "fern",
+        "washers": 99,
+        "reviewed": false
+      },
+      "turns": [
+        {
+          "prompt": "Record the synthetic Fern warehouse inventory in the Data document specified below. After creating it, write exactly READY with no markup.",
+          "expected": "READY"
+        }
+      ]
+    }
+  ]
+}

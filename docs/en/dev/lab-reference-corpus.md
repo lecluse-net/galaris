@@ -47,6 +47,54 @@ admission and preserve evidence; an incomplete run cannot establish a complete c
 
 Resume missing evaluations with identical limits:
 `BENCHMARK_EVIDENCE_DIR=artifacts/operating-benchmark.<identifier> make benchmark-operating-knowledge ARGS='--max-cost 5 --resume --run'`.
+
+## Comparing embedded harnesses
+
+On an isolated instance started with `APP_ENV=qualification`, create two test agents with identical instructions,
+manager, teams, explicit profile and effective permissions. Enable embedded Claude and assign
+`internal` to one agent and `claude_embedded` to the other. Use synthetic data and test Services.
+Set the agent IDs, shared model and candidate revision in a copy of
+`back/lab-embedded-harnesses.example.json`. Set that model and reasoning effort for the profile's
+**Low text** and **Standard text** usages. Set the provider's spending cap on its test account.
+The campaign's monetary limit applies to observed cost between trials and the last trial can
+exceed it.
+
+Freeze the campaign in a new report under `artifacts/` first.
+
+```bash
+make benchmark-embedded-harnesses ARGS='--campaign - --output -' \
+  < artifacts/harness-campaign.json > artifacts/harness-preview.jsonl
+```
+
+On the same instance, add `--run` and supply a dedicated API token for the test user through
+`LAB_ACCESS_TOKEN`. Its role needs read access to agents, connections, models, rounds, LLM
+calls and Data documents, plus permission to create and execute Chat and Task work. A browser
+session token can expire during the campaign. Revoke the dedicated token after the trials and write the report
+to a new JSONL file. Trials alternate the
+harness order and use a fresh room for every multi-turn conversation and a fresh Task for
+each objective. The report retains the observed engine, physical call IDs, costs and discordant
+outcomes. It measures time to the first provider token separately from time to the first text
+or tool call recorded by Galaris. Each timing includes its median, p95 and sample count.
+The example corpus exercises a Chat journey,
+a direct Task and Data document creation.
+
+The comparison stops if the model settings, billed rates, endpoint or provider configuration
+change. Timestamps and diagnostics from pricing refresh attempts leave the fingerprint unchanged.
+
+To sample several inputs within a scenario, supply one entry in `variants` per repetition.
+Each variant defines its own `turns` and uses the same kind of business oracle. Both harnesses
+receive the same variant. The report records the input digest and the number of distinct inputs.
+Repeated trials of one input inform reproducibility and latency. Success rate intervals use
+distinct inputs.
+
+For a Task with `expected_dataset`, enable `file_create` for both agents. Each pair receives
+the same fresh title and JSON data. The report checks the reply and verifies that exactly one
+new document has the expected owner, content and revision. The tool's creation receipt must
+identify that document. A Task reported as successful that fails the reply or effect checks
+counts as a false success.
+
+Retirement decisions require the expanded campaign, failures and recovery,
+and measurements under load.
 Published observations, including failures, are never replayed. Local rescoring
 (`benchmark_operating_knowledge.py --output <directory> --max-cost 5 --rescore`) makes no model
 calls and retains original scores and the reason for an oracle correction. Public synthetic

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from collections.abc import Awaitable, Callable, Generator
+from contextlib import contextmanager
 from typing import Any, Literal, cast
 from uuid import UUID, uuid4
 from jsonschema import validators  # pyright: ignore[reportMissingTypeStubs]
@@ -19,15 +21,31 @@ from .mcp_loader import resolve_live_connection
 from .mcp_presentation import McpPresentation, McpPresentationSink, app_read_tool, app_resource_uri, presented_table
 
 
+@contextmanager
+def _remote_request_metadata(context: MiddlewareContext[Any]) -> Generator[None]:
+    request = context.fastmcp_context.request_context if context.fastmcp_context else None
+    if request is None or request.meta is None:
+        yield
+        return
+    meta = request.meta
+    local = {key: meta.pop(key) for key in (AUTHORIZATION_META_KEY, EXECUTION_META_KEY) if key in meta}
+    try:
+        yield
+    finally:
+        meta.update(local)
+
+
 class ExternalAuthorizationMiddleware(Middleware):
     def __init__(self, agent_id: int, connection_id: int, service_id: int, *, runtime: str,
                  context_key: str, conversation_only: bool, runtime_grant_id: UUID | None = None,
-                 presentation_sink: McpPresentationSink | None = None, source_label: str = "") -> None:
+                 presentation_sink: McpPresentationSink | None = None, source_label: str = "",
+                 before_tool_effect: Callable[[], Awaitable[None]] | None = None) -> None:
         self.agent_id, self.connection_id, self.service_id = agent_id, connection_id, service_id
         self.runtime, self.context_key, self.conversation_only = runtime, context_key, conversation_only
         self.runtime_grant_id = runtime_grant_id
         self.presentation_sink = presentation_sink
         self.source_label = source_label
+        self.before_tool_effect = before_tool_effect
 
     async def _claim(self, context: MiddlewareContext[Any], name: str, arguments: dict[str, Any],
                      kind: Literal["tool", "resource", "prompt"], schema: object, *, policy_name: str | None = None) -> UUID | None:
@@ -70,6 +88,7 @@ class ExternalAuthorizationMiddleware(Middleware):
     async def on_call_tool(self, context: MiddlewareContext[CallToolRequestParams],
                            call_next: CallNext[CallToolRequestParams, ToolResult]) -> ToolResult:
         identifier: UUID | None = None
+        dispatched = False
         try:
             # Discovery and argument validation precede approval and cannot invoke the tool.
             assert context.fastmcp_context is not None
@@ -78,7 +97,11 @@ class ExternalAuthorizationMiddleware(Middleware):
                 raise PermissionError("External MCP tool is unavailable")
             cast(Any, validators).validator_for(tool.parameters)(tool.parameters).validate(context.message.arguments or {})
             identifier = await self._claim(context, context.message.name, context.message.arguments or {}, "tool", tool.parameters)
-            result = await call_next(context)
+            if self.before_tool_effect is not None:
+                await self.before_tool_effect()
+            with _remote_request_metadata(context):
+                dispatched = True
+                result = await call_next(context)
             if result.meta:
                 result.meta.pop(AUTHORIZATION_META_KEY, None)
                 result.meta.pop(EXECUTION_META_KEY, None)
@@ -95,7 +118,11 @@ class ExternalAuthorizationMiddleware(Middleware):
         except (AuthorizationRequired, AuthorizationClosed) as exc:
             return ToolResult(content=str(exc), is_error=True, meta=self._control(exc))
         except BaseException:
-            await finish_action(identifier, outcome="outcome_unknown")
+            if not dispatched:
+                execution = current_tool_execution()
+                if execution is not None:
+                    execution.outcome = "rejected"
+            await finish_action(identifier, outcome="outcome_unknown" if dispatched else "failed")
             raise
 
     async def on_read_resource(self, context: MiddlewareContext[ReadResourceRequestParams],
@@ -111,7 +138,8 @@ class ExternalAuthorizationMiddleware(Middleware):
             schema = resource.model_dump(mode="json") if resource is not None else template.model_dump(mode="json") if template else {}
             identifier = await self._claim(context, uri, {"uri": uri}, "resource", schema,
                 policy_name=template.uri_template if template else None)
-            result = await call_next(context)
+            with _remote_request_metadata(context):
+                result = await call_next(context)
             await finish_action(identifier, receipt=result)
             return result
         except (AuthorizationRequired, AuthorizationClosed) as exc:
@@ -134,7 +162,8 @@ class ExternalAuthorizationMiddleware(Middleware):
             if set(arguments) - known or not required.issubset(arguments):
                 raise ValueError("Invalid external MCP prompt arguments")
             identifier = await self._claim(context, context.message.name, dict(context.message.arguments or {}), "prompt", prompt.model_dump(mode="json"))
-            result = await call_next(context)
+            with _remote_request_metadata(context):
+                result = await call_next(context)
             if result.meta:
                 result.meta.pop(AUTHORIZATION_META_KEY, None)
                 result.meta.pop(EXECUTION_META_KEY, None)

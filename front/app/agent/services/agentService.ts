@@ -27,6 +27,7 @@ export interface ExecutorDriverInfo {
     label_key: string
     available: boolean
     manages_runtime: boolean
+    transport: string
 }
 
 // Agent group interfaces

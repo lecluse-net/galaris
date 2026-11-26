@@ -6,9 +6,10 @@ from uuid import uuid4
 
 import pytest
 
-from app.agent import Agent
+from app.agent import Agent, Title
 from app.harnesses import service
 from app.harnesses.contracts import HarnessProvisioningResult
+from app.harnesses.dbadmin import _backfill_selected_harnesses
 from app.harnesses.models import AgentHarness, Harness
 from app.harnesses.schemas import (
     HarnessCatalogCreate,
@@ -16,6 +17,64 @@ from app.harnesses.schemas import (
     HarnessRead,
     HarnessSelectionUpdate,
 )
+from app.task import Task, TaskStatus
+from core.params import runtime_settings
+from core.user.models import User
+from sqlalchemy import select
+
+
+@pytest.mark.asyncio
+async def test_embedded_selection_survives_reconciliation_and_external_cleanup(db, monkeypatch):
+    owner = User(email=f"harness-owner-{uuid4()}@example.test", hashed_password="unused")
+    db.add(owner)
+    await db.flush()
+    agent = Agent(
+        code=f"embedded-{uuid4().hex}", first_name="Synthetic", last_name="Owner", user_id=owner.id,
+        title_id=await db.scalar(select(Title.id).limit(1)),
+    )
+    remote = Harness(
+        name="Synthetic network harness", provider_code="openai_messages", driver_code="openai_messages",
+        enabled=True, base_url="https://runtime.example.test/v1", model="synthetic",
+    )
+    db.add_all([agent, remote])
+    await db.commit()
+
+    assert (await service.get_for_agent(agent.id)).driver_code == "internal"
+    with pytest.raises(service.HarnessConflictError, match="disabled"):
+        await service.select_internal(agent.id, "claude_embedded")
+    monkeypatch.setattr(runtime_settings, "HARNESS_CLAUDE_EMBEDDED_ENABLED", True)
+    selection, cleanup = await service.select_internal(agent.id, "claude_embedded")
+    assert selection.internal and selection.lifecycle_status == "ready" and cleanup is None
+    await _backfill_selected_harnesses(db)
+    await db.commit()
+    assert (await service.get_for_agent(agent.id)).driver_code == "claude_embedded"
+
+    task = Task(agent_id=agent.id, label="Synthetic open task", objective="Test the selection guard.")
+    db.add(task)
+    await db.commit()
+    with pytest.raises(service.HarnessConflictError, match="non-terminal Tasks"):
+        await service.select_internal(agent.id)
+    task.status = TaskStatus.SUCCESS
+    await db.commit()
+
+    selection, cleanup = await service.install(agent.id, HarnessSelectionUpdate(harness_id=remote.id))
+    assert not selection.internal and cleanup is None
+    selection, cleanup = await service.select_internal(agent.id, "claude_embedded")
+    assert selection.internal and cleanup is not None
+    for _ in range(2):
+        await _backfill_selected_harnesses(db)
+        await db.commit()
+        assert (await service.get_for_agent(agent.id)).driver_code == "claude_embedded"
+        assert await service.resolve_target(agent) is None
+    await service.cleanup_previous_runtime(cleanup)
+    assert await db.scalar(select(AgentHarness.id).where(AgentHarness.agent_id == agent.id)) is None
+    assert (await service.get_for_agent(agent.id)).driver_code == "claude_embedded"
+
+    monkeypatch.setattr(runtime_settings, "HARNESS_CLAUDE_EMBEDDED_ENABLED", False)
+    unavailable = await service.get_for_agent(agent.id)
+    assert unavailable.driver_code == "claude_embedded" and unavailable.lifecycle_status == "error"
+    selection, cleanup = await service.select_internal(agent.id)
+    assert selection.driver_code == "internal" and cleanup is None
 
 
 class _Provider:

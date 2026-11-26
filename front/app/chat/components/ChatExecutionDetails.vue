@@ -71,8 +71,9 @@ const detailsOpened = ref(false)
 
 function toggle(): void {
   if (!props.expandable) return
-  expanded.value = !expanded.value
-  if (expanded.value) {
+  const open = !expanded.value
+  expanded.value = open
+  if (open) {
     detailsOpened.value = true
     emit('open')
   }

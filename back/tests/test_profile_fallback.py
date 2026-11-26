@@ -1,6 +1,10 @@
 """Synthetic provider outages through the real SDK, journal, and tool loop."""
 
+import asyncio
 import json
+from collections.abc import Mapping
+from contextlib import aclosing
+from datetime import datetime, timedelta, timezone
 from uuid import uuid4
 
 import httpx
@@ -12,6 +16,16 @@ from sqlalchemy import select
 from app.agent.models import Agent, Title
 from app.agent.schemas import AgentUpdate
 from app.agent import agent_service
+from app.agent.facade import build_run_request, stream as stream_agent
+from app.chat.tests.test_attachment_http import attachment_context as attachment_context
+from app.connection import Connection
+from app.connection.models import ConnectionFunctionState
+from app.conversation import controller as round_controller, scheduler as round_scheduler
+from app.conversation.models import ConversationRoundAttempt
+from app.conversation.service import claim_next_round
+from app.document.data.models import Dataset
+from app.harness import claude_driver
+from app.harness.conversation import HarnessConversationController
 from app.llm import LLM, LLMProvider, LlmProfile, llm_call_service, proxy_service
 from app.llm.models import LLMCall, LLMInference
 from app.llm.pydantic_ai_utils import build_model_for_llm
@@ -21,9 +35,15 @@ from app.llm.facade import run_text_inference, prepare_inference, control_infere
 from app.llm import llm_service, model_usages, profile_service
 from app.llm.profile_fallback import ProfileFallbackRoute, provider_failure_allows_fallback
 from app.llm.facade import read_inference
+from app.services import ServiceModel
+from app.task import Task, TaskStatus
+from app.task.models import TaskAttempt
 from pydantic_ai.exceptions import ModelHTTPError
-from core.database import get_db_session
+from core.database import get_db_session, middleware
+from core.params import runtime_settings
 from core.user import UserModel
+from tests.test_embedded_claude_chat_effects import _gateway
+from tests.test_inference_lifecycle import runtime as runtime
 
 
 @pytest_asyncio.fixture
@@ -60,6 +80,220 @@ async def failover(committed_database, monkeypatch):
 def sse(delta, finish=None):
     return ('data: ' + json.dumps({"id": "synthetic", "object": "chat.completion.chunk", "created": 1,
             "model": "synthetic", "choices": [{"index": 0, "delta": delta, "finish_reason": finish}]}) + '\n\n').encode()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("driver", ["internal", "claude_embedded"], ids=["pydantic", "claude"])
+@pytest.mark.parametrize("status", [429, 422], ids=["eligible", "ineligible"])
+async def test_chat_preserves_call_origin_when_a_profile_can_fail_over(
+    attachment_context, runtime, monkeypatch, tmp_path, driver, status,
+):
+    db, primary, requests, mode = runtime
+    context = attachment_context
+    agent = await db.get(Agent, context["agent_id"])
+    assert agent is not None
+    secondary = LLM(llm_provider_id=primary.llm_provider_id, code=f"fallback-{uuid4().hex}",
+                    llm_name="synthetic-secondary", label="Synthetic secondary",
+                    cost_per_input_token=2, cost_per_output_token=5)
+    db.add(secondary)
+    await db.flush()
+    profiles = [
+        LlmProfile(label=f"Synthetic {model.llm_name}", text_low_llm_id=model.id, text_standard_llm_id=model.id)
+        for model in (primary, secondary)
+    ]
+    db.add_all(profiles)
+    await db.flush()
+    agent.agent_driver = driver
+    agent.profile_id = profiles[0].id
+    agent.fallback_profile_id = profiles[1].id
+    await db.commit()
+    monkeypatch.setattr(runtime_settings, "HARNESS_CLAUDE_EMBEDDED_ENABLED", True)
+    monkeypatch.setattr(runtime_settings, "HARNESS_CLAUDE_EMBEDDED_CONVERSATIONS_ENABLED", True)
+    monkeypatch.setattr(runtime_settings, "TASK_AGENT_MAX_REQUESTS", 2)
+    monkeypatch.setattr(claude_driver, "CLAUDE_WORKSPACE_ROOT", tmp_path)
+    monkeypatch.setattr(round_controller, "_controller", HarnessConversationController())
+    provider_receipts = []
+    mode.update(concurrent=True, chat_response_ids=provider_receipts)
+    rejection = (status, {"message": f"Synthetic rejection {status}"})
+    if status == 429:
+        mode["first_error"] = rejection
+    else:
+        # An invalid request continues to fail even if the SDK tries another transport.
+        mode["error_for"] = lambda body: rejection if body["model"] == primary.llm_name else None
+
+    async with _gateway(monkeypatch):
+        submitted = await context["client"].post(f"/api/chat/rooms/{context['room_id']}/messages",
+            headers=context["headers"], json={"client_message_id": str(uuid4()), "language": "en",
+                                              "text": "Give a short greeting in French."})
+        assert submitted.status_code == 201, submitted.text
+        round_ = await claim_next_round("paired-profile-test")
+        assert round_ is not None and round_.lease_token is not None and round_.driver_code == driver
+        assert round_.room_id == context["room_id"]
+        round_.response_only = True
+        round_id, lease = round_.id, round_.lease_token
+        await db.commit()
+        await round_scheduler._execute_action(round_id, lease)
+
+    detail = await context["client"].get(f"/api/conversations/rounds/{round_id}", headers=context["headers"])
+    assert detail.status_code == 200, detail.text
+    record = detail.json()
+    calls = list(await db.scalars(select(LLMCall).where(
+        LLMCall.conversation_round_id == round_id, LLMCall.purpose == "conversation.text",
+    ).order_by(LLMCall.started_at)))
+    assert 1 <= len(requests) <= 2
+    expected_models = [primary, secondary] if status == 429 else [primary] * len(requests)
+    assert [request["model"] for request in requests] == [model.llm_name for model in expected_models]
+    assert [call.llm_id for call in calls] == [model.id for model in expected_models]
+    assert all(call.agent_id == agent.id and call.agent_run_id == round_id and call.task_id is None for call in calls)
+    attempt = await db.scalar(select(ConversationRoundAttempt).where(ConversationRoundAttempt.round_id == round_id))
+    assert attempt is not None
+    if driver == "claude_embedded":
+        assert {call.correlation_ref for call in calls} == {f"round:{round_id}:attempt:{attempt.id}"}
+    assert calls[0].status == "error"
+    if status == 429:
+        assert record["status"] == "SUCCEEDED" and record["response_text"] == "Bonjour !"
+        assert record["execution_result"]["metadata"]["driver_code"] == driver
+        [receipt] = provider_receipts
+        fallback = calls[1]
+        assert fallback.status == "completed" and fallback.upstream_request_id == receipt
+        assert fallback.fallback_from_llm_id == primary.id and fallback.fallback_profile_id == profiles[1].id
+        assert fallback.cost > 0 and record["execution_result"]["cost"] == pytest.approx(sum(call.cost for call in calls))
+    else:
+        assert record["status"] == "FROZEN" and attempt.status == "ERROR" and not record["response_text"]
+        assert not provider_receipts
+        assert all(call.status == "error" and call.fallback_from_llm_id is None for call in calls)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("driver", ["internal", "claude_embedded"], ids=["pydantic", "claude"])
+@pytest.mark.parametrize(("effort", "dedicated_high", "cut_after_tool"), [
+    pytest.param("standard", True, None, id="standard"),
+    pytest.param("high", True, None, id="high-shared-primary"),
+    pytest.param("high", False, None, id="high-without-primary-tier"),
+    pytest.param("standard", True, "text", id="cut-after-tool-text"),
+    pytest.param("standard", True, "tool_calls", id="cut-after-tool-proposal"),
+])
+async def test_task_keeps_the_secondary_after_failover_and_one_native_tool_effect(
+    runtime, committed_database, monkeypatch, tmp_path, driver, effort, dedicated_high, cut_after_tool,
+):
+    db, primary, requests, mode = runtime
+    monkeypatch.setattr(middleware, "AsyncSessionLocal", committed_database)
+    monkeypatch.setattr(runtime_settings, "HARNESS_CLAUDE_EMBEDDED_ENABLED", True)
+    monkeypatch.setattr(runtime_settings, "TASK_AGENT_MAX_REQUESTS", 4)
+    monkeypatch.setattr(claude_driver, "CLAUDE_WORKSPACE_ROOT", tmp_path)
+    standard_secondary, high_secondary = [
+        LLM(llm_provider_id=primary.llm_provider_id, code=f"fallback-{uuid4().hex}",
+            llm_name=f"task-secondary-{tier}", label=f"Synthetic task secondary {tier}",
+            cost_per_input_token=2, cost_per_output_token=5)
+        for tier in ("standard", "high")
+    ]
+    secondary = high_secondary if effort == "high" and dedicated_high else standard_secondary
+    user = UserModel(email=f"task-fallback-{uuid4().hex}@example.test", hashed_password="unused")
+    db.add_all([standard_secondary, high_secondary, user])
+    await db.flush()
+    profiles = [
+        LlmProfile(label="Synthetic primary", text_standard_llm_id=primary.id,
+                   text_high_llm_id=primary.id if dedicated_high else None),
+        LlmProfile(label="Synthetic secondary", text_standard_llm_id=standard_secondary.id,
+                   text_high_llm_id=high_secondary.id),
+    ]
+    db.add_all(profiles)
+    await db.flush()
+    agent = Agent(user_id=user.id, title_id=await db.scalar(select(Title.id).limit(1)),
+                  code=f"task-fallback-{uuid4().hex}", first_name="Synthetic", last_name="Fallback",
+                  agent_driver=driver, profile_id=profiles[0].id, fallback_profile_id=profiles[1].id)
+    db.add(agent)
+    await db.flush()
+    service = await db.scalar(select(ServiceModel).where(ServiceModel.code == "file_sharing"))
+    assert service is not None
+    connection = Connection(agent_id=agent.id, service_id=service.id, active=True)
+    db.add(connection)
+    await db.flush()
+    db.add(ConnectionFunctionState(connection_id=connection.id, function_name="file_create", state="enabled", enabled=True))
+    await db.refresh(agent, attribute_names=["title"])
+
+    async def admit(label, objective):
+        lease = uuid4()
+        task = Task(label=label, objective=objective, agent=agent, requester_user_id=user.id,
+                    status=TaskStatus.EXEC, effort=effort, lease_token=lease, lease_owner="task-fallback-test",
+                    attempt_count=1, lease_expires_at=datetime.now(timezone.utc) + timedelta(minutes=5))
+        db.add(task)
+        await db.flush()
+        attempt = TaskAttempt(task_id=task.id, attempt_number=1, phase="EXEC", worker_id="task-fallback-test",
+                              lease_token=lease)
+        db.add(attempt)
+        await db.commit()
+        admitted = await build_run_request(task)
+        assert admitted.model.id == primary.id and admitted.attempt_id == attempt.id
+        assert admitted.model.requested_effort == effort
+        assert admitted.model.fallback_used == (effort == "high" and not dedicated_high)
+        await db.commit()
+        return task, admitted
+
+    task, admitted = await admit("Synthetic fallback with a durable effect", "Create the synthetic inventory once and confirm.")
+
+    title = "Synthetic inventory via fallback"
+    abandoned_title = "Synthetic inventory from an abandoned proposal"
+    tool_name = "file_create" if driver == "internal" else "mcp__galaris__file_create"
+    receipt_id = "synthetic-fallback-file"
+    provider_receipts = []
+
+    tool_request = 1 if cut_after_tool else 2
+
+    def choose_tools(_body: Mapping[str, object]):
+        if cut_after_tool == "tool_calls" and len(requests) == 2:
+            return [("abandoned-file", tool_name, {"path": "data://", "name": abandoned_title, "content": '{}'})]
+        if len(requests) != tool_request:
+            return []
+        return [(receipt_id, tool_name, {"path": "data://", "name": title, "content": '{"stock":42}'})]
+
+    mode.update(concurrent=True, tool_calls_for=choose_tools, chat_response_ids=provider_receipts)
+    if cut_after_tool:
+        mode.update(outputs=["unused", "Abandoned draft", "Bonjour !", "Bonjour !"], chat_json="Bonjour !",
+                    error_after_partial=lambda body, delta: body["model"] == primary.llm_name
+                    and ("content" if cut_after_tool == "text" else "tool_calls") in delta
+                    and any(message["role"] == "tool" for message in body["messages"]))
+    else:
+        mode["first_error"] = (429, {"message": "Synthetic primary saturation"})
+    async with _gateway(monkeypatch), asyncio.timeout(30), aclosing(stream_agent(admitted)) as events:
+        [result] = [event.result async for event in events if event.result is not None]
+
+    docs = (await db.scalars(select(Dataset).where(Dataset.owner_agent_id == agent.id, Dataset.title == title))).all()
+    assert len(docs) == 1 and json.loads(docs[0].content) == {"stock": 42}
+    assert await db.scalar(select(Dataset.id).where(Dataset.owner_agent_id == agent.id,
+                                                    Dataset.title == abandoned_title)) is None
+    assert result.success and result.result == "Bonjour !", ([request["model"] for request in requests], result.failure)
+    continuation = requests[-1]["messages"]
+    [proposed] = [tool for message in continuation for tool in message.get("tool_calls", [])]
+    [receipt] = [message for message in continuation if message.get("role") == "tool"]
+    assert receipt["tool_call_id"] == proposed["id"]
+    assert f"data://{docs[0].id}" in json.dumps(receipt["content"])
+    assert "Aba" not in json.dumps(continuation) and abandoned_title not in json.dumps(continuation)
+    calls = (await db.scalars(select(LLMCall).where(LLMCall.task_id == task.id).order_by(LLMCall.started_at))).all()
+    assert [call.status for call in calls] == (["completed", "error", "completed"] if cut_after_tool
+                                               else ["error", "completed", "completed"])
+    assert [(call.task_attempt_id, call.agent_run_id, call.requester_user_id) for call in calls] == [
+        (admitted.attempt_id, admitted.run_id, user.id),
+    ] * 3
+    physical_responses = calls if cut_after_tool else calls[1:]
+    assert [call.upstream_request_id for call in physical_responses] == provider_receipts
+    models = (primary, primary, secondary) if cut_after_tool else (primary, secondary, secondary)
+    assert [request["model"] for request in requests] == [model.llm_name for model in models]
+    assert [call.llm_id for call in calls] == [model.id for model in models]
+    assert all(call.fallback_from_llm_id == primary.id and call.fallback_profile_id == profiles[1].id
+               for call in calls if call.llm_id == secondary.id)
+    assert result.cost > 0 and result.cost == pytest.approx(sum(call.cost for call in calls))
+
+    next_task, next_run = await admit("Synthetic independent task", "Say hello without using any tools.")
+    assert next_run.run_id != admitted.run_id
+    async with _gateway(monkeypatch), asyncio.timeout(30), aclosing(stream_agent(next_run)) as events:
+        [result] = [event.result async for event in events if event.result is not None]
+    assert result.success and result.result == "Bonjour !"
+    [call] = (await db.scalars(select(LLMCall).where(LLMCall.task_id == next_task.id))).all()
+    assert len(requests) == 4 and requests[-1]["model"] == primary.llm_name
+    assert call.llm_id == primary.id and call.fallback_from_llm_id is None
+    assert call.upstream_request_id == provider_receipts[-1]
+    assert (call.agent_run_id, call.task_attempt_id) == (next_run.run_id, next_run.attempt_id)
 
 
 @pytest.mark.asyncio

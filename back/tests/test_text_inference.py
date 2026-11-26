@@ -52,7 +52,19 @@ async def configure_provider(db, monkeypatch, responses_sse):
     requests = []
     response_mode = {"error": False, "outputs": None, "journal": True}
 
+    def structured_output(body):
+        setting = response_mode.get("structured")
+        return setting(body) if callable(setting) else bool(setting)
+
     class Stream(httpx.AsyncByteStream):
+        def __init__(self, body, response_id):
+            self.body = body
+            self.response_id = response_id
+
+        async def aclose(self):
+            if (closed := response_mode.get("closed_streams")) is not None:
+                closed.add(self.response_id)
+
         async def __aiter__(self):
             text = (
                 response_mode["outputs"][len(requests) - 1]
@@ -64,8 +76,20 @@ async def configure_provider(db, monkeypatch, responses_sse):
                 {"content": text[:3]},
                 {"content": text[3:]},
             ]
-            if response_mode.get("structured") and requests[-1].get("tools"):
-                name = requests[-1]["tools"][0]["function"]["name"]
+            choose_tools = response_mode.get("tool_calls_for")
+            calls = choose_tools(self.body) if choose_tools is not None else []
+            finish_reason = "stop"
+            if calls:
+                finish_reason = "tool_calls"
+                tool_text_for = response_mode.get("tool_text_for")
+                tool_text = tool_text_for(self.body) if tool_text_for is not None else ""
+                midpoint = len(tool_text) // 2
+                prelude = [{"content": chunk} for chunk in (tool_text[:midpoint], tool_text[midpoint:]) if chunk]
+                deltas = [deltas[0], *prelude, *({"tool_calls": [{"index": index, "id": call_id, "type": "function",
+                    "function": {"name": name, "arguments": json.dumps(arguments)}}]}
+                    for index, (call_id, name, arguments) in enumerate(calls))]
+            if structured_output(self.body) and self.body.get("tools"):
+                name = self.body["tools"][0]["function"]["name"]
                 deltas = [deltas[0],
                     {"tool_calls": [{"index": 0, "id": "output-call", "type": "function",
                                      "function": {"name": name, "arguments": ""}}]},
@@ -79,7 +103,7 @@ async def configure_provider(db, monkeypatch, responses_sse):
                 if response_mode.get("fragment_delay"):
                     await asyncio.sleep(0.11)
                 chunk = {
-                    "id": "chat-pilot",
+                    "id": self.response_id,
                     "object": "chat.completion.chunk",
                     "created": 1,
                     "model": "opaque-deployment",
@@ -95,13 +119,19 @@ async def configure_provider(db, monkeypatch, responses_sse):
                     fragment = delta["tool_calls"][0]["function"].get("arguments")
                 if fragment == text[:3] and response_mode.get("partial_gate") is not None:
                     await response_mode["partial_gate"].wait()
-                if response_mode["error"]:
+                cut = response_mode.get("error_after_partial")
+                interrupted = cut(self.body, delta) if callable(cut) else fragment == text[:3] and cut
+                if response_mode["error"] or interrupted:
                     raise httpx.ReadError("provider stream interrupted")
-            yield b'data: {"id":"chat-pilot","object":"chat.completion.chunk","created":1,"model":"opaque-deployment","choices":[{"index":0,"delta":{},"finish_reason":"stop"}],"usage":{"prompt_tokens":12,"completion_tokens":3,"total_tokens":15}}\n\n'
+            terminal = {"id": self.response_id, "object": "chat.completion.chunk", "created": 1,
+                "model": "opaque-deployment", "choices": [{"index": 0, "delta": {}, "finish_reason": finish_reason}],
+                "usage": {"prompt_tokens": 12, "completion_tokens": 3, "total_tokens": 15}}
+            yield f"data: {json.dumps(terminal)}\n\n".encode()
             yield b"data: [DONE]\n\n"
 
     async def respond(request):
-        requests.append(json.loads(request.content))
+        body = json.loads(request.content)
+        requests.append(body)
         # Entry and its native input must be committed before the provider is contacted.
         query = select(func.count()).select_from(LLMCallEvent).where(LLMCallEvent.sequence == 0)
         if response_mode.get("concurrent"):
@@ -111,6 +141,14 @@ async def configure_provider(db, monkeypatch, responses_sse):
                 assert await reader.scalar(query) >= len(requests)
         else:
             assert await db.scalar(query) == (len(requests) if response_mode["journal"] else 0)
+        choose_error = response_mode.get("error_for")
+        if choose_error is not None:
+            rejection = choose_error(body)
+        else:
+            rejection = response_mode.get("first_error") if len(requests) == 1 else None
+        if rejection is not None:
+            status, error = rejection
+            return httpx.Response(status, json={"error": error})
         if request.url.path.endswith("/responses"):
             terminal = {
                 "id": "resp-pilot",
@@ -136,7 +174,7 @@ async def configure_provider(db, monkeypatch, responses_sse):
                 ],
                 "usage": {"input_tokens": 12, "output_tokens": 3, "total_tokens": 15},
             }
-            if response_mode.get("structured"):
+            if structured_output(body):
                 text = response_mode["outputs"][len(requests) - 1]
                 if requests[-1].get("tools"):
                     terminal["output"][1] = {
@@ -149,7 +187,19 @@ async def configure_provider(db, monkeypatch, responses_sse):
             return httpx.Response(
                 200, content=responses_sse(terminal), headers={"content-type": "text/event-stream"}
             )
-        return httpx.Response(200, stream=Stream(), headers={"content-type": "text/event-stream"})
+        chat_json = response_mode.get("chat_json")
+        json_response = not body.get("stream") and isinstance(chat_json, str)
+        response_id = "chat-specialist" if json_response else "chat-pilot"
+        if (receipts := response_mode.get("chat_response_ids")) is not None:
+            response_id = f"chat-pilot-{uuid4().hex}"
+            receipts.append(response_id)
+        if json_response:
+            return httpx.Response(200, json={
+                "id": response_id, "object": "chat.completion", "created": 1, "model": body["model"],
+                "choices": [{"index": 0, "message": {"role": "assistant", "content": chat_json}, "finish_reason": "stop"}],
+                "usage": {"prompt_tokens": 12, "completion_tokens": 3, "total_tokens": 15},
+            })
+        return httpx.Response(200, stream=Stream(body, response_id), headers={"content-type": "text/event-stream"})
 
     original = httpx.AsyncClient
 

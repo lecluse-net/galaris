@@ -532,8 +532,10 @@ round normal. Le round reçoit alors la projection bornée des interactions enco
 connexion, le Service, la room, l'agent et l'expéditeur exacts. Le LLM conversationnel peut appeler
 `chat_choice_resolve` avec la référence et l'identifiant d'une option persistée, ou poser
 une question si l'intention reste ambiguë. La commande reverrouille la même portée, refuse toute
-option inventée et remet la résolution au handler idempotent d'origine. Une réorientation peut
-ainsi refuser une approbation devenue obsolète puis amender la tâche concernée dans le même round.
+option inventée et remet la résolution au handler idempotent d'origine. Si la référence ou
+l’option est rejetée avant la capture, le modèle reçoit le motif et peut terminer le round.
+Une réorientation peut ainsi refuser une approbation devenue obsolète puis amender la tâche
+concernée dans le même round.
 
 La portée des choix associe l'UUID canonique du salon à l'identifiant externe du participant,
 avec la connexion, le Service et l'agent. Les approbations Dream suivent ce même contrat : une réponse

@@ -206,6 +206,7 @@ class PreparedAuthorization:
     action: AuthorizationAction
     request_id: UUID | None = None
     claimed: bool = False
+    before_effect: Callable[[], Awaitable[None]] | None = None
 
 
 _prepared_authorization: ContextVar[PreparedAuthorization | None] = ContextVar("prepared_authorization", default=None)
@@ -322,8 +323,10 @@ def current_prepared_authorization() -> PreparedAuthorization | None:
 
 
 @contextmanager
-def prepared_authorization(action: AuthorizationAction) -> Generator[PreparedAuthorization]:
-    state = PreparedAuthorization(action)
+def prepared_authorization(
+    action: AuthorizationAction, *, before_effect: Callable[[], Awaitable[None]] | None = None,
+) -> Generator[PreparedAuthorization]:
+    state = PreparedAuthorization(action, before_effect=before_effect)
     token = _prepared_authorization.set(state)
     try:
         yield state
@@ -339,6 +342,8 @@ async def claim_prepared_action(*, snapshot: dict[str, Any], approver_user_id: i
         source="domain" if approver_user_id is not None else state.action.source,
         approver_user_id=approver_user_id))
     state.claimed = True
+    if state.before_effect is not None:
+        await state.before_effect()
     return state.request_id
 
 

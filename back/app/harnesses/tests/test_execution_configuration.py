@@ -3,6 +3,7 @@
 import asyncio
 from types import SimpleNamespace
 from unittest.mock import AsyncMock
+from uuid import uuid4
 
 import pytest
 from pydantic import ValidationError
@@ -91,7 +92,7 @@ async def test_concurrent_configuration_updates_have_one_winner(committed_databa
 async def test_configuration_is_rechecked_at_tool_execution(db, monkeypatch):
     from app.agent import agent_service
     from app.services import mcp_loader, resource_effects
-    from fastmcp.exceptions import ToolError
+    from app.services.contracts import ToolExecutionContext, tool_execution
 
     # The agent and transport are external to this policy test; the policy repository,
     # capability negotiation, tool wrapper and execution gate are real.
@@ -109,8 +110,11 @@ async def test_configuration_is_rechecked_at_tool_execution(db, monkeypatch):
     await configuration.update_configuration("internal", configuration.HarnessConfigurationUpdate(
         expected_revision=0, policy=HarnessExecutionPolicy(disabled_capabilities={"file_tools"}),
     ))
-    with pytest.raises(ToolError, match="ToolCallRejectedError"):
-        await tool()
+    execution = ToolExecutionContext(uuid4(), definition.name)
+    with tool_execution(execution):
+        result = await tool()
+    assert result.is_error
+    assert execution.outcome == "rejected" and execution.permission_rejected
     effect.assert_not_awaited()
 
 

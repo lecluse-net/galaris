@@ -18,9 +18,11 @@ current turn available for more contributions and independent work, while Task s
 peer results before completion. Errors and human recipients never request this early yield.
 Proxied MCP tools cannot forge native execution evidence.
 
-The internal harness drains the selected tool batch and yields before the next model
-request. Uncertain non-idempotent sibling effects retain the existing reconciliation
-path instead of discarding their journal. Managed network runtimes hold the completed
+Both embedded harnesses drain the selected tool batch and yield before the next model
+request. The Claude harness persists the native wait signal with the tool receipt. The
+gateway checks that attempt's checkpoint before admitting another model call. A replacement
+worker can apply the saved wait without starting the SDK again. Uncertain non-idempotent
+sibling effects retain the existing reconciliation path. Managed network runtimes hold the completed
 MCP response, stop admitting new actions, drain engaged MCP and local actions, persist
 their receipts and close the current inference. A lost receipt remains an unknown outcome.
 
@@ -29,6 +31,11 @@ no terminal failure. The semantic run event records the same wait. Task retains 
 of suspension, deadlines, peer completion and idempotent fan-in, including replies received
 before suspension. Once the wait is applied, its finished inference checkpoint is removed;
 resumption starts with the durable colleague results, without replaying the request.
+
+Both embedded drivers persist the v2 wait result before the Task scheduler applies it.
+Each completed tool receipt is recorded on the attempt that emitted it. The replacement
+worker can finish applying the wait using the original run's provider accounting. The
+call journal retains the Task requester when the scheduler's worker has no ambient caller.
 
 ## Verification and limits
 

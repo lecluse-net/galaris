@@ -32,6 +32,10 @@ class DeliveryOutcomeUnknown(RuntimeError):
     """A send may have taken effect; do not retry without a provider receipt."""
 
 
+class ChoiceRejected(ValueError):
+    """The pending choice was rejected before its response could be captured."""
+
+
 HistoryItem = TypeVar("HistoryItem")
 
 

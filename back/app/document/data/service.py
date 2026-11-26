@@ -22,6 +22,7 @@ from .access import accessible_clause, access, is_administrator
 from .contracts import DataActor, DatasetAccess, DatasetConflictError, DatasetNotFoundError, DatasetPermissionError, DatasetWriteLimitError
 from .models import Dataset, DatasetRevision, DatasetWriteBudget
 from .library import LibraryFilters
+from ..contracts import DatasetCreationContentError
 from ..effective_sharing import project_document_access
 
 MAX_BYTES = 2_000_000
@@ -86,7 +87,10 @@ def _description(dataset: Dataset, permissions: DatasetAccess, *, content: bool,
 async def create(actor: DataActor, *, title: str, content: str = "[]", owner_agent_id: int | None = None,
                  creation_key: str | None = None, metadata: dict[str, Any] | None = None,
                  identity: UUID | None = None, keywords: list[str] | None = None) -> Dataset:
-    parse_json(content)
+    try:
+        parse_json(content)
+    except ValueError as exc:
+        raise DatasetCreationContentError(str(exc)) from exc
     if not title.strip() or len(title) > 500:
         raise ValueError("A Dataset requires a title of at most 500 characters")
     owner_user_id = None if isinstance(actor, int) or owner_agent_id is not None else actor.user_id

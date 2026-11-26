@@ -71,11 +71,14 @@ modes: dict[UUID, str] = {}
 first_mission_agents: set[int] = set()
 tool_trace_gates: dict[int, asyncio.Event] = {}
 quota_fixture = {"used": 2500, "status": 200, "codex_credits": 125.5}
+EMBEDDED_CONVERSATION_MODES = {"embedded-pydantic": "internal", "embedded-claude": "claude_embedded"}
 
 
 class ScriptedController:
     async def run(self, turn: ConversationTurn) -> ConversationOutcome:
-        if turn.agent_id in first_mission_agents or modes.get(turn.room_id) in {"conversation-control", "load-dialogue", "process-human", "document-authorization"}:
+        if turn.agent_id in first_mission_agents or modes.get(turn.room_id) in {
+            "conversation-control", "load-dialogue", "process-human", "document-authorization", *EMBEDDED_CONVERSATION_MODES,
+        }:
             from app.harness.conversation import HarnessConversationController
             return await HarnessConversationController().run(turn)
         assert turn.publish_progress is not None
@@ -234,6 +237,9 @@ async def lifespan(_app: FastAPI):
         patches.enter_context(patch("app.harness.executor.stream", task_stream))
         patches.enter_context(patch("app.harness.runtime.build_model_for_llm", harness_model))
         patches.enter_context(patch("app.llm.structured_service.build_model_for_llm", harness_model))
+        patches.enter_context(patch("app.llm.protocol_inference.OpenAIChatModel", e2e_conversation_control.EmbeddedFixtureChatModel))
+        patches.enter_context(patch("app.llm.pydantic_ai_utils.InternalLLMChatModel",
+                                    e2e_conversation_control.EmbeddedFixtureInternalChatModel))
         # External mail boundaries only; approval persistence, Chat and RBAC remain real.
         from bridge.mail.contracts import MailPollBatch
         from tests.e2e_mail import synthetic_inbound_message
@@ -258,6 +264,7 @@ e2e_plugin_archives.configure()
 app.include_router(service_admin_fixture)
 app.include_router(e2e_document_authorization.router)
 app.include_router(e2e_plugin_archives.router)
+app.include_router(e2e_conversation_control.embedded_provider)
 app.mount("/api/__test/mcp", service_admin_remote)
 
 
@@ -378,7 +385,7 @@ async def elevenlabs_voices():
 
 @app.post("/api/__test/seed")
 async def seed(mode: str = "normal", mfa: bool = False, llm_configured: bool = True):
-    if mode not in {"normal", "tools", "error", "task", "task-tools", "call-recovery", "conversation-control", "load-dialogue", "process-human", "document-authorization", "first-mission", "missing-terminal", "interruptible", "mail", "mail-common", "mail-inbound", "file-catalogue", "personal-skills", "lab-repeatability", "contact-authorization"}:
+    if mode not in {"normal", "tools", "error", "task", "task-tools", "call-recovery", "conversation-control", "load-dialogue", "process-human", "document-authorization", "first-mission", "missing-terminal", "interruptible", "mail", "mail-common", "mail-inbound", "file-catalogue", "personal-skills", "lab-repeatability", "contact-authorization", *EMBEDDED_CONVERSATION_MODES}:
         raise HTTPException(400, "Unknown scenario")
     suffix = uuid4().hex[:12]
     async with get_db_session() as db:
@@ -438,6 +445,24 @@ async def seed(mode: str = "normal", mfa: bool = False, llm_configured: bool = T
             rooms.append(str(room.id))
         fixture = {"email": owner.email, "password": "Browser-test-password-42!", "rooms": rooms,
                    "agent_id": agent.id}
+        if mode in EMBEDDED_CONVERSATION_MODES:
+            from app.llm import LLM, LlmProfile
+
+            model_name = f"synthetic-embedded-{suffix}"
+            embedded = LLMProvider(name=model_name, provider_type="openai_compatible", is_active=True,
+                                   base_url="http://127.0.0.1:8000/api/__test/embedded-model/v1")
+            model = LLM(provider=embedded, code=model_name, llm_name=model_name,
+                        label="Synthetic browser conversation", cost_per_input_token=2, cost_per_output_token=4)
+            db.add(model)
+            await db.flush()
+            profile = LlmProfile(label=model_name, text_low_llm_id=model.id, text_standard_llm_id=model.id)
+            db.add(profile)
+            await db.flush()
+            agent.profile_id = profile.id
+            agent.agent_driver = EMBEDDED_CONVERSATION_MODES[mode]
+            e2e_conversation_control.embedded_models[model_name] = gates[UUID(rooms[0])]
+            await db.commit()
+            fixture["model_id"] = model.id
         if mode == "contact-authorization":
             from tests.e2e_contact_authorization import seed_contact_authorization
             fixture.update(await seed_contact_authorization(agent.id))

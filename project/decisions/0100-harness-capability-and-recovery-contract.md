@@ -83,6 +83,32 @@ annulation, effet incertain et runtime. Un retry `never` reste interdit ; un ret
 Une identité de run admis sans checkpoint bloque également la récupération automatique
 après crash ou expiration de lease : l’absence de réponse ne prouve pas l’absence d’effet.
 
+Précision du 26 novembre 2026. Les deux drivers embarqués d’une Task écrivent un
+checkpoint sous le bail avant la première requête. Ils conservent leur résultat
+final réussi avant de le rendre au scheduler. Après la perte d’un worker, la nouvelle
+tentative applique ce résultat au même run sans autre appel fournisseur. Elle doit
+présenter le checkpoint du driver et du run admis. Le harnais Pydantic ferme aussi
+ses itérateurs dans le contexte asyncio qui les a ouverts, jusque dans le flux SDK.
+Un arrêt entre deux fragments ferme le transport et libère l’appel avant la reprise.
+
+Après une création durable de document, les deux drivers vérifient le droit courant
+sur `file_create` et l’accès au document avant de réutiliser son reçu. Le résultat de
+la Task contient le reçu même si le worker initial s’est arrêté avant de publier le
+détail de l’outil. Une nouvelle tentative applique le plafond d’outils de l’admission,
+en comptant les effets enregistrés et l’opération suspendue pour accord une seule fois.
+
+Quand la Console signale une issue inconnue, le checkpoint inscrit `waiting_for_console_receipt`
+pour la tentative courante. Le harnais interne termine sa boucle. Pour Claude, la passerelle
+vérifie ce checkpoint avant de réserver un appel physique et le flux du SDK se termine. Une
+nouvelle tentative ne reprend la boucle qu’après avoir rapproché le reçu exact et les droits
+courants. Un reçu `running` confirme uniquement le lancement d’un `console_start`.
+
+Les appels Pydantic de l’exécuteur transportent la tentative figée à l’admission. Après
+l’attente pour un créneau fournisseur, Galaris vérifie le run, le harnais et la possession
+du bail. Pour les deux SDK, l’insertion de l’appel est sérialisée avec une éventuelle
+reprise de la tâche, puis les verrous sont libérés avant la requête fournisseur. Une
+réponse tardive termine la ligne qui avait été admise avec l’ancienne identité.
+
 ## Qualification
 
 - `make tests-harness-contracts` : façade, harnais scriptable, checkpoints, configuration

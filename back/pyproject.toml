@@ -46,6 +46,7 @@ dependencies = [
     # ════════════════════════════════════════════════════════════════
     # AI and LLM
     "pydantic-ai[groq]~=2.61",
+    "claude-agent-sdk==0.2.185",
     # Messaging (OneBot/Matrix sockets and Telegram Bot API)
     "websockets~=17.3",              # latest series compatible with google-genai (<18)
     "python-telegram-bot~=22.8",

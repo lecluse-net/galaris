@@ -1,4 +1,4 @@
-"""Default consoles are usable, internal-only, and preserve administrator choices."""
+"""Default consoles follow harness capabilities and preserve administrator choices."""
 
 from unittest.mock import AsyncMock
 
@@ -15,8 +15,8 @@ from app.services.models import Service
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("driver", ["internal", "hermes"])
-async def test_agent_creation_provisions_only_internal_console(db, monkeypatch, driver):
+@pytest.mark.parametrize("driver", ["internal", "claude_embedded", "hermes"])
+async def test_agent_creation_provisions_console_for_compatible_harnesses(db, monkeypatch, driver):
     title = Title(label="Console defaults", gender="X")
     db.add(title)
     await db.flush()
@@ -42,7 +42,7 @@ async def test_agent_creation_provisions_only_internal_console(db, monkeypatch, 
             Connection.agent_id == agent.id, Service.code == "console",
         )
     )
-    if driver != "internal":
+    if driver == "hermes":
         assert connection is None
         manager.assert_not_awaited()
         return

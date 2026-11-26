@@ -516,8 +516,9 @@ The round then receives the bounded projection of interactions still active for 
 connection, Service, room, agent, and sender. The conversational LLM may call
 `chat_choice_resolve` with the reference and identifier of a persisted option, or ask a
 question if the intent remains ambiguous. The command relocks the same scope, refuses any invented
-option, and returns resolution to the original idempotent handler. A redirection can therefore
-refuse an approval that has become obsolete and then amend the relevant Task in the same round.
+option, and returns resolution to the original idempotent handler. If the reference or option is
+rejected before capture, the model receives the reason and can finish the round. A redirection can
+therefore refuse an approval that has become obsolete and then amend the relevant Task in the same round.
 
 Internal Chat also projects choice messages as structured titles, bodies, options and durable
 states, without domain metadata or processing tokens. Buttons are reserved for the human

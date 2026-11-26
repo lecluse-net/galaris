@@ -10,6 +10,11 @@ async function agentFixtures(page) {
   await jsonRoute(page, '**/api/harnesses/agents/7', { containerized: true })
 }
 
+const embeddedDrivers = available => [
+  { name: 'internal', label_key: 'agent.harnessInternal', transport: 'embedded', available: true, manages_runtime: false },
+  { name: 'claude_embedded', label_key: 'agent.harnessClaudeEmbedded', transport: 'embedded', available, manages_runtime: false },
+]
+
 for (const width of [1440, 390]) test(`an agent citation switches to an avatar card and survives saving and reading (${width}px)`, async ({ page }, testInfo) => {
   await page.setViewportSize({ width, height: 1000 })
   await agentFixtures(page)
@@ -369,6 +374,166 @@ test('models load on demand without losing the saved profile, voice or identity 
   } finally { release() }
 })
 
+test('embedded harnesses save and reopen independently of managed Claude', async ({ page }, testInfo) => {
+  await agentFixtures(page)
+  await page.setViewportSize({ width: 1440, height: 1000 })
+  const saved = { ...agent, agent_driver: 'internal', is_owner: true }
+  let claudeAvailable = true
+  const writes = []
+  await page.route('**/api/agents?*', route => route.fulfill({ json: [saved] }))
+  await page.route('**/api/agents/drivers', route => route.fulfill({ json: embeddedDrivers(claudeAvailable) }))
+  await jsonRoute(page, '**/api/agents/managers', [agent.user])
+  await jsonRoute(page, '**/api/agents/titles?*', [{ id: agent.title_id, label: 'agent_titles.ms', gender: 'F' }])
+  await jsonRoute(page, '**/api/harnesses/catalog?*', [{
+    id: '98b34442-5102-4392-b348-428c75c7b544', provider_code: 'claude_agent', name: 'Claude Agent', containerized: true,
+  }])
+  await jsonRoute(page, '**/api/harnesses/agents/7/status', {
+    status: 'internal', managed: false, lifecycle_status: 'internal', capabilities: [], available_actions: [],
+  })
+  await page.route('**/api/agents/7', route => route.fulfill({ json: saved }))
+  await page.route('**/api/harnesses/agents/7', route => {
+    if (route.request().method() === 'PUT') {
+      const body = route.request().postDataJSON()
+      writes.push(body)
+      saved.agent_driver = body.driver_code
+    }
+    return route.fulfill({ json: {
+      harness_id: null, internal: true, driver_code: saved.agent_driver, containerized: false,
+      lifecycle_status: saved.agent_driver === 'claude_embedded' && !claudeAvailable ? 'error' : 'ready',
+    } })
+  })
+  await mount(page, 'app/index/pages/agent.vue', { privileges: ['AGENT_EDIT'] })
+  const edit = page.getByRole('button', { name: 'Edit agent', exact: true })
+  const dialog = page.getByRole('dialog').filter({ has: page.getByLabel('First name *', { exact: true }) })
+  const selection = dialog.getByLabel('Harness', { exact: true })
+  const open = async label => {
+    await edit.click()
+    await expect(selection).toHaveValue(label)
+  }
+
+  await open('Pydantic AI (embedded)')
+  await selection.click()
+  await expect(page.getByRole('option', { name: 'Claude Agent (managed)', exact: true })).toBeVisible()
+  await page.getByRole('option', { name: 'Claude Agent (embedded)', exact: true }).click()
+  await dialog.getByRole('button', { name: 'Edit', exact: true }).click()
+  await expect(dialog).toHaveCount(0)
+  expect(writes).toEqual([{ driver_code: 'claude_embedded' }])
+  await open('Claude Agent (embedded)')
+  await dialog.screenshot({ path: testInfo.outputPath('embedded-claude-desktop.png'), animations: 'disabled' })
+  await page.keyboard.press('Escape')
+  await expect(dialog).toHaveCount(0)
+
+  claudeAvailable = false
+  await page.setViewportSize({ width: 390, height: 844 })
+  await page.evaluate(() => window.testApp.dark(true))
+  await open('Claude Agent (embedded) (unavailable)')
+  await dialog.screenshot({ path: testInfo.outputPath('embedded-claude-mobile.png'), animations: 'disabled' })
+  await selection.click()
+  await page.getByRole('option', { name: 'Pydantic AI (embedded)', exact: true }).click()
+  await dialog.getByRole('button', { name: 'Edit', exact: true }).click()
+  await expect(dialog).toHaveCount(0)
+  expect(writes).toEqual([{ driver_code: 'claude_embedded' }, { driver_code: 'internal' }])
+})
+
+const activeHarnessTask = { id: '00000000-0000-4000-8000-000000000081', label: 'Synthetic active task' }
+const pausedHarnessTask = { id: '00000000-0000-4000-8000-000000000082', label: 'Synthetic paused task' }
+
+async function requestEmbeddedHarnessSwitch(page, { active = [], paused = [], inspectionFails = false } = {}) {
+  const saved = { ...agent, agent_driver: 'internal' }
+  const requests = []
+  await agentFixtures(page)
+  await jsonRoute(page, '**/api/agents?*', [saved])
+  await jsonRoute(page, '**/api/agents/drivers', embeddedDrivers(true))
+  await jsonRoute(page, '**/api/agents/managers', [agent.user])
+  await jsonRoute(page, '**/api/agents/titles?*', [{ id: agent.title_id, label: 'agent_titles.ms', gender: 'F' }])
+  await jsonRoute(page, '**/api/harnesses/catalog?*', [])
+  const selection = () => ({
+    harness_id: null, internal: true, driver_code: saved.agent_driver, containerized: false, lifecycle_status: 'ready',
+  })
+  await jsonRoute(page, '**/api/harnesses/agents/7/status', {
+    status: 'internal', managed: false, lifecycle_status: 'internal', capabilities: [], available_actions: [],
+  })
+  await page.route('**/api/agents/7', route => {
+    if (route.request().method() === 'PUT') requests.push('save')
+    return route.fulfill({ json: saved })
+  })
+  await page.route('**/api/harnesses/agents/7', route => {
+    if (route.request().method() === 'PUT') {
+      saved.agent_driver = route.request().postDataJSON().driver_code
+      requests.push(saved.agent_driver)
+    }
+    return route.fulfill({ json: selection() })
+  })
+  await page.route('**/api/harnesses/agents/7/task-blockers', route => {
+    requests.push('inspect')
+    return inspectionFails
+      ? route.fulfill({ status: 503, json: { detail: 'Service unavailable' } })
+      : route.fulfill({ json: { active_tasks: active, active_count: active.length, paused_tasks: paused } })
+  })
+  await page.route('**/api/harnesses/agents/7/task-blockers/terminate-paused', route => {
+    requests.push('terminate')
+    return route.fulfill({ json: { active_tasks: [], active_count: 0, paused_tasks: [] } })
+  })
+
+  await mount(page, 'app/index/pages/agent.vue', { privileges: ['AGENT_EDIT', 'TASK_EDIT'] })
+  await page.getByRole('button', { name: 'Edit agent', exact: true }).click()
+  const editor = page.getByRole('dialog').filter({ has: page.getByLabel('First name *', { exact: true }) })
+  const harness = editor.getByLabel('Harness', { exact: true })
+  await expect(harness).toHaveValue('Pydantic AI (embedded)')
+  await harness.click()
+  await page.getByRole('option', { name: 'Claude Agent (embedded)', exact: true }).click()
+  await editor.getByRole('button', { name: 'Edit', exact: true }).click()
+  const confirmation = page.getByRole('dialog').filter({ hasText: 'Tasks are blocking the harness change' })
+  const terminate = confirmation.getByRole('button', { name: 'Terminate tasks and continue', exact: true })
+  return { editor, confirmation, terminate, requests }
+}
+
+for (const paused of [[], [pausedHarnessTask]]) {
+  test(`active tasks prevent a harness switch (${paused.length} paused)`, async ({ page }) => {
+    const { editor, confirmation, terminate, requests } = await requestEmbeddedHarnessSwitch(page, {
+      active: [activeHarnessTask], paused,
+    })
+    await expect(confirmation.getByText(activeHarnessTask.label, { exact: true })).toBeVisible()
+    for (const task of paused) {
+      await expect(confirmation.getByText(task.label, { exact: true })).toBeVisible()
+    }
+    await expect(terminate).toHaveCount(0)
+    await confirmation.getByRole('button', { name: 'Cancel', exact: true }).click()
+    await expect(editor.getByRole('button', { name: 'Edit', exact: true })).toBeEnabled()
+    expect(requests).toEqual(['inspect'])
+  })
+}
+
+test('dismissing a harness switch preserves paused tasks', async ({ page }) => {
+  const { editor, confirmation, requests } = await requestEmbeddedHarnessSwitch(page, { paused: [pausedHarnessTask] })
+  await expect(confirmation.getByText(pausedHarnessTask.label, { exact: true })).toBeVisible()
+  await confirmation.getByRole('button', { name: 'Cancel', exact: true }).click()
+  await expect(editor.getByRole('button', { name: 'Edit', exact: true })).toBeEnabled()
+  expect(requests).toEqual(['inspect'])
+})
+
+test('confirming a harness switch terminates paused tasks before saving', async ({ page }) => {
+  const { editor, terminate, requests } = await requestEmbeddedHarnessSwitch(page, { paused: [pausedHarnessTask] })
+  await expect(terminate).toBeVisible()
+  expect(requests).toEqual(['inspect'])
+  await terminate.click()
+  await expect(editor).toHaveCount(0)
+  expect(requests).toEqual(['inspect', 'terminate', 'save', 'claude_embedded'])
+})
+
+test('a harness switch with no blockers saves without termination', async ({ page }) => {
+  const { editor, requests } = await requestEmbeddedHarnessSwitch(page)
+  await expect(editor).toHaveCount(0)
+  expect(requests).toEqual(['inspect', 'save', 'claude_embedded'])
+})
+
+test('failed blocker inspection prevents a harness switch', async ({ page }) => {
+  const { editor, requests } = await requestEmbeddedHarnessSwitch(page, { inspectionFails: true })
+  await expect(page.getByText('Unable to check which tasks are blocking the harness change.')).toBeVisible()
+  await expect(editor.getByRole('button', { name: 'Edit', exact: true })).toBeEnabled()
+  expect(requests).toEqual(['inspect'])
+})
+
 test('reopening agent management refreshes catalogues and reloading retrieves them again', async ({ page }) => {
   await agentFixtures(page)
   const reads = { agents: 0, titles: 0, groups: 0 }
@@ -398,6 +563,7 @@ test('reopening agent management refreshes catalogues and reloading retrieves th
 test('agent creation requires a first name but accepts an empty last name', async ({ page }) => {
   await agentFixtures(page)
   await jsonRoute(page, '**/api/agents?*', [])
+  await jsonRoute(page, '**/api/agents/drivers', embeddedDrivers(true))
   await jsonRoute(page, '**/api/agents/managers', [agent.user])
   const titles = Array.from({ length: 500 }, (_, index) => ({ id: index + 1, label: `Synthetic title ${index + 1}`, gender: 'X' }))
   titles.push({ id: 501, label: 'agent_titles.ms', gender: 'F' })
@@ -417,6 +583,10 @@ test('agent creation requires a first name but accepts an empty last name', asyn
   await mount(page, 'app/index/pages/agent.vue', { privileges: ['AGENT_EDIT'] })
   await page.getByRole('button', { name: 'New Agent', exact: true }).click()
   const dialog = page.getByRole('dialog')
+  const selection = dialog.getByLabel('Harness', { exact: true })
+  await expect(selection).toBeEnabled()
+  await selection.click()
+  await page.getByRole('option', { name: 'Claude Agent (embedded)', exact: true }).click()
   await dialog.getByLabel('Agent code', { exact: true }).fill('lyra')
   await dialog.getByLabel('Title *', { exact: true }).click()
   await expect(page.getByRole('option').first()).toBeVisible()
@@ -431,11 +601,12 @@ test('agent creation requires a first name but accepts an empty last name', asyn
   await expect(page.getByText('This code is already used by another agent. Please choose a different code.', { exact: true })).toBeVisible()
   await expect(dialog).toBeVisible()
   await expect(dialog.getByLabel('First name *', { exact: true })).toHaveValue('Lyra')
+  await expect(selection).toHaveValue('Claude Agent (embedded)')
   await dialog.getByLabel('Agent code', { exact: true }).fill('lyra-available')
   await dialog.getByRole('button', { name: 'Create', exact: true }).click()
   await expect(dialog).toHaveCount(0)
   expect(saves).toHaveLength(2)
-  expect(saves[1]).toMatchObject({ code: 'lyra-available', first_name: 'Lyra', last_name: '', title_id: 501 })
+  expect(saves[1]).toMatchObject({ code: 'lyra-available', first_name: 'Lyra', last_name: '', title_id: 501, agent_driver: 'claude_embedded' })
 })
 
 test('a refreshed portrait survives an older catalogue avatar response', async ({ page }) => {

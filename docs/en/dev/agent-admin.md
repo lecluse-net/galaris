@@ -73,7 +73,13 @@ never change global rules. Each agent/Service pair has one connection. Group del
 legacy references and revokes associated access. Referenced titles cannot be deleted, including
 those still used by archived agents.
 
-Harnesses use existing selection, cleanup and blocker workflows. Actions require support from
+Harnesses use existing selection, cleanup and blocker workflows. The HTTP endpoint
+`GET /api/agents/drivers` exposes transport and availability. Agent creation accepts an
+available embedded driver in `agent_driver`. For an existing agent, `PUT /api/harnesses/agents/{id}`
+accepts `driver_code` for an embedded driver and `harness_id` for a catalog Harness.
+The `agent_harness_reset` MCP tool accepts the `driver_code` of an available embedded harness.
+Omitting it restores Pydantic AI.
+Actions require support from
 the current provider and runtime state. Results distinguish `completed`, `in_progress` and
 `error`. Logs are limited to 5,000 lines, 2,000 characters per line and 200,000 characters total,
 with credentials and paths redacted. Blocking Tasks have complete URIs; no Task-stop command

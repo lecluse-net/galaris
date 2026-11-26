@@ -47,10 +47,12 @@ from .contracts import (
     ReasoningEffort,
     ToolExposureProfile,
     ResolvedModel,
+    ScopedInferenceAdmission,
     ResolvedExecutionCapabilities,
     ResolvedExecutionTarget,
     OBJECTIVE_IS_STANDALONE_DATA_KEY,
     StaleAgentRunError,
+    UnknownAgentDriverError,
 )
 from pydantic import BaseModel
 from .conversation_context import (
@@ -84,12 +86,13 @@ async def aggregate_llm_run_usage(
     run_id: UUID,
     *,
     agent_id: int,
+    correlation_ref: str | None = None,
 ) -> tuple[AgentUsage, float] | None:
     """Return persisted gateway accounting through the agent-domain facade."""
 
     from app.llm import aggregate_agent_run_usage
 
-    payload = await aggregate_agent_run_usage(run_id, agent_id=agent_id)
+    payload = await aggregate_agent_run_usage(run_id, agent_id=agent_id, correlation_ref=correlation_ref)
     if payload["requests"] <= 0:
         return None
     return (
@@ -248,6 +251,24 @@ def _persisted_request_run_id(
     return None
 
 
+def _persisted_run_limit(
+    data: Mapping[str, Any], *, driver_code: str, run_id: UUID,
+    limit_key: Literal["request_limit", "tool_call_limit"],
+) -> int | None:
+    """Read the original allowance even after result application clears the active identity."""
+    for key in (RUN_IDENTITY_DATA_KEY, RUN_CHECKPOINT_DATA_KEY):
+        record = data.get(key)
+        if not isinstance(record, Mapping):
+            continue
+        admission = cast(Mapping[str, object], record)
+        if admission.get("request_run_id") != str(run_id) or admission.get("driver_code") != driver_code:
+            continue
+        limit = admission.get(limit_key)
+        if type(limit) is int and limit > 0:
+            return limit
+    return None
+
+
 def memory_context_trace(metadata: Mapping[str, Any]) -> dict[str, Any] | None:
     """Keep safe recall telemetry without persisting the injected memory text."""
 
@@ -382,6 +403,14 @@ def resolve_driver(code: str | None) -> AgentDriverSpec:
     return require_available_driver(code)
 
 
+def retains_authorization_run(code: str) -> bool:
+    """Check a saved driver even when current configuration disables new runs."""
+    try:
+        return get_driver_spec(code).retains_authorization_run
+    except UnknownAgentDriverError:
+        return False
+
+
 def resolve_pipeline_policy(code: str | None) -> DriverPipelinePolicy:
     return pipeline_policy_for(code)
 
@@ -480,6 +509,27 @@ async def resolve_conversation_model(agent: Any, language: str = "en") -> Resolv
     from .model_resolver import resolve_conversation_model as resolve
 
     return await resolve(agent, language)
+
+
+async def conversation_driver_for_agent(agent_id: int) -> str:
+    """Resolve a new round against the persisted Harness assignment."""
+    from core.params import runtime_settings
+    from .agent_service import get
+    from .harness_port import harness_selection_port
+    from .registry import CLAUDE_EMBEDDED_HARNESS, conversation_driver_code, driver_status
+
+    agent = await get(agent_id)
+    if agent is None:
+        raise LookupError(f"Agent {agent_id} not found.")
+    embedded = conversation_driver_code(agent.agent_driver, None)
+    if (
+        embedded == CLAUDE_EMBEDDED_HARNESS.code
+        or not runtime_settings.HARNESS_CLAUDE_EMBEDDED_CONVERSATIONS_ENABLED
+        or not driver_status(CLAUDE_EMBEDDED_HARNESS).enabled
+    ):
+        return embedded
+    selection = await harness_selection_port.resolve(agent)
+    return conversation_driver_code(agent.agent_driver, selection.provider_code if selection else None)
 
 
 def _serialize_message(message: object) -> dict[str, Any]:
@@ -754,6 +804,26 @@ async def build_run_request(task: AgentTask) -> AgentRunRequest:
     request_run_id = (
         _persisted_request_run_id(data, driver_code=driver_code) or uuid4()
     )
+    from core.params import runtime_settings
+
+    request_limit = runtime_settings.TASK_AGENT_MAX_REQUESTS
+    tool_call_limit = runtime_settings.TASK_AGENT_MAX_TOOL_CALLS
+    budget_trace: dict[str, int] = {}
+    if driver_code == "claude_embedded":
+        request_limit = _persisted_run_limit(
+            data, driver_code=driver_code, run_id=request_run_id, limit_key="request_limit",
+        ) or request_limit
+        budget_trace["request_limit"] = request_limit
+    if driver_code in {"internal", "claude_embedded"}:
+        tool_call_limit = _persisted_run_limit(
+            data, driver_code=driver_code, run_id=request_run_id, limit_key="tool_call_limit",
+        ) or tool_call_limit
+        budget_trace["tool_call_limit"] = tool_call_limit
+    limits = AgentRunLimitsV1(
+        request_limit=request_limit,
+        tool_call_limit=tool_call_limit,
+        tool_parallelism=4,
+    )
     attempt_id = await task_port.activate_agent_run(
         task,
         {
@@ -772,10 +842,12 @@ async def build_run_request(task: AgentTask) -> AgentRunRequest:
             ),
             "model_id": model.id,
             "model_code": model.code,
+            "executor_profile_effort": model.executor_profile_effort,
             "reasoning_effort": model.reasoning_effort,
             "effort": effort,
             "execution_strategy": execution_strategy,
             "objective_fingerprint": objective_fingerprint,
+            **budget_trace,
         },
     )
 
@@ -822,6 +894,7 @@ async def build_run_request(task: AgentTask) -> AgentRunRequest:
                 else None
             ),
             "data": checkpoint_data,
+            **budget_trace,
         }
         revision = await task_port.persist_agent_run_state(
             task.id,
@@ -838,13 +911,6 @@ async def build_run_request(task: AgentTask) -> AgentRunRequest:
 
         await task_port.append_agent_run_event(event)
 
-    from core.params import runtime_settings
-
-    limits = AgentRunLimitsV1(
-        request_limit=runtime_settings.TASK_AGENT_MAX_REQUESTS,
-        tool_call_limit=runtime_settings.TASK_AGENT_MAX_TOOL_CALLS,
-        tool_parallelism=4,
-    )
     from .executor_service import build_system_prompt
 
     executor_system_prompt = await build_system_prompt(
@@ -1121,7 +1187,7 @@ async def _record_run_outcome(
                 False if result.failure is not None and result.failure.retry == "never" else None
             ),
             task_id=request.task_id,
-            task_attempt_id=request.attempt_id,
+            task_attempt_id=request.attempt_id if request.task_id is not None else None,
             agent_id=request.agent.id,
             run_uuid=request.run_id,
             driver_code=request.driver_code,
@@ -1174,7 +1240,7 @@ async def _record_tool_failure(
             retry_limit=message.tool_retry_limit,
             will_retry=True if message.tool_retry_limit is not None else None,
             task_id=request.task_id,
-            task_attempt_id=request.attempt_id,
+            task_attempt_id=request.attempt_id if request.task_id is not None else None,
             agent_id=request.agent.id,
             run_uuid=request.run_id,
             driver_code=request.driver_code,
@@ -1229,20 +1295,20 @@ async def deep_harness_target(agent_id: int) -> tuple[str, ResolvedExecutionTarg
     if agent is None:
         raise PermissionError("The conversation agent is unavailable.")
     spec = resolve_driver(agent.agent_driver)
-    if spec.code not in {"internal", "openai_messages", "hermes"}:
+    if spec.deep_model_source is None:
         raise PermissionError("The selected harness does not expose direct Deep sessions.")
     selected = await harness_selection_port.resolve(agent)
-    if selected is not None and spec.code != "internal":
+    if selected is not None and spec.transport != "embedded":
         if selected.status != "ready" or selected.driver_code != spec.code:
             raise PermissionError("The configured harness is unavailable.")
         return spec.code, deep_execution_target(ResolvedExecutionTarget(
             provider_code=selected.provider_code, target_ref=f"harness:{selected.id}",
             transport=spec.transport, revision=str(selected.revision),
             metadata={**selected.metadata, "model": selected.model,
-                      **({"galaris_extensions": True} if spec.code == "hermes" else {})},
+                      **({"galaris_extensions": True} if spec.deep_model_source == "managed_gateway" else {})},
         ))
-    if spec.code == "hermes":
-        raise PermissionError("Deep requires a managed Hermes assignment.")
+    if spec.deep_model_source == "managed_gateway":
+        raise PermissionError("Deep requires a managed harness assignment.")
     configuration = await _execution_driver_configuration(agent, spec.code)
     return spec.code, resolve_execution_target(spec, agent_id=agent_id, driver_config=configuration)
 
@@ -1255,6 +1321,10 @@ async def stream_deep_submission(
     history: tuple[Mapping[str, Any], ...], attachments: tuple[Mapping[str, Any], ...],
     native_history: str | None = None, save_native_history: Callable[[str], None] | None = None,
     control_credential: str | None = None,
+    admit_inference: Callable[[ResolvedModel], Awaitable[ScopedInferenceAdmission]] | None = None,
+    resume_checkpoint: AgentRunCheckpoint | None = None,
+    save_checkpoint: Callable[[AgentRunCheckpoint], Awaitable[None]] | None = None,
+    tool_lock: asyncio.Lock | None = None,
 ) -> AsyncGenerator[AgentEvent, None]:
     """Send an input directly to the session's harness with its normal tools and skills."""
     from .agent_service import get
@@ -1265,15 +1335,21 @@ async def stream_deep_submission(
         raise PermissionError("The conversation agent is unavailable.")
     if (driver_code, target) != await deep_harness_target(agent_id):
         raise PermissionError("The Deep session's harness assignment has changed.")
+    spec = resolve_driver(driver_code)
     external_model = target.metadata.get("model")
     model = (ResolvedModel(0, external_model, external_model, external_model, "standard")
-             if credential is None and driver_code == "openai_messages" and isinstance(external_model, str) and external_model
+             if credential is None and spec.deep_model_source == "harness" and isinstance(external_model, str) and external_model
              else await resolve_execution_model(agent, "standard", language))
+    admission = None
+    if spec.scoped_inference:
+        if admit_inference is None:
+            raise PermissionError("This Deep session requires an admitted submission.")
+        admission = await admit_inference(model)
     snapshot = AgentSnapshot(
         id=agent.id, code=agent.code, first_name=agent.first_name, last_name=agent.last_name,
         driver_code=driver_code, llm_id=model.id, gender="F" if getattr(agent.title, "gender", None) == "F" else "M",
         personality=agent.personality, job_description=agent.job_description, job_title=agent.job_title,
-        driver_config=await _execution_driver_configuration(agent, driver_code) if driver_code == "hermes" else {},
+        driver_config=await _execution_driver_configuration(agent, driver_code) if spec.manages_runtime else {},
     )
     if message_data.get("console_cwd"):
         objective += (
@@ -1281,14 +1357,20 @@ async def stream_deep_submission(
             f"(Galaris Console cwd={message_data['console_cwd']!r})."
         )
     request = AgentRunRequest(
-        run_id=submission_id, task_id=None, deep_session_id=session_id, deep_native_session=native_session,
+        run_id=submission_id, task_id=None, attempt_id=admission.attempt_id if admission else None,
+        limits=AgentRunLimitsV1(request_limit=admission.request_limit if admission else None,
+                               tool_call_limit=admission.tool_call_limit if admission else None),
+        deep_session_id=session_id, deep_native_session=native_session,
         deep_credential=credential,
         deep_control_credential=control_credential,
-        deep_native_history=native_history, control=AgentRunControl(save_native_history=save_native_history),
+        deep_native_history=native_history, resume_checkpoint=resume_checkpoint,
+        control=AgentRunControl(save_native_history=save_native_history, save_checkpoint=save_checkpoint,
+                                conversation_tool_lock=tool_lock,
+                                reserve_conversation_tool=admission.reserve_tool if admission else None),
         agent=snapshot, model=model, effort="standard", objective=objective, driver_code=driver_code,
         target=target, message_group_id=str(room_id), message_platform="internal",
         messenger_connection_id=connection_id, conversation_history=history, attachments=attachments,
-        task_data={**message_data, "language": language, "conversation_id": str(room_id)},
+        task_data={**message_data, "language": language, "conversation_id": str(room_id), "connection_id": connection_id},
         system_instructions="\n\n".join(filter(None, (snapshot.personality, snapshot.job_description))),
     )
     with deep_inference_scope(session_id), llm_execution_scope(requester_user_id=requester_user_id):
@@ -1498,13 +1580,14 @@ async def stream_conversation_turn_events(
     voice_session_id: UUID | None = None,
     resume_checkpoint: AgentRunCheckpoint | None = None,
     control: AgentRunControl | None = None,
-) -> AsyncIterator[AgentEvent]:
+    round_driver_code: str | None = None,
+) -> AsyncGenerator[AgentEvent, None]:
     """Execute one voice turn through the internal conversation runtime.
 
     A conversational turn is not a durable Task. It bypasses the Task scheduler and
     dispatcher while retaining personality, context providers, trace, and conversation
-    binding. Voice is pinned to the same model and reduced tool projection as text
-    conversation rounds; the agent's Task driver is not consulted.
+    binding. Voice uses the conversation model and the engine frozen when the
+    round was admitted by the audio transport.
     """
     from . import agent_service
 
@@ -1521,10 +1604,18 @@ async def stream_conversation_turn_events(
     if len(normalized_room_locator) > 512:
         raise ValueError("room_locator must not exceed 512 characters")
 
-    driver_spec = resolve_driver(None)
+    driver_spec = resolve_driver(round_driver_code)
     driver_code = driver_spec.code
     effort: Literal["standard"] = "standard"
     model = await resolve_conversation_model(agent, language)
+    control = control or AgentRunControl()
+    admission = None
+    if driver_spec.scoped_inference:
+        admit = control.admit_conversation_inference
+        if (conversation_round_id is None or voice_session_id is None or admit is None
+                or run_id != conversation_round_id):
+            raise PermissionError("This voice runtime requires an admitted round in the live call.")
+        admission = await admit(model)
     title = getattr(agent, "title", None)
     snapshot = AgentSnapshot(
         id=int(agent.id),
@@ -1588,6 +1679,7 @@ async def stream_conversation_turn_events(
             contact_memory_item_id=contact_memory_item_id,
             task_data=task_data,
             fallback_history=fallback_history,
+            conversation_round_id=conversation_round_id,
         )
     )
     messaging_context = dict(contributed_context.messaging_context)
@@ -1596,6 +1688,9 @@ async def stream_conversation_turn_events(
     request = AgentRunRequest(
         run_id=run_id or uuid4(),
         task_id=None,
+        attempt_id=admission.attempt_id if admission else None,
+        limits=AgentRunLimitsV1(request_limit=admission.request_limit if admission else None,
+                               tool_call_limit=admission.tool_call_limit if admission else None),
         agent=snapshot,
         driver_code=driver_code,
         effort=effort,
@@ -1609,7 +1704,7 @@ async def stream_conversation_turn_events(
         task_data=task_data,
         approval_action="ask",
         resume_checkpoint=resume_checkpoint,
-        control=control or AgentRunControl(),
+        control=replace(control, reserve_conversation_tool=admission.reserve_tool) if admission else control,
         system_instructions=contributed_context.system_instructions,
         shared_context=contributed_context.shared_context,
         memory_context=contributed_context.memory_context,
@@ -1623,45 +1718,35 @@ async def stream_conversation_turn_events(
 
     emitted_text = ""
     metadata_filter = _LeadingMessageMetadataFilter()
-    async for event in stream(request):
-        if event.kind == "result" and event.result is not None:
-            pending = metadata_filter.finish()
-            if pending:
-                emitted_text += pending
-                yield AgentEvent.from_message(
-                    AIMessage(type="text", content=pending)
-                )
-            terminal = ExecutionResult.model_validate(event.result)
-            terminal.result = strip_leading_message_metadata(terminal.result)
-            yield AgentEvent.from_result(
-                _enrich_run_result(
-                    terminal,
-                    request,
-                )
-            )
-            continue
-        if event.message is None:
-            continue
-        normalized = AIMessage.model_validate(event.message)
-        if normalized.type == "text" and normalized.success:
-            content = strip_leading_message_metadata(
-                metadata_filter.feed(normalized.content)
-            )
-            if not content:
+    async with aclosing(
+        cast(AsyncGenerator[AgentEvent, None], stream(request)),
+    ) as events:
+        async for event in events:
+            if event.kind == "result" and event.result is not None:
+                pending = metadata_filter.finish()
+                if pending:
+                    emitted_text += pending
+                    yield AgentEvent.from_message(AIMessage(type="text", content=pending))
+                terminal = ExecutionResult.model_validate(event.result)
+                terminal.result = strip_leading_message_metadata(terminal.result)
+                yield AgentEvent.from_result(_enrich_run_result(terminal, request))
                 continue
-            normalized = normalized.model_copy(update={"content": content})
-            # Some runtimes stream token deltas, then emit the complete final
-            # answer once more. Preserve low latency without repeating that
-            # answer to real-time consumers such as speech synthesis.
-            if emitted_text and content == emitted_text:
+            if event.message is None:
                 continue
-            if emitted_text and content.startswith(emitted_text):
-                content = content[len(emitted_text):]
-                if not content:
+            normalized = AIMessage.model_validate(event.message)
+            if normalized.type == "text" and normalized.success:
+                content = strip_leading_message_metadata(
+                    metadata_filter.feed(normalized.content)
+                )
+                # Some runtimes emit the whole answer after streaming it. Preserve
+                # low latency without repeating speech synthesis for those words.
+                if not content or (emitted_text and content == emitted_text):
                     continue
+                if emitted_text and content.startswith(emitted_text):
+                    content = content[len(emitted_text):]
                 normalized = normalized.model_copy(update={"content": content})
-            emitted_text += content
-        yield AgentEvent.from_message(normalized)
+                emitted_text += content
+            yield AgentEvent.from_message(normalized)
 
 
 async def stream_conversation_turn(

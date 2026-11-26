@@ -15,13 +15,18 @@ from app.agent.contracts import (
     AgentTaskBlocker,
     AgentTaskBlockers,
     AgentContextCapsule,
+    ChildWaitRequested,
+    ConsoleReceiptRequired,
+    ExecutionEffort,
     ExecutionResult,
+    ReasoningEffort,
     StaleAgentRunError,
     TaskMessage,
     TaskPhase,
     TaskTransition,
     WorkingResource,
     WorkingSet,
+    WAITING_FOR_CONSOLE_RECEIPT,
 )
 from app.agent.task_port import TaskAmendmentUnavailableError, register_task_port
 from app.agent import EffectDescriptorV1, ScopePreflightV1
@@ -787,21 +792,81 @@ async def _authorization_dispatch_available(agent_id: int, context_key: str) -> 
 
 async def _runtime_dispatch_ready(agent_id: int, context_key: str, attempt_id: UUID | None,
                                  decided_at: datetime | None) -> bool:
-    from core.database import get_db
     if attempt_id is None:
         return False
     task_id = UUID(context_key.removeprefix("task:"))
-    row = (await get_db().execute(select(Task, TaskAttempt).join(TaskAttempt,
+    attempt = await _live_runtime_task_attempt(task_id, attempt_id, agent_id)
+    return attempt is not None and (decided_at is None or attempt[1].started_at >= decided_at)
+
+
+async def _live_runtime_task_attempt(
+    task_id: UUID, attempt_id: UUID, agent_id: int, *, lock: bool = False,
+) -> tuple[Task, TaskAttempt] | None:
+    from core.database import get_db
+
+    query = select(Task, TaskAttempt).join(TaskAttempt,
         TaskAttempt.task_id == Task.id).where(Task.id == task_id, Task.agent_id == agent_id,
-        TaskAttempt.id == attempt_id).execution_options(populate_existing=True))).one_or_none()
+        TaskAttempt.id == attempt_id).execution_options(populate_existing=True)
+    if lock:
+        query = query.with_for_update(read=True, of=(Task, TaskAttempt))
+    row = (await get_db().execute(query)).one_or_none()
     if row is None:
-        return False
+        return None
     task, attempt = row
-    return bool(task.status == TaskStatus.EXEC and not task.paused and not task.cancel_requested
+    if (task.status == TaskStatus.EXEC and not task.paused and not task.cancel_requested
         and task.deleted_at is None and task.lease_token is not None and task.lease_token == attempt.lease_token
         and task.lease_expires_at is not None and task.lease_expires_at > datetime.now(timezone.utc)
-        and attempt.status == "CLAIMED" and attempt.finished_at is None
-        and (decided_at is None or attempt.started_at >= decided_at))
+        and attempt.status == "CLAIMED" and attempt.finished_at is None):
+        return task, attempt
+    return None
+
+
+async def _task_model_admission(task_id: UUID, attempt_id: UUID, agent_id: int, *, run_id: UUID,
+                                model_loop: bool) -> tuple[Task, dict[str, object]]:
+    # Keep model admission and journal insertion under the same Task and attempt
+    # locks. No lock is held while the provider generates a response.
+    row = await _live_runtime_task_attempt(task_id, attempt_id, agent_id, lock=model_loop)
+    if row is None:
+        raise PermissionError("The task inference attempt is no longer active.")
+    task, attempt = row
+    admission: object = (attempt.data or {}).get("agent_run")
+    if not isinstance(admission, dict):
+        raise PermissionError("The task attempt has no admitted agent run.")
+    identity = cast(dict[str, object], admission)
+    if identity.get("request_run_id") != str(run_id) or (task.data or {}).get("_agent_run_identity") != identity:
+        raise PermissionError("The task inference does not match the admitted run.")
+    if model_loop:
+        checkpoint: object = (attempt.data or {}).get("agent_checkpoint")
+        if isinstance(checkpoint, Mapping):
+            archived = cast(Mapping[str, object], checkpoint)
+            if archived.get("request_run_id") == str(run_id):
+                if archived.get("status") == "waiting_for_children":
+                    raise ChildWaitRequested("The task is waiting for contributions from its children.")
+                if archived.get("status") == WAITING_FOR_CONSOLE_RECEIPT:
+                    raise ConsoleReceiptRequired("The task needs its original Console receipt before another model request.")
+    return task, identity
+
+
+async def authorize_task_inference(
+    task_id: UUID, attempt_id: UUID, agent_id: int, *, run_id: UUID, model_id: int, model_code: str,
+    reasoning_effort: ReasoningEffort | None, executor_profile_effort: ExecutionEffort | None = None,
+    model_loop: bool = False,
+) -> int | None:
+    """Resolve the requester only for the current admitted Task execution and model."""
+    task, identity = await _task_model_admission(task_id, attempt_id, agent_id, run_id=run_id, model_loop=model_loop)
+    if (identity.get("model_id") != model_id or identity.get("model_code") != model_code
+            or identity.get("reasoning_effort") != reasoning_effort
+            or identity.get("executor_profile_effort") != executor_profile_effort):
+        raise PermissionError("The task inference does not match the admitted run and model.")
+    return task.requester_user_id
+
+
+async def authorize_internal_task_inference(task_id: UUID, attempt_id: UUID, agent_id: int, *, run_id: UUID) -> int | None:
+    """Bind a Pydantic request after the in-process model and fallback policy runs."""
+    task, identity = await _task_model_admission(task_id, attempt_id, agent_id, run_id=run_id, model_loop=True)
+    if identity.get("driver_code") != "internal":
+        raise PermissionError("The task attempt does not belong to the internal Pydantic harness.")
+    return task.requester_user_id
 
 
 async def _deferred_authorization_snapshot(agent_id: int, context_key: str) -> dict[str, Any] | None:

@@ -67,7 +67,7 @@ class RoundCheckpointWriter:
     async def save(self, checkpoint: AgentRunCheckpoint) -> None:
         from .service import ConversationLeaseLostError, PROCESSING_ROUND_STATUSES
 
-        if checkpoint.driver_code != "internal" or checkpoint.runtime_run_id != str(self.round_id):
+        if checkpoint.runtime_run_id != str(self.round_id):
             raise ValueError("The checkpoint belongs to another conversation round.")
         async with self.lock:
             previous = self.previous if self.deltas < _MAX_DELTAS else None
@@ -75,6 +75,7 @@ class RoundCheckpointWriter:
             async with get_db_session() as db:
                 owned = update(ConversationRound).where(
                     ConversationRound.id == self.round_id, ConversationRound.lease_token == self.lease_token,
+                    ConversationRound.driver_code == checkpoint.driver_code,
                     ConversationRound.status.in_(PROCESSING_ROUND_STATUSES),
                     ConversationRound.lease_expires_at > func.clock_timestamp(),
                 ).returning(ConversationRound.id).execution_options(synchronize_session=False)

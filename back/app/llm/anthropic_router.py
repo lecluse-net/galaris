@@ -29,6 +29,7 @@ from core.database import get_db
 from core.i18n import render_prompt, tr
 from core.user import user_service
 from app.agent import current_management_scope
+from app.agent.contracts import ChildWaitRequested, ConsoleReceiptRequired
 
 from . import llm_service
 from .anthropic_schemas import (
@@ -47,6 +48,10 @@ from .anthropic_service import (
     translate_to_openai,
 )
 from .provider_facade import ProviderAuthenticationError
+from .embedded_runtime import (
+    EMBEDDED_TOKEN_PREFIXES, EmbeddedInferenceOrigin, EmbeddedRequestLimitExceeded, EmbeddedRoundInference,
+    authenticate_embedded_inference,
+)
 from .profile_gateway import (
     is_profile_api, mark_profile_api, profile_models, resolve_profile_model,
 )
@@ -113,6 +118,16 @@ async def _anthropic_api_auth(request: Request) -> int | None:
         auth = request.headers.get("Authorization", "")
         token = auth.removeprefix("Bearer ").strip() if auth.startswith("Bearer ") else ""
     if token:
+        if token.startswith(EMBEDDED_TOKEN_PREFIXES):
+            if is_profile_api(request):
+                raise HTTPException(403, await tr("llm_api.errors.runtime_run_context_invalid"))
+            try:
+                origin, requester = await authenticate_embedded_inference(token)
+            except PermissionError as exc:
+                raise HTTPException(403, await tr("llm_api.errors.runtime_run_context_invalid")) from exc
+            request.state.embedded_inference = origin
+            request.state.embedded_requester = requester
+            return origin.agent_id
         from app.mcp import mcp_token_service
 
         record = await mcp_token_service.get_enabled_system_token_by_value(token)
@@ -189,6 +204,14 @@ def _call_id_headers(response: JSONResponse | StreamingResponse) -> dict[str, st
 async def anthropic_models(request: Request):
     try:
         await _anthropic_api_auth(request)
+        origin = getattr(request.state, "embedded_inference", None)
+        if isinstance(origin, EmbeddedInferenceOrigin):
+            code = origin.model_code
+            return {
+                "data": [{"type": "model", "id": code, "display_name": code,
+                          "created_at": "1970-01-01T00:00:00Z"}],
+                "has_more": False, "first_id": code, "last_id": code,
+            }
         if is_profile_api(request):
             models = await profile_models(("chat",))
             data = [{"type": "model", "id": item.id, "display_name": item.id,
@@ -230,9 +253,12 @@ async def anthropic_count_tokens(request: Request):
                 detail=await tr("anthropic_api.errors.invalid_request"),
             )
         parsed = MessageRequest.model_validate(body)
+        origin = getattr(request.state, "embedded_inference", None)
+        if isinstance(origin, EmbeddedInferenceOrigin) and parsed.model != origin.model_code:
+            raise HTTPException(403, await tr("llm_api.errors.runtime_run_context_invalid"))
         if is_profile_api(request):
             await resolve_profile_model(parsed.model, "chat")
-        return {"input_tokens": anthropic_input_tokens(parsed)}
+        return {"input_tokens": anthropic_input_tokens(parsed, filter_assistant_turns=isinstance(origin, EmbeddedRoundInference))}
     except ValidationError as exc:
         return _http_exception_response(
             HTTPException(
@@ -287,15 +313,29 @@ async def _anthropic_messages_body(
     x_galaris_force_reasoning_effort: Optional[str],
 ):
     agent_id = await _anthropic_api_auth(request)
-    body: dict[str, Any] = await request.json()
+    payload: object = await request.json()
+    if not isinstance(payload, dict):
+        raise HTTPException(400, await tr("anthropic_api.errors.invalid_request"))
+    body = cast(dict[str, Any], payload)
+    origin = getattr(request.state, "embedded_inference", None)
+    if isinstance(origin, EmbeddedInferenceOrigin):
+        # The credential is the only source of authority on this path.
+        if (
+            body.get("model") != origin.model_code
+            or any(key.startswith("galaris_") for key in body)
+            or any(key.startswith("x-galaris-") for key in request.headers)
+        ):
+            raise HTTPException(403, await tr("llm_api.errors.runtime_run_context_invalid"))
+    else:
+        origin = None
     scoped_deep = request.headers.get("X-Galaris-Deep-Context") is not None
-    runtime_task = None if scoped_deep else await resolve_runtime_llm_task(
+    runtime_task = None if scoped_deep or origin else await resolve_runtime_llm_task(
         request,
         task_ids=(x_galaris_task_id, body.get("galaris_task_id")),
         run_ids=(x_galaris_agent_run_id, body.get("galaris_agent_run_id")),
     )
     # External profile clients may discuss unrelated Galaris records in tools.
-    use_prompt_context = not scoped_deep and runtime_task is None and (not is_profile_api(request) or agent_id is not None)
+    use_prompt_context = origin is None and not scoped_deep and runtime_task is None and (not is_profile_api(request) or agent_id is not None)
     if use_prompt_context:
         extract_process_context(body)
     try:
@@ -316,7 +356,7 @@ async def _anthropic_messages_body(
             detail=await tr("anthropic_api.errors.messages_required"),
         )
 
-    openai_body = translate_to_openai(parsed)
+    openai_body = translate_to_openai(parsed, filter_assistant_turns=isinstance(origin, EmbeddedRoundInference))
     correlation_messages = openai_body.get("messages") if use_prompt_context else None
     input_tokens = estimate_openai_body_tokens(openai_body)
 
@@ -332,14 +372,14 @@ async def _anthropic_messages_body(
     # Explicit Task metadata beats prompt correlation, then the runtime agent's
     # local or durable unique Task (a known round skips the fallback).
     raw_task_id = x_galaris_task_id or body.get("galaris_task_id")
-    task_id = None if scoped_deep else runtime_task.task_id if runtime_task is not None else await resolve_runtime_task_id(
+    task_id = None if scoped_deep or origin else runtime_task.task_id if runtime_task is not None else await resolve_runtime_task_id(
         raw_task_id=raw_task_id,
         messages=correlation_messages,
         agent_id=(None if conversation_round_id is not None else agent_id),
     )
 
     raw_agent_run_id = x_galaris_agent_run_id or body.get("galaris_agent_run_id")
-    agent_run_id = None if scoped_deep else runtime_task.run_id if runtime_task is not None else (
+    agent_run_id = origin.run_id if origin else None if scoped_deep else runtime_task.run_id if runtime_task is not None else (
         UUID(str(raw_agent_run_id))
         if raw_agent_run_id
         else agent_run_id_from_messages(correlation_messages)
@@ -399,6 +439,8 @@ async def _anthropic_messages_body(
                 conversation_round_id=conversation_round_id,
                 process_run_id=process_run_id,
                 agent_id=agent_id,
+                embedded_origin=origin,
+                embedded_requester=getattr(request.state, "embedded_requester", None),
                 reasoning_effort=normalize_reasoning_effort(
                     x_galaris_reasoning_effort or body.get("galaris_reasoning_effort"),
                     strict=True,
@@ -408,8 +450,19 @@ async def _anthropic_messages_body(
                     or body.get("galaris_force_reasoning_effort")
                 ),
             )
+    except ChildWaitRequested as exc:
+        raise HTTPException(status.HTTP_409_CONFLICT, detail=str(exc),
+                            headers={"x-should-retry": "false"}) from exc
+    except (EmbeddedRequestLimitExceeded, ConsoleReceiptRequired) as exc:
+        raise HTTPException(status.HTTP_429_TOO_MANY_REQUESTS, detail=str(exc),
+                            headers={"x-should-retry": "false"}) from exc
     except ProviderAuthenticationError as exc:
         raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
+    except PermissionError as exc:
+        if origin is None:
+            raise
+        raise HTTPException(status.HTTP_403_FORBIDDEN, detail=str(exc),
+                            headers={"x-should-retry": "false"}) from exc
     except (TypeError, ValueError) as exc:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,

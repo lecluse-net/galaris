@@ -479,7 +479,7 @@ async def test_realtime_stop_waits_for_audio_drain_then_ends_call(monkeypatch) -
 async def test_native_sts_voice_does_not_require_a_configured_voice_resource(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    from app.agent import agent_service
+    import app.agent as agent_facade
     from app.llm import llm_provider_service, llm_service, resource_discovery
 
     provider = SimpleNamespace(
@@ -500,13 +500,16 @@ async def test_native_sts_voice_does_not_require_a_configured_voice_resource(
     connection = MagicMock()
 
     monkeypatch.setattr(
-        agent_service,
-        "get",
+        agent_facade,
+        "get_agent_record",
         AsyncMock(
             return_value=SimpleNamespace(
                 voice="realtime:12:voice%3Amarin",
             )
         ),
+    )
+    monkeypatch.setattr(
+        agent_facade, "conversation_driver_for_agent", AsyncMock(return_value="internal")
     )
     monkeypatch.setattr(llm_service, "get_llm", get_llm)
     monkeypatch.setattr(

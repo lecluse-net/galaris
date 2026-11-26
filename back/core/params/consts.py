@@ -283,9 +283,11 @@ class Params:
     PROCESS_N8N_WEBHOOK_AUTH_TOKEN = "PROCESS_N8N_WEBHOOK_AUTH_TOKEN"
     PROCESS_N8N_CALLBACK_AUTH_HEADER = "PROCESS_N8N_CALLBACK_AUTH_HEADER"
 
-    # Global availability of code-provided agent Harness bridges. Reusable
+    # Global availability of code-provided agent Harnesses. Reusable
     # OpenAI Messages configurations are persisted by app.harnesses instead.
     HARNESS_CLAUDE_AGENT_ENABLED = "harness.claude-agent.enabled"
+    HARNESS_CLAUDE_EMBEDDED_ENABLED = "harness.claude-embedded.enabled"
+    HARNESS_CLAUDE_EMBEDDED_CONVERSATIONS_ENABLED = "harness.claude-embedded.conversations.enabled"
     HARNESS_CODEX_ENABLED = "harness.codex.enabled"
     HARNESS_DEEPSEEK_ENABLED = "harness.deepseek.enabled"
     HARNESS_HERMES_ENABLED = "harness.hermes.enabled"
@@ -872,6 +874,12 @@ DEFAULT_PARAMS: dict[str, ParamConfig] = {
 
     Params.HARNESS_CLAUDE_AGENT_ENABLED: {
         "value": "true", "runtime_field": "HARNESS_CLAUDE_AGENT_ENABLED", "kind": "boolean"
+    },
+    Params.HARNESS_CLAUDE_EMBEDDED_ENABLED: {
+        "value": "false", "runtime_field": "HARNESS_CLAUDE_EMBEDDED_ENABLED", "kind": "boolean"
+    },
+    Params.HARNESS_CLAUDE_EMBEDDED_CONVERSATIONS_ENABLED: {
+        "value": "true", "runtime_field": "HARNESS_CLAUDE_EMBEDDED_CONVERSATIONS_ENABLED", "kind": "boolean"
     },
     Params.HARNESS_CODEX_ENABLED: {
         "value": "true", "runtime_field": "HARNESS_CODEX_ENABLED", "kind": "boolean"

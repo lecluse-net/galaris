@@ -78,6 +78,12 @@ détache le groupe historique et révoque les accès associés ; une civilité r
 peut pas être supprimée, y compris lorsqu’un agent archivé la référence encore.
 
 Les harnais utilisent les workflows de sélection, de nettoyage et de blocage existants.
+Dans l’API HTTP, `GET /api/agents/drivers` expose le transport et la disponibilité.
+Une création accepte le code d’un harnais embarqué disponible dans `agent_driver`.
+Pour une fiche existante, `PUT /api/harnesses/agents/{id}` accepte `driver_code` pour un
+harnais embarqué et `harness_id` pour un harnais du catalogue.
+L’outil MCP `agent_harness_reset` peut recevoir le `driver_code` d’un harnais embarqué disponible.
+Sans ce paramètre, il rétablit Pydantic AI.
 Une action n’est admissible que si le fournisseur et l’état courant la proposent.
 Les résultats distinguent `completed`, `in_progress` et `error`. Les logs sont bornés
 à 5 000 lignes, 2 000 caractères par ligne et 200 000 caractères au total, avec expurgation

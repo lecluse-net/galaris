@@ -11,7 +11,7 @@ tests remain authoritative for behavior.
 
 - 80 declared backend modules;
 - 41 declared frontend modules;
-- 655 backend dependency edges;
+- 656 backend dependency edges;
 - 231 frontend dependency edges;
 - 310 edges between `app`/`bridge` domains;
 - 30 directly bidirectional domain pairs;
@@ -269,7 +269,7 @@ tests remain authoritative for behavior.
 | `app.conversation` | `core.database` | `back/app/conversation/activity_facade.py`, `back/app/conversation/checkpoint_journal.py`, `back/app/conversation/contact_authorization.py`, `back/app/conversation/context.py`, `back/app/conversation/deep.py`, `back/app/conversation/deep_failures.py`, `back/app/conversation/facade.py`, `back/app/conversation/inspection_service.py`, `back/app/conversation/management_service.py`, `back/app/conversation/mcp.py`, `back/app/conversation/models.py`, `back/app/conversation/monitoring_service.py`, `back/app/conversation/preparation.py`, `back/app/conversation/process_admission.py`, `back/app/conversation/process_inputs.py`, `back/app/conversation/process_interactions.py`, `back/app/conversation/process_outputs.py`, `back/app/conversation/progress.py`, `back/app/conversation/repository_display.py`, `back/app/conversation/resource_facade.py`, `back/app/conversation/scheduler.py`, `back/app/conversation/service.py`, `back/app/conversation/task_projection.py`, `back/app/conversation/work_projection.py` |
 | `app.conversation` | `core.failure_journal` | `back/app/conversation/deep_failures.py`, `back/app/conversation/scheduler.py` |
 | `app.conversation` | `core.i18n` | `back/app/conversation/contact_authorization.py`, `back/app/conversation/deep.py`, `back/app/conversation/process_inputs.py`, `back/app/conversation/process_interactions.py`, `back/app/conversation/process_outputs.py`, `back/app/conversation/router.py`, `back/app/conversation/service.py`, `back/app/conversation/task_objective.py` |
-| `app.conversation` | `core.params` | `back/app/conversation/task_objective.py` |
+| `app.conversation` | `core.params` | `back/app/conversation/deep.py`, `back/app/conversation/service.py`, `back/app/conversation/task_objective.py` |
 | `app.conversation` | `core.settings` | `back/app/conversation/mcp.py` |
 | `app.conversation` | `core.user` | `back/app/conversation/mcp.py`, `back/app/conversation/process_interactions.py` |
 | `app.conversation` | `core.util` | `back/app/conversation/checkpoint_journal.py`, `back/app/conversation/deep.py`, `back/app/conversation/service.py`, `back/app/conversation/task_objective.py` |
@@ -368,21 +368,22 @@ tests remain authoritative for behavior.
 | `app.goal` | `core.storage` | `back/app/goal/dbadmin.py` |
 | `app.goal` | `core.user` | `back/app/goal/category_service.py`, `back/app/goal/events.py`, `back/app/goal/goal_service.py`, `back/app/goal/hierarchy.py` |
 | `app.goal` | `core.util` | `back/app/goal/router.py`, `back/app/goal/schemas.py` |
-| `app.harness` | `app.agent` | `back/app/harness/__init__.py`, `back/app/harness/checkpoint.py`, `back/app/harness/checkpoint_policy.py`, `back/app/harness/contracts.py`, `back/app/harness/conversation.py`, `back/app/harness/conversation_protocol.py`, `back/app/harness/driver.py`, `back/app/harness/executor.py`, `back/app/harness/facade.py`, `back/app/harness/mcp_toolset.py`, `back/app/harness/media.py`, `back/app/harness/prompt.py`, `back/app/harness/router.py`, `back/app/harness/runtime.py` |
-| `app.harness` | `app.console` | `back/app/harness/executor.py` |
+| `app.harness` | `app.agent` | `back/app/harness/__init__.py`, `back/app/harness/checkpoint.py`, `back/app/harness/checkpoint_policy.py`, `back/app/harness/claude_checkpoint.py`, `back/app/harness/claude_driver.py`, `back/app/harness/claude_mcp.py`, `back/app/harness/claude_media.py`, `back/app/harness/claude_runtime.py`, `back/app/harness/claude_tool_discovery.py`, `back/app/harness/contracts.py`, `back/app/harness/conversation.py`, `back/app/harness/conversation_protocol.py`, `back/app/harness/driver.py`, `back/app/harness/executor.py`, `back/app/harness/facade.py`, `back/app/harness/mcp_toolset.py`, `back/app/harness/media.py`, `back/app/harness/prompt.py`, `back/app/harness/router.py`, `back/app/harness/run_control.py`, `back/app/harness/runtime.py`, `back/app/harness/task_tool_scope.py` |
+| `app.harness` | `app.console` | `back/app/harness/claude_driver.py`, `back/app/harness/executor.py`, `back/app/harness/task_tool_scope.py` |
 | `app.harness` | `app.conversation` | `back/app/harness/conversation.py` |
-| `app.harness` | `app.file_share` | `back/app/harness/media.py`, `back/app/harness/runtime.py` |
-| `app.harness` | `app.llm` | `back/app/harness/conversation.py`, `back/app/harness/executor.py`, `back/app/harness/media.py`, `back/app/harness/runtime.py` |
+| `app.harness` | `app.file_share` | `back/app/harness/claude_driver.py`, `back/app/harness/claude_media.py`, `back/app/harness/conversation.py`, `back/app/harness/media.py`, `back/app/harness/runtime.py`, `back/app/harness/task_tool_scope.py` |
+| `app.harness` | `app.llm` | `back/app/harness/claude_driver.py`, `back/app/harness/claude_media.py`, `back/app/harness/conversation.py`, `back/app/harness/executor.py`, `back/app/harness/media.py`, `back/app/harness/runtime.py` |
 | `app.harness` | `app.messenger` | `back/app/harness/conversation.py`, `back/app/harness/executor.py` |
 | `app.harness` | `app.process` | `back/app/harness/conversation.py`, `back/app/harness/executor.py` |
-| `app.harness` | `app.services` | `back/app/harness/checkpoint.py`, `back/app/harness/conversation.py`, `back/app/harness/executor.py`, `back/app/harness/mcp_toolset.py`, `back/app/harness/runtime.py` |
-| `app.harness` | `app.skill` | `back/app/harness/__init__.py`, `back/app/harness/skills.py` |
+| `app.harness` | `app.services` | `back/app/harness/checkpoint.py`, `back/app/harness/claude_driver.py`, `back/app/harness/claude_mcp.py`, `back/app/harness/claude_tool_discovery.py`, `back/app/harness/conversation.py`, `back/app/harness/executor.py`, `back/app/harness/mcp_toolset.py`, `back/app/harness/runtime.py`, `back/app/harness/task_tool_scope.py` |
+| `app.harness` | `app.skill` | `back/app/harness/__init__.py`, `back/app/harness/claude_skills.py`, `back/app/harness/skills.py` |
 | `app.harness` | `core.authorize` | `back/app/harness/router.py` |
-| `app.harness` | `core.database` | `back/app/harness/conversation.py`, `back/app/harness/executor.py`, `back/app/harness/mcp_toolset.py`, `back/app/harness/runtime.py` |
+| `app.harness` | `core.database` | `back/app/harness/claude_driver.py`, `back/app/harness/claude_skills.py`, `back/app/harness/claude_tool_discovery.py`, `back/app/harness/conversation.py`, `back/app/harness/executor.py`, `back/app/harness/mcp_toolset.py`, `back/app/harness/runtime.py` |
 | `app.harness` | `core.document` | `back/app/harness/media.py` |
 | `app.harness` | `core.failure_journal` | `back/app/harness/runtime.py` |
 | `app.harness` | `core.i18n` | `back/app/harness/conversation.py`, `back/app/harness/executor.py`, `back/app/harness/runtime.py` |
-| `app.harness` | `core.params` | `back/app/harness/conversation.py`, `back/app/harness/executor.py`, `back/app/harness/media.py`, `back/app/harness/runtime.py` |
+| `app.harness` | `core.params` | `back/app/harness/claude_driver.py`, `back/app/harness/conversation.py`, `back/app/harness/executor.py`, `back/app/harness/media.py`, `back/app/harness/runtime.py` |
+| `app.harness` | `core.util` | `back/app/harness/claude_checkpoint.py`, `back/app/harness/claude_runtime.py` |
 | `app.harnesses` | `app.agent` | `back/app/harnesses/agent_adapter.py`, `back/app/harnesses/agent_driver.py`, `back/app/harnesses/checkpoint_policy.py`, `back/app/harnesses/configuration.py`, `back/app/harnesses/contracts.py`, `back/app/harnesses/dbadmin.py`, `back/app/harnesses/driver.py`, `back/app/harnesses/facade.py`, `back/app/harnesses/mcp.py`, `back/app/harnesses/models.py`, `back/app/harnesses/openai_client.py`, `back/app/harnesses/openai_provider.py`, `back/app/harnesses/router.py`, `back/app/harnesses/service.py`, `back/app/harnesses/skill_sync.py`, `back/app/harnesses/supervision.py` |
 | `app.harnesses` | `app.services` | `back/app/harnesses/driver.py`, `back/app/harnesses/mcp.py`, `back/app/harnesses/openai_client.py` |
 | `app.harnesses` | `core.authorize` | `back/app/harnesses/router.py` |
@@ -423,15 +424,15 @@ tests remain authoritative for behavior.
 | `app.lab` | `core.scheduling` | `back/app/lab/__init__.py` |
 | `app.lab` | `core.user` | `back/app/lab/human_review_service.py`, `back/app/lab/operations.py`, `back/app/lab/process_evaluation.py` |
 | `app.lab` | `core.util` | `back/app/lab/mechanism_registry.py`, `back/app/lab/synthetic_service.py` |
-| `app.llm` | `app.agent` | `back/app/llm/anthropic_router.py`, `back/app/llm/call_router.py`, `back/app/llm/contracts.py`, `back/app/llm/dataset_usage.py`, `back/app/llm/decision_service.py`, `back/app/llm/events.py`, `back/app/llm/facade.py`, `back/app/llm/inference_execution.py`, `back/app/llm/inference_facade.py`, `back/app/llm/inference_journal.py`, `back/app/llm/inference_store.py`, `back/app/llm/llm_call_service.py`, `back/app/llm/llm_service.py`, `back/app/llm/mcp.py`, `back/app/llm/profile_fallback.py`, `back/app/llm/protocol_inference.py`, `back/app/llm/runtime_correlation.py`, `back/app/llm/text_inference.py`, `back/app/llm/tts_service.py` |
+| `app.llm` | `app.agent` | `back/app/llm/anthropic_router.py`, `back/app/llm/anthropic_service.py`, `back/app/llm/call_router.py`, `back/app/llm/contracts.py`, `back/app/llm/dataset_usage.py`, `back/app/llm/decision_service.py`, `back/app/llm/embedded_runtime.py`, `back/app/llm/events.py`, `back/app/llm/facade.py`, `back/app/llm/inference_execution.py`, `back/app/llm/inference_facade.py`, `back/app/llm/inference_journal.py`, `back/app/llm/inference_store.py`, `back/app/llm/llm_call_service.py`, `back/app/llm/llm_service.py`, `back/app/llm/mcp.py`, `back/app/llm/profile_fallback.py`, `back/app/llm/protocol_inference.py`, `back/app/llm/proxy_service.py`, `back/app/llm/runtime_correlation.py`, `back/app/llm/text_inference.py`, `back/app/llm/tts_service.py` |
 | `app.llm` | `app.connection` | `back/app/llm/events.py`, `back/app/llm/llm_call_service.py` |
-| `app.llm` | `app.conversation` | `back/app/llm/cost_report.py`, `back/app/llm/events.py`, `back/app/llm/facade.py`, `back/app/llm/inference_store.py`, `back/app/llm/llm_call_service.py`, `back/app/llm/runtime_correlation.py`, `back/app/llm/subscription_policy.py` |
+| `app.llm` | `app.conversation` | `back/app/llm/cost_report.py`, `back/app/llm/embedded_runtime.py`, `back/app/llm/events.py`, `back/app/llm/facade.py`, `back/app/llm/inference_store.py`, `back/app/llm/llm_call_service.py`, `back/app/llm/runtime_correlation.py`, `back/app/llm/subscription_policy.py` |
 | `app.llm` | `app.file_share` | `back/app/llm/document_analysis.py`, `back/app/llm/document_evidence.py`, `back/app/llm/document_service.py` |
 | `app.llm` | `app.mcp` | `back/app/llm/anthropic_router.py`, `back/app/llm/call_router.py` |
 | `app.llm` | `app.messenger` | `back/app/llm/events.py`, `back/app/llm/llm_call_service.py`, `back/app/llm/subscription_policy.py` |
 | `app.llm` | `app.process` | `back/app/llm/anthropic_router.py`, `back/app/llm/call_router.py`, `back/app/llm/events.py`, `back/app/llm/llm_call_service.py`, `back/app/llm/mcp.py`, `back/app/llm/runtime_correlation.py`, `back/app/llm/subscription_policy.py` |
 | `app.llm` | `app.services` | `back/app/llm/anthropic_router.py`, `back/app/llm/call_router.py`, `back/app/llm/document_service.py`, `back/app/llm/mcp.py`, `back/app/llm/runtime_correlation.py` |
-| `app.llm` | `app.task` | `back/app/llm/events.py`, `back/app/llm/inference_store.py`, `back/app/llm/llm_call_service.py`, `back/app/llm/mcp.py`, `back/app/llm/proxy_service.py`, `back/app/llm/retention.py`, `back/app/llm/runtime_correlation.py`, `back/app/llm/subscription_policy.py` |
+| `app.llm` | `app.task` | `back/app/llm/embedded_runtime.py`, `back/app/llm/events.py`, `back/app/llm/inference_store.py`, `back/app/llm/llm_call_service.py`, `back/app/llm/mcp.py`, `back/app/llm/proxy_service.py`, `back/app/llm/retention.py`, `back/app/llm/runtime_correlation.py`, `back/app/llm/subscription_policy.py` |
 | `app.llm` | `core.authorize` | `back/app/llm/anthropic_router.py`, `back/app/llm/call_router.py`, `back/app/llm/dataset_usage.py`, `back/app/llm/personal_router.py`, `back/app/llm/profile_inference_router.py`, `back/app/llm/profile_router.py`, `back/app/llm/provider_router.py` |
 | `app.llm` | `core.database` | `back/app/llm/anthropic_router.py`, `back/app/llm/call_router.py`, `back/app/llm/cost_report.py`, `back/app/llm/dataset_usage.py`, `back/app/llm/document_evidence.py`, `back/app/llm/document_service.py`, `back/app/llm/document_store.py`, `back/app/llm/events.py`, `back/app/llm/facade.py`, `back/app/llm/inference_execution.py`, `back/app/llm/inference_journal.py`, `back/app/llm/inference_notifications.py`, `back/app/llm/inference_store.py`, `back/app/llm/llm_call_service.py`, `back/app/llm/llm_provider_service.py`, `back/app/llm/llm_service.py`, `back/app/llm/mcp.py`, `back/app/llm/models.py`, `back/app/llm/personal_service.py`, `back/app/llm/pricing_sync.py`, `back/app/llm/profile_gateway.py`, `back/app/llm/profile_models.py`, `back/app/llm/profile_service.py`, `back/app/llm/protocol_inference.py`, `back/app/llm/provider_models.py`, `back/app/llm/provider_permits.py`, `back/app/llm/proxy_service.py`, `back/app/llm/retention.py`, `back/app/llm/structured_service.py`, `back/app/llm/subscription_policy.py`, `back/app/llm/text_inference.py` |
 | `app.llm` | `core.dbadmin` | `back/app/llm/dbadmin.py`, `back/app/llm/initial_configuration.py` |
@@ -441,7 +442,7 @@ tests remain authoritative for behavior.
 | `app.llm` | `core.params` | `back/app/llm/call_deadline.py`, `back/app/llm/dbadmin.py`, `back/app/llm/llm_call_service.py`, `back/app/llm/profile_service.py`, `back/app/llm/retention.py` |
 | `app.llm` | `core.scheduling` | `back/app/llm/__init__.py` |
 | `app.llm` | `core.user` | `back/app/llm/anthropic_router.py`, `back/app/llm/call_router.py`, `back/app/llm/dataset_usage.py`, `back/app/llm/document_service.py`, `back/app/llm/events.py`, `back/app/llm/inference_execution.py`, `back/app/llm/llm_call_service.py`, `back/app/llm/llm_provider_service.py`, `back/app/llm/personal_router.py`, `back/app/llm/profile_inference.py`, `back/app/llm/subscription_policy.py` |
-| `app.llm` | `core.util` | `back/app/llm/document_analysis.py`, `back/app/llm/document_input.py`, `back/app/llm/document_rag.py`, `back/app/llm/document_responses.py`, `back/app/llm/embedding_service.py`, `back/app/llm/generation_capacity.py`, `back/app/llm/handlers/openai_compatible.py`, `back/app/llm/image_generation_service.py`, `back/app/llm/image_trace.py`, `back/app/llm/llm_call_service.py`, `back/app/llm/llm_provider_service.py`, `back/app/llm/media_facade.py`, `back/app/llm/media_transport.py`, `back/app/llm/message_cleanup.py`, `back/app/llm/personal_service.py`, `back/app/llm/pricing_sync.py`, `back/app/llm/protocol_inference.py`, `back/app/llm/provider_quota.py`, `back/app/llm/proxy_service.py`, `back/app/llm/responses_stream.py`, `back/app/llm/responses_trace.py`, `back/app/llm/runtime_correlation.py`, `back/app/llm/trace.py`, `back/app/llm/transcription_service.py`, `back/app/llm/tts_service.py` |
+| `app.llm` | `core.util` | `back/app/llm/document_analysis.py`, `back/app/llm/document_input.py`, `back/app/llm/document_rag.py`, `back/app/llm/document_responses.py`, `back/app/llm/embedded_runtime.py`, `back/app/llm/embedding_service.py`, `back/app/llm/generation_capacity.py`, `back/app/llm/handlers/openai_compatible.py`, `back/app/llm/image_generation_service.py`, `back/app/llm/image_trace.py`, `back/app/llm/llm_call_service.py`, `back/app/llm/llm_provider_service.py`, `back/app/llm/media_facade.py`, `back/app/llm/media_transport.py`, `back/app/llm/message_cleanup.py`, `back/app/llm/personal_service.py`, `back/app/llm/pricing_sync.py`, `back/app/llm/protocol_inference.py`, `back/app/llm/provider_quota.py`, `back/app/llm/proxy_service.py`, `back/app/llm/responses_stream.py`, `back/app/llm/responses_trace.py`, `back/app/llm/runtime_correlation.py`, `back/app/llm/trace.py`, `back/app/llm/transcription_service.py`, `back/app/llm/tts_service.py` |
 | `app.mcp` | `app.agent` | `back/app/mcp/router.py` |
 | `app.mcp` | `app.services` | `back/app/mcp/router.py`, `back/app/mcp/runtime_adapter.py` |
 | `app.mcp` | `core.authorize` | `back/app/mcp/router.py` |
@@ -733,7 +734,7 @@ tests remain authoritative for behavior.
 | `bridge.one_bot` | `core.database` | `back/bridge/one_bot/router.py` |
 | `bridge.one_bot` | `core.i18n` | `back/bridge/one_bot/client.py`, `back/bridge/one_bot/messenger.py` |
 | `bridge.one_bot` | `core.util` | `back/bridge/one_bot/client.py`, `back/bridge/one_bot/messenger.py`, `back/bridge/one_bot/router.py` |
-| `bridge.openai` | `app.llm` | `back/bridge/openai/__init__.py`, `back/bridge/openai/codex.py`, `back/bridge/openai/codex_oauth.py`, `back/bridge/openai/codex_quota.py`, `back/bridge/openai/image.py`, `back/bridge/openai/parameters.py`, `back/bridge/openai/realtime.py`, `back/bridge/openai/resources.py` |
+| `bridge.openai` | `app.llm` | `back/bridge/openai/__init__.py`, `back/bridge/openai/codex.py`, `back/bridge/openai/codex_oauth.py`, `back/bridge/openai/codex_quota.py`, `back/bridge/openai/image.py`, `back/bridge/openai/parameters.py`, `back/bridge/openai/realtime.py`, `back/bridge/openai/resources.py`, `back/bridge/openai/transcription.py` |
 | `bridge.openai` | `core.database` | `back/bridge/openai/codex_oauth.py` |
 | `bridge.openai` | `core.i18n` | `back/bridge/openai/codex_oauth.py`, `back/bridge/openai/codex_quota.py` |
 | `bridge.openai` | `core.util` | `back/bridge/openai/codex_models.py`, `back/bridge/openai/codex_oauth.py`, `back/bridge/openai/codex_quota.py`, `back/bridge/openai/codex_responses.py`, `back/bridge/openai/image.py`, `back/bridge/openai/realtime.py` |
@@ -1282,35 +1283,35 @@ No cyclic component detected.
 | POST | `/action-authorizations/{identifier}/cancel` | `app.services` | `cancel_request` | yes | `back/app/services/authorization_router.py:176` |
 | POST | `/agent/openai/chat/completions` | `app.agent` | `agent_chat_completions` | yes | `back/app/agent/openai_router.py:77` |
 | GET | `/agent/openai/models` | `app.agent` | `get_agent_models` | yes | `back/app/agent/openai_router.py:66` |
-| GET | `/agents` | `app.agent` | `read_agents` | yes | `back/app/agent/router.py:202` |
-| POST | `/agents` | `app.agent` | `create_agent` | yes | `back/app/agent/router.py:261` |
-| GET | `/agents/avatar-generation` | `app.agent` | `read_avatar_generation_availability` | yes | `back/app/agent/router.py:241` |
-| GET | `/agents/drivers` | `app.agent` | `read_executor_drivers` | yes | `back/app/agent/router.py:172` |
-| GET | `/agents/groups` | `app.agent` | `read_groups` | yes | `back/app/agent/router.py:115` |
-| POST | `/agents/groups` | `app.agent` | `create_group` | yes | `back/app/agent/router.py:135` |
-| DELETE | `/agents/groups/{id}` | `app.agent` | `delete_group` | yes | `back/app/agent/router.py:157` |
-| GET | `/agents/groups/{id}` | `app.agent` | `read_group` | yes | `back/app/agent/router.py:124` |
-| PUT | `/agents/groups/{id}` | `app.agent` | `update_group` | yes | `back/app/agent/router.py:144` |
-| GET | `/agents/managers` | `app.agent` | `read_agent_managers` | yes | `back/app/agent/router.py:218` |
-| GET | `/agents/selection` | `app.agent` | `read_agent_selection` | yes | `back/app/agent/router.py:47` |
+| GET | `/agents` | `app.agent` | `read_agents` | yes | `back/app/agent/router.py:204` |
+| POST | `/agents` | `app.agent` | `create_agent` | yes | `back/app/agent/router.py:263` |
+| GET | `/agents/avatar-generation` | `app.agent` | `read_avatar_generation_availability` | yes | `back/app/agent/router.py:243` |
+| GET | `/agents/drivers` | `app.agent` | `read_executor_drivers` | yes | `back/app/agent/router.py:173` |
+| GET | `/agents/groups` | `app.agent` | `read_groups` | yes | `back/app/agent/router.py:116` |
+| POST | `/agents/groups` | `app.agent` | `create_group` | yes | `back/app/agent/router.py:136` |
+| DELETE | `/agents/groups/{id}` | `app.agent` | `delete_group` | yes | `back/app/agent/router.py:158` |
+| GET | `/agents/groups/{id}` | `app.agent` | `read_group` | yes | `back/app/agent/router.py:125` |
+| PUT | `/agents/groups/{id}` | `app.agent` | `update_group` | yes | `back/app/agent/router.py:145` |
+| GET | `/agents/managers` | `app.agent` | `read_agent_managers` | yes | `back/app/agent/router.py:220` |
+| GET | `/agents/selection` | `app.agent` | `read_agent_selection` | yes | `back/app/agent/router.py:48` |
 | GET | `/agents/teams/agents` | `app.agent` | `agents` | yes | `back/app/agent/team_router.py:16` |
 | PUT | `/agents/teams/{team_id}/members/{agent_id}` | `app.agent` | `update_membership` | yes | `back/app/agent/team_router.py:23` |
-| GET | `/agents/titles` | `app.agent` | `read_titles` | yes | `back/app/agent/router.py:58` |
-| POST | `/agents/titles` | `app.agent` | `create_title` | yes | `back/app/agent/router.py:78` |
-| DELETE | `/agents/titles/{id}` | `app.agent` | `delete_title` | yes | `back/app/agent/router.py:100` |
-| GET | `/agents/titles/{id}` | `app.agent` | `read_title` | yes | `back/app/agent/router.py:67` |
-| PUT | `/agents/titles/{id}` | `app.agent` | `update_title` | yes | `back/app/agent/router.py:87` |
+| GET | `/agents/titles` | `app.agent` | `read_titles` | yes | `back/app/agent/router.py:59` |
+| POST | `/agents/titles` | `app.agent` | `create_title` | yes | `back/app/agent/router.py:79` |
+| DELETE | `/agents/titles/{id}` | `app.agent` | `delete_title` | yes | `back/app/agent/router.py:101` |
+| GET | `/agents/titles/{id}` | `app.agent` | `read_title` | yes | `back/app/agent/router.py:68` |
+| PUT | `/agents/titles/{id}` | `app.agent` | `update_title` | yes | `back/app/agent/router.py:88` |
 | GET | `/agents/{agent_id}/mcp-tokens` | `app.mcp` | `list_agent_mcp_tokens` | yes | `back/app/mcp/router.py:70` |
 | POST | `/agents/{agent_id}/mcp-tokens` | `app.mcp` | `create_agent_mcp_token` | yes | `back/app/mcp/router.py:92` |
 | DELETE | `/agents/{agent_id}/mcp-tokens/{token_id}` | `app.mcp` | `delete_agent_mcp_token` | yes | `back/app/mcp/router.py:146` |
 | PUT | `/agents/{agent_id}/mcp-tokens/{token_id}` | `app.mcp` | `update_agent_mcp_token` | yes | `back/app/mcp/router.py:120` |
-| DELETE | `/agents/{id}` | `app.agent` | `delete_agent` | yes | `back/app/agent/router.py:316` |
-| GET | `/agents/{id}` | `app.agent` | `read_agent` | yes | `back/app/agent/router.py:249` |
-| PUT | `/agents/{id}` | `app.agent` | `update_agent` | yes | `back/app/agent/router.py:289` |
-| DELETE | `/agents/{id}/avatar` | `app.agent` | `delete_avatar` | yes | `back/app/agent/router.py:428` |
-| GET | `/agents/{id}/avatar` | `app.agent` | `download_avatar` | yes | `back/app/agent/router.py:394` |
-| POST | `/agents/{id}/avatar` | `app.agent` | `upload_avatar` | yes | `back/app/agent/router.py:356` |
-| POST | `/agents/{id}/avatar/generate` | `app.agent` | `generate_agent_avatar` | yes | `back/app/agent/router.py:330` |
+| DELETE | `/agents/{id}` | `app.agent` | `delete_agent` | yes | `back/app/agent/router.py:318` |
+| GET | `/agents/{id}` | `app.agent` | `read_agent` | yes | `back/app/agent/router.py:251` |
+| PUT | `/agents/{id}` | `app.agent` | `update_agent` | yes | `back/app/agent/router.py:291` |
+| DELETE | `/agents/{id}/avatar` | `app.agent` | `delete_avatar` | yes | `back/app/agent/router.py:430` |
+| GET | `/agents/{id}/avatar` | `app.agent` | `download_avatar` | yes | `back/app/agent/router.py:396` |
+| POST | `/agents/{id}/avatar` | `app.agent` | `upload_avatar` | yes | `back/app/agent/router.py:358` |
+| POST | `/agents/{id}/avatar/generate` | `app.agent` | `generate_agent_avatar` | yes | `back/app/agent/router.py:332` |
 | GET | `/api/docs` | `core.api` | `public_swagger_ui_html` | no | `back/core/api.py:239` |
 | GET | `/api/health` | `core.api` | `health_check` | no | `back/core/api.py:270` |
 | GET | `/api/health/live` | `core.api` | `liveness_check` | no | `back/core/api.py:275` |
@@ -1762,28 +1763,28 @@ No cyclic component detected.
 | GET | `/harness-manager/release.zip` | `bridge.harness` | `release_archive` | yes | `back/bridge/harness/router.py:78` |
 | GET | `/harness-manager/updates/archive/{digest}.zip` | `bridge.harness` | `update_archive` | no | `back/bridge/harness/router.py:113` |
 | GET | `/harness-manager/updates/manifest` | `bridge.harness` | `update_manifest` | no | `back/bridge/harness/router.py:105` |
-| DELETE | `/harnesses/agents/{id}` | `app.harnesses` | `select_internal_harness` | yes | `back/app/harnesses/router.py:242` |
-| GET | `/harnesses/agents/{id}` | `app.harnesses` | `read_agent_harness` | yes | `back/app/harnesses/router.py:209` |
-| PUT | `/harnesses/agents/{id}` | `app.harnesses` | `install_agent_harness` | yes | `back/app/harnesses/router.py:222` |
+| DELETE | `/harnesses/agents/{id}` | `app.harnesses` | `select_internal_harness` | yes | `back/app/harnesses/router.py:246` |
+| GET | `/harnesses/agents/{id}` | `app.harnesses` | `read_agent_harness` | yes | `back/app/harnesses/router.py:210` |
+| PUT | `/harnesses/agents/{id}` | `app.harnesses` | `install_agent_harness` | yes | `back/app/harnesses/router.py:223` |
 | POST | `/harnesses/agents/{id}/actions/{action}` | `app.harness` | `run_harness_action` | yes | `back/app/harness/router.py:60` |
-| POST | `/harnesses/agents/{id}/actions/{action}` | `app.harnesses` | `run_harness_action` | yes | `back/app/harnesses/router.py:305` |
+| POST | `/harnesses/agents/{id}/actions/{action}` | `app.harnesses` | `run_harness_action` | yes | `back/app/harnesses/router.py:309` |
 | GET | `/harnesses/agents/{id}/logs` | `app.harness` | `harness_logs` | yes | `back/app/harness/router.py:74` |
-| GET | `/harnesses/agents/{id}/logs` | `app.harnesses` | `harness_logs` | yes | `back/app/harnesses/router.py:334` |
+| GET | `/harnesses/agents/{id}/logs` | `app.harnesses` | `harness_logs` | yes | `back/app/harnesses/router.py:338` |
 | POST | `/harnesses/agents/{id}/refresh` | `app.harness` | `refresh_harness` | yes | `back/app/harness/router.py:84` |
 | GET | `/harnesses/agents/{id}/status` | `app.harness` | `harness_status` | yes | `back/app/harness/router.py:46` |
-| GET | `/harnesses/agents/{id}/status` | `app.harnesses` | `harness_status` | yes | `back/app/harnesses/router.py:291` |
-| GET | `/harnesses/agents/{id}/task-blockers` | `app.harnesses` | `harness_task_blockers` | yes | `back/app/harnesses/router.py:260` |
-| POST | `/harnesses/agents/{id}/task-blockers/terminate-paused` | `app.harnesses` | `terminate_harness_paused_tasks` | yes | `back/app/harnesses/router.py:269` |
-| GET | `/harnesses/catalog` | `app.harnesses` | `list_harness_catalogue` | yes | `back/app/harnesses/router.py:128` |
-| POST | `/harnesses/catalog` | `app.harnesses` | `create_harness` | yes | `back/app/harnesses/router.py:140` |
-| POST | `/harnesses/catalog/probe` | `app.harnesses` | `probe_harness` | yes | `back/app/harnesses/router.py:149` |
-| DELETE | `/harnesses/catalog/{harness_id}` | `app.harnesses` | `delete_harness` | yes | `back/app/harnesses/router.py:190` |
-| GET | `/harnesses/catalog/{harness_id}` | `app.harnesses` | `read_harness` | yes | `back/app/harnesses/router.py:158` |
-| PUT | `/harnesses/catalog/{harness_id}` | `app.harnesses` | `update_harness` | yes | `back/app/harnesses/router.py:171` |
-| GET | `/harnesses/execution-configurations` | `app.harnesses` | `read_execution_configurations` | yes | `back/app/harnesses/router.py:58` |
-| PUT | `/harnesses/execution-configurations/{provider_code}` | `app.harnesses` | `save_execution_configuration` | yes | `back/app/harnesses/router.py:64` |
-| GET | `/harnesses/pipeline-options` | `app.harnesses` | `read_pipeline_options` | yes | `back/app/harnesses/router.py:51` |
-| GET | `/harnesses/providers` | `app.harnesses` | `list_harness_providers` | yes | `back/app/harnesses/router.py:105` |
+| GET | `/harnesses/agents/{id}/status` | `app.harnesses` | `harness_status` | yes | `back/app/harnesses/router.py:295` |
+| GET | `/harnesses/agents/{id}/task-blockers` | `app.harnesses` | `harness_task_blockers` | yes | `back/app/harnesses/router.py:264` |
+| POST | `/harnesses/agents/{id}/task-blockers/terminate-paused` | `app.harnesses` | `terminate_harness_paused_tasks` | yes | `back/app/harnesses/router.py:273` |
+| GET | `/harnesses/catalog` | `app.harnesses` | `list_harness_catalogue` | yes | `back/app/harnesses/router.py:129` |
+| POST | `/harnesses/catalog` | `app.harnesses` | `create_harness` | yes | `back/app/harnesses/router.py:141` |
+| POST | `/harnesses/catalog/probe` | `app.harnesses` | `probe_harness` | yes | `back/app/harnesses/router.py:150` |
+| DELETE | `/harnesses/catalog/{harness_id}` | `app.harnesses` | `delete_harness` | yes | `back/app/harnesses/router.py:191` |
+| GET | `/harnesses/catalog/{harness_id}` | `app.harnesses` | `read_harness` | yes | `back/app/harnesses/router.py:159` |
+| PUT | `/harnesses/catalog/{harness_id}` | `app.harnesses` | `update_harness` | yes | `back/app/harnesses/router.py:172` |
+| GET | `/harnesses/execution-configurations` | `app.harnesses` | `read_execution_configurations` | yes | `back/app/harnesses/router.py:59` |
+| PUT | `/harnesses/execution-configurations/{provider_code}` | `app.harnesses` | `save_execution_configuration` | yes | `back/app/harnesses/router.py:65` |
+| GET | `/harnesses/pipeline-options` | `app.harnesses` | `read_pipeline_options` | yes | `back/app/harnesses/router.py:52` |
+| GET | `/harnesses/providers` | `app.harnesses` | `list_harness_providers` | yes | `back/app/harnesses/router.py:106` |
 | GET | `/healthz` | `bridge.codex` | `health` | no | `back/bridge/codex/default-agent/server.py:200` |
 | GET | `/hermes/configurations` | `bridge.hermes` | `list_hermes_configurations` | yes | `back/bridge/hermes/router.py:66` |
 | PUT | `/hermes/configurations/{id}` | `bridge.hermes` | `update_hermes_configuration` | yes | `back/bridge/hermes/router.py:84` |
@@ -1874,9 +1875,9 @@ No cyclic component detected.
 | GET | `/llm-providers/{provider_id}/quota` | `app.llm` | `get_provider_quota` | yes | `back/app/llm/provider_router.py:473` |
 | GET | `/llm-providers/{provider_id}/resources` | `app.llm` | `list_provider_resources` | yes | `back/app/llm/provider_router.py:598` |
 | GET | `/llm-providers/{provider_id}/transcription-models` | `app.llm` | `list_provider_transcription_models` | yes | `back/app/llm/provider_router.py:644` |
-| POST | `/llm/anthropic/v1/messages` | `app.llm` | `anthropic_messages` | no | `back/app/llm/anthropic_router.py:257` |
-| POST | `/llm/anthropic/v1/messages/count_tokens` | `app.llm` | `anthropic_count_tokens` | no | `back/app/llm/anthropic_router.py:223` |
-| GET | `/llm/anthropic/v1/models` | `app.llm` | `anthropic_models` | no | `back/app/llm/anthropic_router.py:189` |
+| POST | `/llm/anthropic/v1/messages` | `app.llm` | `anthropic_messages` | no | `back/app/llm/anthropic_router.py:283` |
+| POST | `/llm/anthropic/v1/messages/count_tokens` | `app.llm` | `anthropic_count_tokens` | no | `back/app/llm/anthropic_router.py:246` |
+| GET | `/llm/anthropic/v1/models` | `app.llm` | `anthropic_models` | no | `back/app/llm/anthropic_router.py:204` |
 | GET | `/llm/me/options` | `app.llm` | `get_options` | yes | `back/app/llm/personal_router.py:56` |
 | GET | `/llm/me/preferences` | `app.llm` | `get_preferences` | yes | `back/app/llm/personal_router.py:41` |
 | PUT | `/llm/me/preferences` | `app.llm` | `put_preferences` | yes | `back/app/llm/personal_router.py:47` |
@@ -1968,9 +1969,9 @@ No cyclic component detected.
 | POST | `/process-campaigns/datasets/generate` | `app.lab` | `lab_process_dataset_generate` | yes | `back/app/lab/process_evaluation_router.py:74` |
 | GET | `/process-campaigns/{identity}` | `app.lab` | `lab_process_campaign_get` | yes | `back/app/lab/process_evaluation_router.py:95` |
 | POST | `/process-campaigns/{identity}/cancel` | `app.lab` | `lab_process_campaign_cancel` | yes | `back/app/lab/process_evaluation_router.py:104` |
-| POST | `/profile/anthropic/v1/messages` | `app.llm` | `anthropic_messages` | no | `back/app/llm/anthropic_router.py:257` |
-| POST | `/profile/anthropic/v1/messages/count_tokens` | `app.llm` | `anthropic_count_tokens` | no | `back/app/llm/anthropic_router.py:223` |
-| GET | `/profile/anthropic/v1/models` | `app.llm` | `anthropic_models` | no | `back/app/llm/anthropic_router.py:189` |
+| POST | `/profile/anthropic/v1/messages` | `app.llm` | `anthropic_messages` | no | `back/app/llm/anthropic_router.py:283` |
+| POST | `/profile/anthropic/v1/messages/count_tokens` | `app.llm` | `anthropic_count_tokens` | no | `back/app/llm/anthropic_router.py:246` |
+| GET | `/profile/anthropic/v1/models` | `app.llm` | `anthropic_models` | no | `back/app/llm/anthropic_router.py:204` |
 | POST | `/profile/decisions` | `app.llm` | `decisions` | no | `back/app/llm/profile_inference_router.py:52` |
 | GET | `/profile/models` | `app.llm` | `models` | no | `back/app/llm/profile_inference_router.py:28` |
 | POST | `/profile/openai/chat/completions` | `app.llm` | `llm_completion` | no | `back/app/llm/call_router.py:208` |
@@ -2159,13 +2160,13 @@ No cyclic component detected.
 | `connection_params` | `ConnectionParam` | `app.connection` | no | `connections.id` | `back/app/connection/models.py:36` |
 | `connections` | `Connection` | `app.connection` | no | `agents.id`, `services.id` | `back/app/connection/models.py:7` |
 | `contact_discovery_jobs` | `ContactDiscoveryJob` | `app.contact` | yes | `agents.id`, `memory_items.id` | `back/app/contact/models.py:15` |
-| `conversation_delivery_resolutions` | `ConversationDeliveryResolution` | `app.conversation` | no | `conversation_rounds.id`, `users.id` | `back/app/conversation/models.py:90` |
-| `conversation_notification_resolutions` | `ConversationNotificationResolution` | `app.conversation` | no | `conversation_process_links.id`, `conversation_task_links.id`, `users.id` | `back/app/conversation/models.py:102` |
-| `conversation_process_links` | `ConversationProcessLink` | `app.conversation` | no | `conversation_rounds.id`, `messenger_messages.id`, `process_runs.id` | `back/app/conversation/models.py:386` |
-| `conversation_round_attempts` | `ConversationRoundAttempt` | `app.conversation` | no | `conversation_rounds.id` | `back/app/conversation/models.py:308` |
-| `conversation_round_messages` | `ConversationRoundMessage` | `app.conversation` | no | `conversation_rounds.id`, `messenger_messages.id` | `back/app/conversation/models.py:248` |
-| `conversation_rounds` | `ConversationRound` | `app.conversation` | no | `conversation_rounds.id`, `memory_items.id`, `messenger_rooms.id`, `topics.id`, `users.id`, `voice_sessions.id` | `back/app/conversation/models.py:121` |
-| `conversation_task_links` | `ConversationTaskLink` | `app.conversation` | no | `conversation_rounds.id`, `messenger_messages.id`, `tasks.id` | `back/app/conversation/models.py:338` |
+| `conversation_delivery_resolutions` | `ConversationDeliveryResolution` | `app.conversation` | no | `conversation_rounds.id`, `users.id` | `back/app/conversation/models.py:93` |
+| `conversation_notification_resolutions` | `ConversationNotificationResolution` | `app.conversation` | no | `conversation_process_links.id`, `conversation_task_links.id`, `users.id` | `back/app/conversation/models.py:105` |
+| `conversation_process_links` | `ConversationProcessLink` | `app.conversation` | no | `conversation_rounds.id`, `messenger_messages.id`, `process_runs.id` | `back/app/conversation/models.py:391` |
+| `conversation_round_attempts` | `ConversationRoundAttempt` | `app.conversation` | no | `conversation_rounds.id` | `back/app/conversation/models.py:312` |
+| `conversation_round_messages` | `ConversationRoundMessage` | `app.conversation` | no | `conversation_rounds.id`, `messenger_messages.id` | `back/app/conversation/models.py:252` |
+| `conversation_rounds` | `ConversationRound` | `app.conversation` | no | `conversation_rounds.id`, `memory_items.id`, `messenger_rooms.id`, `topics.id`, `users.id`, `voice_sessions.id` | `back/app/conversation/models.py:124` |
+| `conversation_task_links` | `ConversationTaskLink` | `app.conversation` | no | `conversation_rounds.id`, `messenger_messages.id`, `tasks.id` | `back/app/conversation/models.py:343` |
 | `dataset_aliases` | `DatasetAlias` | `app.document` | no | `documents.id` | `back/app/document/data/models.py:103` |
 | `dataset_app_consents` | `DatasetAppConsent` | `app.document` | yes | `documents.id`, `users.id` | `back/app/document/data/models.py:169` |
 | `dataset_appearances` | `DatasetAppearance` | `app.document` | no | `documents.id`, `users.id` | `back/app/document/data/models.py:139` |
@@ -2182,7 +2183,7 @@ No cyclic component detected.
 | `dbadmin_actions` | `DbAdminActionRecord` | `core.dbadmin` | no | — | `back/core/dbadmin/models.py:59` |
 | `dbadmin_issues` | `DbAdminIssueRecord` | `core.dbadmin` | no | `dbadmin_runs.id` | `back/core/dbadmin/models.py:36` |
 | `dbadmin_runs` | `DbAdminRun` | `core.dbadmin` | no | — | `back/core/dbadmin/models.py:16` |
-| `deep_events` | `DeepEvent` | `app.conversation` | no | `deep_submissions.id` | `back/app/conversation/models.py:78` |
+| `deep_events` | `DeepEvent` | `app.conversation` | no | `deep_submissions.id` | `back/app/conversation/models.py:81` |
 | `deep_room_modes` | `DeepRoomMode` | `app.conversation` | no | `messenger_rooms.id` | `back/app/conversation/models.py:27` |
 | `deep_sessions` | `DeepSession` | `app.conversation` | no | `agents.id`, `code_workspaces.id`, `messenger_rooms.id`, `users.id` | `back/app/conversation/models.py:34` |
 | `deep_submissions` | `DeepSubmission` | `app.conversation` | no | `deep_sessions.id`, `messenger_messages.id` | `back/app/conversation/models.py:58` |
@@ -2243,7 +2244,7 @@ No cyclic component detected.
 | `lab_task_diagnoses` | `LabTaskDiagnosis` | `app.lab` | yes | `tasks.id` | `back/app/lab/models.py:46` |
 | `lab_tasks` | `LabTask` | `app.lab` | no | `tasks.id` | `back/app/lab/models.py:30` |
 | `llm_call_events` | `LLMCallEvent` | `app.llm` | no | `llm_calls.id`, `llm_inferences.id` | `back/app/llm/models.py:95` |
-| `llm_calls` | `LLMCall` | `app.llm` | yes | `agents.id`, `conversation_rounds.id`, `deep_sessions.id`, `llm_inference_attempts.id`, `llm_profiles.id`, `llms.id`, `multimedia_generations.id`, `process_runs.id`, `task_attempts.id`, `tasks.id`, `users.id` | `back/app/llm/models.py:132` |
+| `llm_calls` | `LLMCall` | `app.llm` | yes | `agents.id`, `conversation_rounds.id`, `deep_sessions.id`, `deep_submissions.id`, `llm_inference_attempts.id`, `llm_profiles.id`, `llms.id`, `multimedia_generations.id`, `process_runs.id`, `task_attempts.id`, `tasks.id`, `users.id` | `back/app/llm/models.py:132` |
 | `llm_document_analyses` | `LLMDocumentAnalysis` | `app.llm` | no | `agents.id`, `tasks.id` | `back/app/llm/models.py:26` |
 | `llm_inference_attempts` | `LLMInferenceAttempt` | `app.llm` | no | `llm_inferences.id` | `back/app/llm/models.py:66` |
 | `llm_inference_commands` | `LLMInferenceCommand` | `app.llm` | no | `llm_inference_attempts.id`, `llm_inferences.id` | `back/app/llm/models.py:82` |
@@ -2406,9 +2407,9 @@ No cyclic component detected.
 | `calendar_is_available` | `calendar` | `app.calendar` | `calendar_is_available` | `back/app/calendar/mcp.py:101` |
 | `calendar_list` | `calendar` | `app.calendar` | `calendar_list` | `back/app/calendar/mcp.py:43` |
 | `calendar_update_event` | `calendar` | `app.calendar` | `calendar_update_event` | `back/app/calendar/mcp.py:208` |
-| `chat_choice_resolve` | `chat` | `app.conversation` | `chat_choice_resolve` | `back/app/conversation/mcp.py:923` |
-| `chat_repository_show` | `chat` | `app.conversation` | `chat_repository_show` | `back/app/conversation/mcp.py:127` |
-| `chat_round_get` | `chat` | `app.conversation` | `chat_round_get` | `back/app/conversation/mcp.py:252` |
+| `chat_choice_resolve` | `chat` | `app.conversation` | `chat_choice_resolve` | `back/app/conversation/mcp.py:924` |
+| `chat_repository_show` | `chat` | `app.conversation` | `chat_repository_show` | `back/app/conversation/mcp.py:128` |
+| `chat_round_get` | `chat` | `app.conversation` | `chat_round_get` | `back/app/conversation/mcp.py:253` |
 | `chat_screenshot` | `chat` | `app.chat` | `chat_screenshot` | `back/app/chat/mcp.py:40` |
 | `voice_call_list` | `chat` | `app.voice` | `mcp_list_voice_calls` | `back/app/voice/mcp.py:373` |
 | `voice_call_start` | `chat` | `app.voice` | `mcp_start_voice_call` | `back/app/voice/mcp.py:315` |
@@ -2432,22 +2433,22 @@ No cyclic component detected.
 | `document_revision_list` | `document` | `app.document` | `document_revision_list` | `back/app/document/mcp.py:61` |
 | `document_share` | `document` | `app.document` | `document_share` | `back/app/document/mcp.py:157` |
 | `document_sharing` | `document` | `app.document` | `document_sharing` | `back/app/document/mcp.py:90` |
-| `document_show` | `document` | `app.conversation` | `document_show` | `back/app/conversation/mcp.py:112` |
+| `document_show` | `document` | `app.conversation` | `document_show` | `back/app/conversation/mcp.py:113` |
 | `dataset_query` | `file_sharing` | `app.document` | `dataset_query` | `back/app/document/data/mcp.py:23` |
-| `file_append` | `file_sharing` | `app.file_share` | `append_file` | `back/app/file_share/mcp.py:508` |
-| `file_copy` | `file_sharing` | `app.file_share` | `copy_file` | `back/app/file_share/mcp.py:603` |
+| `file_append` | `file_sharing` | `app.file_share` | `append_file` | `back/app/file_share/mcp.py:512` |
+| `file_copy` | `file_sharing` | `app.file_share` | `copy_file` | `back/app/file_share/mcp.py:607` |
 | `file_create` | `file_sharing` | `app.file_share` | `create_file` | `back/app/file_share/mcp.py:418` |
-| `file_delete` | `file_sharing` | `app.file_share` | `delete_file` | `back/app/file_share/mcp.py:685` |
-| `file_edit` | `file_sharing` | `app.file_share` | `edit_file` | `back/app/file_share/mcp.py:546` |
+| `file_delete` | `file_sharing` | `app.file_share` | `delete_file` | `back/app/file_share/mcp.py:689` |
+| `file_edit` | `file_sharing` | `app.file_share` | `edit_file` | `back/app/file_share/mcp.py:550` |
 | `file_info` | `file_sharing` | `app.file_share` | `file_info` | `back/app/file_share/mcp.py:190` |
 | `file_list` | `file_sharing` | `app.file_share` | `list_files` | `back/app/file_share/mcp.py:162` |
-| `file_move` | `file_sharing` | `app.file_share` | `move_file` | `back/app/file_share/mcp.py:655` |
+| `file_move` | `file_sharing` | `app.file_share` | `move_file` | `back/app/file_share/mcp.py:659` |
 | `file_read` | `file_sharing` | `app.file_share` | `read_file` | `back/app/file_share/mcp.py:309` |
-| `file_rename` | `file_sharing` | `app.file_share` | `rename_file` | `back/app/file_share/mcp.py:634` |
+| `file_rename` | `file_sharing` | `app.file_share` | `rename_file` | `back/app/file_share/mcp.py:638` |
 | `file_schemes` | `file_sharing` | `app.file_share` | `file_schemes` | `back/app/file_share/mcp.py:137` |
 | `file_search` | `file_sharing` | `app.file_share` | `search_files` | `back/app/file_share/mcp.py:238` |
 | `file_to_pdf` | `file_sharing` | `app.file_share` | `file_to_pdf` | `back/app/file_share/mcp.py:343` |
-| `file_write` | `file_sharing` | `app.file_share` | `write_file` | `back/app/file_share/mcp.py:471` |
+| `file_write` | `file_sharing` | `app.file_share` | `write_file` | `back/app/file_share/mcp.py:475` |
 | `documentation_catalog` | `galaris` | `app.services` | `documentation_catalog` | `back/app/services/mcp.py:63` |
 | `documentation_search` | `galaris` | `app.services` | `documentation_search` | `back/app/services/mcp.py:76` |
 | `incident_get` | `galaris` | `app.incident` | `incident_get` | `back/app/incident/mcp.py:76` |
@@ -2575,9 +2576,9 @@ No cyclic component detected.
 | `process_archive` | `process` | `app.process` | `process_archive` | `back/app/process/mcp.py:151` |
 | `process_create` | `process` | `app.process` | `process_create` | `back/app/process/mcp.py:113` |
 | `process_history` | `process` | `app.process` | `process_history` | `back/app/process/mcp.py:137` |
-| `process_pending` | `process` | `app.conversation` | `process_pending` | `back/app/conversation/mcp.py:979` |
-| `process_prepare` | `process` | `app.conversation` | `process_prepare` | `back/app/conversation/mcp.py:1067` |
-| `process_respond` | `process` | `app.conversation` | `process_respond` | `back/app/conversation/mcp.py:970` |
+| `process_pending` | `process` | `app.conversation` | `process_pending` | `back/app/conversation/mcp.py:983` |
+| `process_prepare` | `process` | `app.conversation` | `process_prepare` | `back/app/conversation/mcp.py:1071` |
+| `process_respond` | `process` | `app.conversation` | `process_respond` | `back/app/conversation/mcp.py:974` |
 | `process_restore` | `process` | `app.process` | `process_restore` | `back/app/process/mcp.py:145` |
 | `process_run_cancel` | `process` | `app.process` | `process_run_cancel` | `back/app/process/mcp.py:195` |
 | `process_run_children` | `process` | `app.process` | `process_run_children` | `back/app/process/mcp.py:166` |
@@ -2588,7 +2589,7 @@ No cyclic component detected.
 | `process_run_signal` | `process` | `app.process` | `process_run_signal` | `back/app/process/mcp.py:203` |
 | `process_share` | `process` | `app.process` | `process_share` | `back/app/process/mcp.py:157` |
 | `process_start` | `process` | `app.process` | `process_start` | `back/app/process/mcp.py:237` |
-| `process_start_conversation` | `process` | `app.conversation` | `process_start_conversation` | `back/app/conversation/mcp.py:1095` |
+| `process_start_conversation` | `process` | `app.conversation` | `process_start_conversation` | `back/app/conversation/mcp.py:1099` |
 | `process_update` | `process` | `app.process` | `process_update` | `back/app/process/mcp.py:122` |
 | `process_validate` | `process` | `app.process` | `process_validate` | `back/app/process/mcp.py:130` |
 | `rest_request` | `rest` | `app.services` | `rest_request` | `back/app/services/mcp.py:43` |
@@ -2623,12 +2624,12 @@ No cyclic component detected.
 | `skill_set_enabled` | `skills` | `app.skill` | `mcp_skill_set_enabled` | `back/app/skill/mcp.py:54` |
 | `skill_update` | `skills` | `app.skill` | `mcp_skill_update` | `back/app/skill/mcp.py:46` |
 | `skills_list` | `skills` | `app.skill` | `mcp_skills_list` | `back/app/skill/mcp.py:13` |
-| `task_cancel` | `task` | `app.conversation` | `task_cancel` | `back/app/conversation/mcp.py:1052` |
-| `task_get` | `task` | `app.conversation` | `task_get` | `back/app/conversation/mcp.py:901` |
-| `task_list` | `task` | `app.conversation` | `task_list` | `back/app/conversation/mcp.py:856` |
-| `task_pause` | `task` | `app.conversation` | `task_pause` | `back/app/conversation/mcp.py:1009` |
-| `task_resume` | `task` | `app.conversation` | `task_resume` | `back/app/conversation/mcp.py:1027` |
-| `task_run` | `task` | `app.conversation` | `task_run` | `back/app/conversation/mcp.py:577` |
+| `task_cancel` | `task` | `app.conversation` | `task_cancel` | `back/app/conversation/mcp.py:1056` |
+| `task_get` | `task` | `app.conversation` | `task_get` | `back/app/conversation/mcp.py:902` |
+| `task_list` | `task` | `app.conversation` | `task_list` | `back/app/conversation/mcp.py:857` |
+| `task_pause` | `task` | `app.conversation` | `task_pause` | `back/app/conversation/mcp.py:1013` |
+| `task_resume` | `task` | `app.conversation` | `task_resume` | `back/app/conversation/mcp.py:1031` |
+| `task_run` | `task` | `app.conversation` | `task_run` | `back/app/conversation/mcp.py:578` |
 | `task_update` | `task` | `app.task` | `mcp_work_update` | `back/app/task/mcp.py:111` |
 
 ## Declared Privileges

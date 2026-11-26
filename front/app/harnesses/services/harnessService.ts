@@ -165,8 +165,8 @@ export const harnessService = {
     install(agentId: number, harnessId: string): Promise<AxiosResponse<HarnessSelection>> {
         return api.put(`/harnesses/agents/${agentId}`, { harness_id: harnessId })
     },
-    selectInternal(agentId: number): Promise<AxiosResponse<HarnessSelection>> {
-        return api.delete(`/harnesses/agents/${agentId}`)
+    selectEmbedded(agentId: number, driverCode: string): Promise<AxiosResponse<HarnessSelection>> {
+        return api.put(`/harnesses/agents/${agentId}`, { driver_code: driverCode })
     },
     taskBlockers(agentId: number): Promise<AxiosResponse<HarnessTaskBlockers>> {
         return api.get(`/harnesses/agents/${agentId}/task-blockers`)

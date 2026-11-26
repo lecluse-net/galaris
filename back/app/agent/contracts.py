@@ -6,6 +6,7 @@ drivers. It must never import Pydantic AI, Hermes, or the ``Task`` ORM model.
 
 from __future__ import annotations
 
+from asyncio import Lock
 from collections.abc import AsyncIterator, Awaitable, Callable, Mapping, Sequence
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
@@ -1170,6 +1171,9 @@ class AgentDriverSpec:
     max_parallel_tasks: int | None = 1
     transport: str = ""
     checkpoint_policy_path: str | None = None
+    deep_model_source: Literal["galaris", "harness", "managed_gateway"] | None = None
+    scoped_inference: bool = False
+    retains_authorization_run: bool = False
 
     def __post_init__(self) -> None:
         if not math.isfinite(self.stream_close_timeout_seconds) or self.stream_close_timeout_seconds <= 0:
@@ -1239,6 +1243,17 @@ class StaleAgentRunError(RuntimeError):
     """Raised when a run tries to persist work for a superseded Task objective."""
 
 
+class ChildWaitRequested(RuntimeError):
+    """The completed tool batch created a durable coordination wait."""
+
+
+WAITING_FOR_CONSOLE_RECEIPT = "waiting_for_console_receipt"
+
+
+class ConsoleReceiptRequired(RuntimeError):
+    """The active attempt cannot contact the model before reconciling a Console effect."""
+
+
 class ReasoningDegenerationError(RuntimeError):
     """Raised when generated reasoning is stuck in a repeated pattern."""
 
@@ -1252,6 +1267,11 @@ class ResolvedModel:
     requested_effort: ExecutionEffort
     reasoning_effort: ReasoningEffort | None = None
     fallback_used: bool = False
+
+    @property
+    def executor_profile_effort(self) -> ExecutionEffort:
+        """The configured executor tier selected during Task model admission."""
+        return "standard" if self.fallback_used else self.requested_effort
 
 
 @dataclass(frozen=True)
@@ -1336,6 +1356,16 @@ class AgentRunLimitsV1(BaseModel):
     tool_call_limit: int | None = Field(default=None, ge=1)
     tool_parallelism: int = Field(default=1, ge=1, le=32)
     context_tokens: int | None = Field(default=None, ge=1)
+
+
+@dataclass(frozen=True)
+class ScopedInferenceAdmission:
+    """The live attempt and the original allowances of its logical run."""
+
+    attempt_id: UUID
+    request_limit: int
+    tool_call_limit: int | None = None
+    reserve_tool: Callable[[int], Awaitable[bool]] | None = None
 
 
 class AgentRunEnvelopeV1(BaseModel):
@@ -1479,6 +1509,10 @@ class AgentRunControl:
     publish_event: Callable[[AgentRunEventV1], Awaitable[None]] | None = None
     save_native_history: Callable[[str], None] | None = None
     record_activity: Callable[[], Awaitable[None]] | None = None
+    before_conversation_effect: Callable[[], Awaitable[bool]] | None = None
+    conversation_tool_lock: Lock | None = None
+    admit_conversation_inference: Callable[[ResolvedModel], Awaitable[ScopedInferenceAdmission]] | None = None
+    reserve_conversation_tool: Callable[[int], Awaitable[bool]] | None = None
 
 
 @dataclass(frozen=True)

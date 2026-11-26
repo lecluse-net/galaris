@@ -24,6 +24,7 @@ from app.services import (
     RecoverableToolError,
     mcp_tool,
 )
+from app.services.contracts import ToolArgumentsRejectedError
 from core.database import get_db
 
 from .contracts import ConversationTurn
@@ -930,30 +931,33 @@ async def chat_choice_resolve(
 
     turn = await _fresh(ctx)
     if turn.origin != "text":
-        raise ValueError("Pending messaging choices can only be resolved from a text round.")
+        raise ToolArgumentsRejectedError("Pending messaging choices can only be resolved from a text round.")
     connection_id = _connection_id(turn)
     service_id_raw = turn.messaging_context.get("service_id")
     room_id = str(turn.messaging_context.get("room_id") or "").strip()
     user_id = str(turn.messaging_context.get("participant_id") or "").strip() or None
     if connection_id is None or not room_id:
-        raise ValueError("The conversation has no exact messaging scope.")
+        raise ToolArgumentsRejectedError("The conversation has no exact messaging scope.")
     service_id = int(str(service_id_raw)) if service_id_raw is not None else None
     response_text = ""
     if turn.messages:
         response_text = str(turn.messages[-1].get("text") or "")
 
-    from app.messenger import resolve_pending_choice
+    from app.messenger import ChoiceRejected, resolve_pending_choice
 
-    resolution, delivered = await resolve_pending_choice(
-        reference=reference,
-        option_id=option_id,
-        response_text=response_text,
-        agent_id=turn.agent_id,
-        connection_id=connection_id,
-        service_id=service_id,
-        room_id=room_id,
-        user_id=user_id,
-    )
+    try:
+        resolution, delivered = await resolve_pending_choice(
+            reference=reference,
+            option_id=option_id,
+            response_text=response_text,
+            agent_id=turn.agent_id,
+            connection_id=connection_id,
+            service_id=service_id,
+            room_id=room_id,
+            user_id=user_id,
+        )
+    except ChoiceRejected as exc:
+        raise ToolArgumentsRejectedError(str(exc)) from exc
     return {
         "interaction_id": str(resolution.interaction_id),
         "reference": reference.strip().lstrip("#").upper(),

@@ -166,7 +166,11 @@ The profile also lets you enable two-factor authentication with a TOTP applicati
 Agent managers can choose a **Primary profile** and an optional **Secondary profile (fallback)**
 in **Agents → Edit → Models**. This secondary profile takes precedence over the shared setting.
 Failover uses the model assigned to the same use in the fallback profile, when configured.
-The conversation or Task retains completed work. LLM call logs show the failover details.
+The conversation or Task retains completed work. With the embedded harnesses, a Task continues
+on the fallback model after a tool result while that model is available in the fallback profile.
+A high-effort Task that starts on the standard model because no high-tier model is configured
+uses the standard fallback. A new Task evaluates its primary profile again. LLM call logs show
+the failover details.
 [Fallback rules](../reference/functional-catalogue.md#fallback-profiles)
 
 ## Installing Galaris on Windows or Linux
@@ -715,6 +719,8 @@ In a turn's detail in **Phone Calls**, agent managers with Task edit permission 
 remains explicit. Deleting a turn retains its content until audio cleanup completes.
 Reopening follows the persisted request through temporary service interruptions.
 
+When Claude Agent answers in a compatible OpenAI voice, the turn detail shows Claude's reply
+and the model calls that produced it.
 ### Composing a Track with Eleven Music
 
 With an Eleven Music model in the agent's Multimedia profile, ask for a track and provide the

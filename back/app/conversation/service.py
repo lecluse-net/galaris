@@ -17,8 +17,8 @@ from sqlalchemy import and_, delete, exists, func, or_, select, update
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.orm import aliased
 
-from app.agent.contracts import AIResult, AgentRunCheckpoint, ExecutionResult, ReasoningEffort, TaskMessage
-from app.agent import assess_checkpoint, message_prompt
+from app.agent.contracts import AIResult, AgentRunCheckpoint, ExecutionResult, ReasoningEffort, ResolvedModel, ScopedInferenceAdmission, TaskMessage
+from app.agent import assess_checkpoint, conversation_driver_for_agent, message_prompt
 from app.messenger.contracts import CHAT_SCREEN_SOURCE_KEY, DocumentFocus
 from app.services.contracts import MCP_PRESENTATIONS_KEY
 from app.connection import Connection
@@ -35,11 +35,13 @@ from app.messenger import (
 )
 from core.database import get_db, get_db_session
 from core.i18n import current_language, render_prompt, t
+from core.params import runtime_settings
 from core.util import get_encryption_service
 
 from .contracts import (
     ConversationLeaseLostError, ConversationOutcome, ConversationTurn,
     ConversationControlAction, ConversationControlConflict, ConversationControlResult,
+    inference_binding, inference_limit, inference_tool_calls_used, reserve_inference_tool,
 )
 from .control_service import REQUESTED_ACTIONS, available_round_actions
 from .preparation import wake_room_after_commit
@@ -58,6 +60,7 @@ TERMINAL_ROUND_STATUSES = ("SUCCEEDED", "SUPERSEDED", "ERROR_RESOLVED", "CANCELL
 CONTEXT_SOFT_MAX_CHARS = 16_000
 CONTEXT_SOFT_OVERFLOW_CHARS = 2_000
 LEASE_SECONDS = 45
+VOICE_LEASE_PREFIX = "voice:"
 # Leave time in the notification lease for the required text dispatch.
 TASK_NOTIFICATION_ARTIFACT_TIMEOUT_SECONDS = 15
 MAX_FAILURES = 2
@@ -208,6 +211,7 @@ async def admit_message(
     if round_ is None:
         round_ = ConversationRound(
             room_id=room.id,
+            driver_code=await conversation_driver_for_agent(agent_id),
             language=await current_language(language, user_id=message.requester_user_id),
             status="PAUSED" if awaiting_contact else "FROZEN",
             contact_permission_key=contact_permission_key,
@@ -416,8 +420,17 @@ async def _claim_round(round_: ConversationRound, worker_id: str) -> Conversatio
             _clear_round_lease(round_)
             await get_db().commit()
             return None
-    token = uuid4()
     round_.status = "CLAIMED"
+    open_round_attempt(round_, worker_id)
+    await get_db().commit()
+    # The session retains committed values. Return the token this attempt owns,
+    # even if a subsequent transaction has already revoked or replaced it.
+    return round_
+
+
+def open_round_attempt(round_: ConversationRound, worker_id: str) -> None:
+    """Record a new attempt inside the transaction owning the round."""
+    token = uuid4()
     round_.lease_token = token
     round_.lease_owner = worker_id
     round_.lease_expires_at = _now() + timedelta(seconds=LEASE_SECONDS)
@@ -430,9 +443,13 @@ async def _claim_round(round_: ConversationRound, worker_id: str) -> Conversatio
             lease_token=token,
         )
     )
-    await get_db().commit()
-    # Return the token this attempt owns, even after a concurrent revocation.
-    return round_
+
+
+async def release_round_attempt(round_: ConversationRound, status: str, error: str | None = None) -> None:
+    """Close an owned attempt when its transport persists the round outcome."""
+    if round_.lease_token is not None:
+        await _finish_attempt(round_, status, error)
+    _clear_round_lease(round_)
 
 
 async def _read_round_checkpoint(round_: ConversationRound) -> AgentRunCheckpoint | None:
@@ -446,7 +463,7 @@ async def _read_round_checkpoint(round_: ConversationRound) -> AgentRunCheckpoin
         status=payload["status"], data=payload["data"],
         result=ExecutionResult.model_validate(payload["result"]) if payload.get("result") else None,
     )
-    if checkpoint.driver_code != "internal" or checkpoint.runtime_run_id != str(round_.id):
+    if checkpoint.driver_code != round_.driver_code or checkpoint.runtime_run_id != str(round_.id):
         raise ValueError("The conversation checkpoint belongs to another runtime.")
     return checkpoint
 
@@ -496,7 +513,10 @@ async def _interrupt_round(round_: ConversationRound) -> bool:
             checkpoint = await _read_round_checkpoint(round_)
             if checkpoint is not None:
                 assessment = assess_checkpoint(checkpoint)
-                if assessment.state != "safe":
+                # Approval recovery uses the driver's sealed binding. Other
+                # reconciliation paths may need a Task-specific service.
+                waiting = checkpoint.status == "waiting_for_authorization"
+                if assessment.state != "safe" and not (waiting and assessment.state == "reconcile"):
                     error = f"Conversation checkpoint cannot safely resume: {assessment.reason}"
             elif round_.effect_started:
                 error = "Conversation worker stopped after an effect without a recovery checkpoint."
@@ -563,6 +583,15 @@ async def claim_next_round(worker_id: str) -> ConversationRound | None:
         .execution_options(populate_existing=True)
     )
     if expired is not None:
+        if expired.voice_session_id is not None and (expired.lease_owner or "").startswith(VOICE_LEASE_PREFIX):
+            # A disconnected voice transport cannot hand streaming playback to
+            # the text worker. Close its claim and leave history for the call.
+            expired.status = "INTERRUPTED"
+            expired.finished_at = expired.interrupted_at = now
+            expired.last_error = "Voice transport lost its round lease."
+            await release_round_attempt(expired, "INTERRUPTED", expired.last_error)
+            await get_db().commit()
+            return None
         if not await _interrupt_round(expired):
             await get_db().commit()
             return None
@@ -688,6 +717,120 @@ def _owns_round(round_: ConversationRound, lease_token: UUID) -> bool:
         and round_.lease_expires_at is not None
         and round_.lease_expires_at > _now()
     )
+
+
+async def authorize_round_inference(
+    round_id: UUID, attempt_id: UUID, agent_id: int, *, run_id: UUID, audio: bool,
+    driver_code: str, model_id: int, model_code: str, reasoning_effort: ReasoningEffort | None,
+    request_limit: int | None = None,
+) -> int | None:
+    """Authorize an inference against the live round claim and resolve its requester."""
+    row = (await get_db().execute(
+        select(ConversationRound, ConversationRoundAttempt)
+        .join(ConversationRoundAttempt, ConversationRoundAttempt.round_id == ConversationRound.id)
+        .where(ConversationRound.id == round_id, ConversationRoundAttempt.id == attempt_id)
+        .execution_options(populate_existing=True)
+    )).one_or_none()
+    if row is None:
+        raise PermissionError("The conversation inference attempt does not exist.")
+    round_, attempt = row
+    if run_id != round_.id or audio != (round_.voice_session_id is not None):
+        raise PermissionError("The conversation inference does not match the round's run and mode.")
+    admission = inference_binding(attempt.inference_admission)
+    expected: dict[str, object] = {
+        "model_id": model_id, "model_code": model_code, "reasoning_effort": reasoning_effort,
+    }
+    if admission is not None and "request_limit" in admission:
+        expected["request_limit"] = request_limit
+    if round_.driver_code != driver_code or admission != expected:
+        raise PermissionError("The conversation inference does not match the admitted driver, model and request limit.")
+    if (
+        attempt.status != "CLAIMED"
+        or attempt.finished_at is not None
+        or not _owns_round(round_, attempt.lease_token)
+    ):
+        raise PermissionError("The conversation inference attempt is no longer active.")
+    try:
+        _, connection = await _room_scope(round_.room_id)
+    except LookupError as exc:
+        raise PermissionError("The conversation inference has no accessible room.") from exc
+    if connection.agent_id != agent_id or not connection.active:
+        raise PermissionError("The conversation inference belongs to another agent or an inactive connection.")
+    from .contact_authorization import contact_round_authorized
+
+    if not await contact_round_authorized(round_):
+        raise PermissionError("The conversation contact authorization is no longer active.")
+    return round_.requester_user_id
+
+
+async def admit_round_inference(
+    round_id: UUID, *, lease_token: UUID, driver_code: str, model: ResolvedModel,
+    voice_session_id: UUID | None = None,
+) -> ScopedInferenceAdmission:
+    """Freeze this attempt's model and preserve the logical round's original allowance."""
+    db = get_db()
+    round_ = await _locked_owned_round(round_id, lease_token)
+    if round_.driver_code != driver_code or round_.status != "RUNNING":
+        raise PermissionError("The round does not authorize this inference driver.")
+    if voice_session_id is not None and round_.voice_session_id != voice_session_id:
+        raise PermissionError("The conversation attempt belongs to another voice session.")
+    attempt = await _active_round_attempt(round_id, lease_token)
+    if attempt is None:
+        raise ConversationLeaseLostError(f"Conversation round {round_id} has no active attempt.")
+    snapshot: dict[str, object] = {"model_id": model.id, "model_code": model.code, "reasoning_effort": model.reasoning_effort}
+    previous = attempt.inference_admission
+    binding = inference_binding(previous)
+    if binding is not None and {key: value for key, value in binding.items() if key != "request_limit"} != snapshot:
+        raise PermissionError("The attempt already has a different admitted model.")
+    request_limit = inference_limit(previous, "request_limit")
+    tool_call_limit = inference_limit(previous, "tool_call_limit")
+    used = inference_tool_calls_used(previous)
+    if (request_limit is None or tool_call_limit is None) and attempt.attempt_number > 1:
+        earlier = select(ConversationRoundAttempt.inference_admission).where(
+            ConversationRoundAttempt.round_id == round_id,
+            ConversationRoundAttempt.attempt_number < attempt.attempt_number,
+        )
+        if request_limit is None:
+            original = await db.scalar(earlier.where(
+                func.jsonb_typeof(ConversationRoundAttempt.inference_admission["request_limit"]) == "number",
+            ).order_by(ConversationRoundAttempt.attempt_number).limit(1))
+            request_limit = inference_limit(original, "request_limit")
+        if tool_call_limit is None:
+            latest = await db.scalar(earlier.where(
+                func.jsonb_typeof(ConversationRoundAttempt.inference_admission["tool_call_limit"]) == "number",
+            ).order_by(ConversationRoundAttempt.attempt_number.desc()).limit(1))
+            tool_call_limit = inference_limit(latest, "tool_call_limit")
+            used = max(used, inference_tool_calls_used(latest))
+    request_limit = request_limit or runtime_settings.TASK_AGENT_MAX_REQUESTS
+    tool_call_limit = tool_call_limit or runtime_settings.TASK_AGENT_MAX_TOOL_CALLS
+    attempt_id = attempt.id
+    attempt.inference_admission = {**snapshot, "request_limit": request_limit,
+                                   "tool_call_limit": tool_call_limit, "tool_calls_used": used}
+    await db.commit()
+
+    async def reserve_tool(previously_recorded: int) -> bool:
+        async with get_db_session():
+            try:
+                owned = await _locked_owned_round(round_id, lease_token)
+            except (LookupError, ConversationLeaseLostError) as exc:
+                raise PermissionError("The conversation tool attempt is no longer active.") from exc
+            current = await _active_round_attempt(round_id, lease_token)
+            if owned.status != "RUNNING" or current is None or current.id != attempt_id:
+                raise PermissionError("The conversation tool attempt is no longer active.")
+            reserved = reserve_inference_tool(current.inference_admission, previously_recorded)
+            if reserved is None:
+                return False
+            current.inference_admission = reserved
+            return True
+
+    return ScopedInferenceAdmission(attempt_id, request_limit, tool_call_limit, reserve_tool)
+
+
+async def _active_round_attempt(round_id: UUID, lease_token: UUID) -> ConversationRoundAttempt | None:
+    return await get_db().scalar(select(ConversationRoundAttempt).where(
+        ConversationRoundAttempt.round_id == round_id, ConversationRoundAttempt.lease_token == lease_token,
+        ConversationRoundAttempt.status == "CLAIMED", ConversationRoundAttempt.finished_at.is_(None),
+    ).execution_options(populate_existing=True))
 
 
 async def _locked_owned_round(round_id: UUID, lease_token: UUID) -> ConversationRound:
@@ -822,6 +965,11 @@ async def build_turn(
     from .facade import active_work_snapshot
     from .checkpoint_journal import RoundCheckpointWriter
     save_checkpoint = RoundCheckpointWriter(round_id, lease_token).save
+    driver_code = round_.driver_code
+
+    async def admit_inference(model: ResolvedModel) -> ScopedInferenceAdmission:
+        return await admit_round_inference(round_id, lease_token=lease_token, driver_code=driver_code, model=model)
+
     source = hydrated[-1].metadata_.get(CHAT_SCREEN_SOURCE_KEY)
     desktop_screen_session: UUID | None = None
     if (round_.requester_user_id is not None and isinstance(source, str)
@@ -888,6 +1036,7 @@ async def build_turn(
         origin="voice" if round_.voice_session_id else "text",
         resume_checkpoint=resume_checkpoint, save_checkpoint=save_checkpoint,
         force_response=round_.response_only,
+        driver_code=driver_code, admit_inference=admit_inference,
     )
 
     from .process_inputs import pending_process_preparations
@@ -961,7 +1110,7 @@ async def _mark_effect_if_fresh(round_id: UUID, *, lease_token: UUID) -> bool:
         from .contact_authorization import contact_round_authorized
         if not await contact_round_authorized(round_):
             return False
-    if await _pending_successor(round_) is not None:
+    if round_.voice_session_id is None and await _pending_successor(round_) is not None:
         return False
     if not round_.effect_started:
         round_.effect_started = True
@@ -1028,7 +1177,7 @@ async def complete_round(
     """Apply the final freshness barrier and deliver through canonical Messenger."""
 
     round_ = await _locked_owned_round(round_id, lease_token)
-    room, _connection = await _room_scope(round_.room_id, lock=True)
+    room, connection = await _room_scope(round_.room_id, lock=True)
     successor = await _pending_successor(round_)
     round_.execution_result = (
         outcome.execution_result.model_dump(mode="json")
@@ -1040,12 +1189,17 @@ async def complete_round(
         await get_db().commit()
         return round_.status
     if outcome.metadata.get("waiting_for_authorization") is True:
-        round_.status = "WAITING_APPROVAL"
-        round_.last_error = None
-        _clear_round_lease(round_)
-        await _finish_attempt(round_, "WAITING_APPROVAL")
-        await get_db().commit()
-        return "WAITING_APPROVAL"
+        if successor is None:
+            round_.status = "WAITING_APPROVAL"
+            round_.last_error = None
+            _clear_round_lease(round_)
+            await _finish_attempt(round_, "WAITING_APPROVAL")
+            await get_db().commit()
+            return "WAITING_APPROVAL"
+        from app.services.facade import invalidate_authorization_context
+
+        await invalidate_authorization_context(connection.agent_id, f"round:{round_id}")
+        round_.encrypted_checkpoint = None
     interrupted = outcome.metadata.get("interrupted") is True
     if interrupted and successor is None and not round_.effect_started:
         # Administrative cancellation of the successor must not turn a partial
@@ -2170,6 +2324,7 @@ async def control_round(
         checkpoint = await _ensure_safe_checkpoint(round_)
         successor = ConversationRound(
             id=uuid4(), room_id=room_id, source_round_id=round_.id, status="FROZEN",
+            driver_code=round_.driver_code,
             language=round_.language, topic_id=round_.topic_id,
             contact_memory_item_id=round_.contact_memory_item_id,
             requester_user_id=round_.requester_user_id,

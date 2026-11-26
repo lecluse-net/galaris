@@ -434,16 +434,16 @@ async def test_a_dead_runtime_does_not_starve_other_session_cleanup(repository_s
 @pytest.mark.asyncio
 async def test_linked_live_task_presents_before_completion_and_superseded_round_does_not_take_focus(repository_scope, db, monkeypatch):
     from app.conversation import repository_display
+    from app.conversation.mcp import chat_repository_show
     from app.conversation.models import ConversationRound, ConversationTaskLink
     from app.code.models import CodeDisplayRequest
     from app.messenger import create_internal_room
     from app.task import Task, TaskStatus
-    from app.services import McpToolContext
+    from app.services import McpToolContext, list_enabled_native_mcp_definitions
 
     _, agent, _, _, _ = repository_scope
-    for code in ("chat", "conversation"):
-        tool = await db.scalar(select(ServiceModel).where(ServiceModel.code == code))
-        db.add(Connection(agent_id=agent.id, service_id=tool.id, active=True))
+    chat = await db.scalar(select(ServiceModel).where(ServiceModel.code == "chat"))
+    db.add(Connection(agent_id=agent.id, service_id=chat.id, active=True))
     await db.flush()
     room = await create_internal_room(actor_user_id=agent.user_id, agent_id=agent.id)
     origin = ConversationRound(room_id=room.id, requester_user_id=agent.user_id,
@@ -457,7 +457,10 @@ async def test_linked_live_task_presents_before_completion_and_superseded_round_
     publisher = AsyncMock()
     monkeypatch.setattr(repository_display, "_publisher", publisher)
     ctx = McpToolContext(agent_id=agent.id, runtime="internal", task_id=task.id)
-    shown = await repository_display.show_repository(ctx, "console://project/", "source.py", "changes")
+    definitions = await list_enabled_native_mcp_definitions(agent.id, runtime="internal", task_id=task.id,
+        allowed_tool_names={"chat_repository_show", "repository_show"})
+    assert {definition.name for definition in definitions} == {"chat_repository_show"}
+    shown = await chat_repository_show(ctx, "console://project/", "source.py", "changes")
     assert shown["status"] == "requested"
     publisher.assert_awaited_once()
     assert task.status == TaskStatus.EXEC
@@ -465,7 +468,7 @@ async def test_linked_live_task_presents_before_completion_and_superseded_round_
     db.add(ConversationRound(room_id=room.id, requester_user_id=agent.user_id,
         language="en", status="RUNNING", created_at=origin.created_at + timedelta(seconds=1)))
     await db.flush()
-    referenced = await repository_display.show_repository(ctx, shown["uri"], None, "files")
+    referenced = await chat_repository_show(ctx, shown["uri"], None, "files")
     assert referenced["status"] == "referenced"
     assert publisher.await_count == 1
     requests = (await db.scalars(select(CodeDisplayRequest).where(CodeDisplayRequest.room_id == room.id).order_by(CodeDisplayRequest.id))).all()
@@ -473,7 +476,7 @@ async def test_linked_live_task_presents_before_completion_and_superseded_round_
     task.paused = True
     await db.flush()
     with pytest.raises(PermissionError):
-        await repository_display.show_repository(ctx, shown["uri"], None, "changes")
+        await chat_repository_show(ctx, shown["uri"], None, "changes")
     unlinked = Task(agent_id=agent.id, label="Synthetic autonomous task", status=TaskStatus.EXEC,
         lease_token=uuid4(), lease_expires_at=service.now() + timedelta(minutes=5))
     db.add(unlinked)

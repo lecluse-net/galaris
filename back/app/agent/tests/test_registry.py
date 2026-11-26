@@ -11,6 +11,7 @@ from app.agent.contracts import (
     UnknownAgentDriverError,
 )
 from app.agent.registry import (
+    conversation_driver_code,
     driver_status,
     get_driver_spec,
     pipeline_policy_for,
@@ -18,6 +19,28 @@ from app.agent.registry import (
 )
 from app.agent.workflow import route_to_driver_pipeline
 from app.task.models import Task, TaskStatus
+from core.params import runtime_settings
+
+
+@pytest.mark.parametrize("conversations_enabled", [True, False])
+@pytest.mark.parametrize(("agent_driver", "provider", "enabled", "expected"), [
+    ("internal", None, True, "internal"),
+    ("claude_embedded", None, True, "claude_embedded"),
+    ("claude_embedded", None, False, "claude_embedded"),
+    ("openai_messages", "codex", True, "claude_embedded"),
+    ("openai_messages", "deepseek_harness", True, "claude_embedded"),
+    ("openai_messages", "codex", False, "internal"),
+    ("openai_messages", "deepseek_harness", False, "internal"),
+    ("openai_messages", "openai_messages", True, "internal"),
+    ("openai_messages", "claude_agent", True, "internal"),
+    ("hermes", "hermes", True, "internal"),
+])
+def test_conversation_route_depends_on_the_saved_provider_and_rollout(
+    monkeypatch, agent_driver, provider, enabled, expected, conversations_enabled,
+):
+    monkeypatch.setattr(runtime_settings, "HARNESS_CLAUDE_EMBEDDED_ENABLED", enabled)
+    monkeypatch.setattr(runtime_settings, "HARNESS_CLAUDE_EMBEDDED_CONVERSATIONS_ENABLED", conversations_enabled)
+    assert conversation_driver_code(agent_driver, provider) == (expected if conversations_enabled else "internal")
 
 
 @pytest.mark.parametrize("current_decision, expected", [
@@ -42,9 +65,11 @@ def test_driver_policies_are_explicit_and_immutable() -> None:
     hermes_spec = get_driver_spec("hermes")
     internal = pipeline_policy_for("internal")
     hermes = pipeline_policy_for("hermes")
+    claude = pipeline_policy_for("claude_embedded")
 
     assert internal.use_planner is True
     assert hermes.use_planner is False
+    assert claude.dispatch_choices() == internal.dispatch_choices()
     assert internal_spec.execution_strategy_for("standard") == "direct"
     assert internal_spec.execution_strategy_for("high") == "direct"
     assert hermes_spec.execution_strategy_for("standard") == "direct"

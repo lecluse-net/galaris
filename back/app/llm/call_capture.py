@@ -1,10 +1,15 @@
 """Opt-in inference capture, bound to the gateway's existing call identity."""
 
+from __future__ import annotations
+
 from collections.abc import Awaitable, Callable
 from contextvars import ContextVar
 from dataclasses import dataclass, field
-from typing import Any
+from typing import TYPE_CHECKING, Any
 from uuid import UUID
+
+if TYPE_CHECKING:
+    from .embedded_runtime import EmbeddedInferenceOrigin
 
 
 @dataclass(frozen=True)
@@ -29,6 +34,7 @@ class TextCallCapture:
     call_limit: int | None = None
     calls_started: int = 0
     call_ids: list[UUID] = field(default_factory=list[UUID])
+    embedded_origin: EmbeddedInferenceOrigin | None = None
 
 
 text_call_capture: ContextVar[TextCallCapture | None] = ContextVar(

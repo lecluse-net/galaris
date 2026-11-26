@@ -73,8 +73,9 @@ async def test_planner_synthesis_does_not_block_lease_renewal(
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("driver_code", ["internal", "claude_embedded"])
 async def test_planner_materializes_standalone_conversation_task(
-    db, monkeypatch: pytest.MonkeyPatch,
+    db, monkeypatch: pytest.MonkeyPatch, driver_code: str,
 ) -> None:
     import app.services
     from app.agent import OBJECTIVE_IS_STANDALONE_DATA_KEY, planner_service
@@ -84,7 +85,9 @@ async def test_planner_materializes_standalone_conversation_task(
     from app.services.catalog import catalog_entry_from_definition, catalog_from_entries
     from app.task import task_service
     from core.database import get_db
+    from core.params import runtime_settings
 
+    monkeypatch.setattr(runtime_settings, "HARNESS_CLAUDE_EMBEDDED_ENABLED", True)
     title = Title(label="Synthetic planner", gender="X")
     provider = LLMProvider(name="Synthetic planner", base_url="https://example.test")
     db.add_all([title, provider])
@@ -97,7 +100,7 @@ async def test_planner_materializes_standalone_conversation_task(
     db.add(profile)
     await db.flush()
     agent = Agent(title_id=title.id, first_name="Synthetic", last_name="Planner",
-                  code="synthetic-plan", profile_id=profile.id)
+                  code="synthetic-plan", profile_id=profile.id, agent_driver=driver_code)
     db.add(agent)
     await db.flush()
     contact = MemoryItem(owner_agent_id=agent.id, memory_resource_id="synthetic-contact",
@@ -105,7 +108,8 @@ async def test_planner_materializes_standalone_conversation_task(
     db.add(contact)
     await db.flush()
     task = Task(label="Plan synthetic work", objective="Write a summary", agent_id=agent.id,
-                contact_memory_item_id=contact.id, status=TaskStatus.PLAN, ai=True,
+                contact_memory_item_id=contact.id, status=TaskStatus.CREATE, ai=True,
+                forced_route="PLAN", forced_effort="high",
                 data={"origin": "conversation", OBJECTIVE_IS_STANDALONE_DATA_KEY: True})
     db.add(task)
     await db.commit()
@@ -134,6 +138,9 @@ async def test_planner_materializes_standalone_conversation_task(
     monkeypatch.setattr(task_service.websocket, "emit", AsyncMock())
     monkeypatch.setattr(planner_service, "go_next", lambda _task_id: None)
 
+    await scheduler._dispatch(task_id)
+    await db.refresh(task)
+    assert task.status == TaskStatus.PLAN
     await scheduler._plan(task_id)
 
     structured.assert_awaited_once()
@@ -142,6 +149,7 @@ async def test_planner_materializes_standalone_conversation_task(
     assert task.status == TaskStatus.PLAN and task.paused
     children = await task_service.get_children(task_id)
     assert len(children) == 1
+    assert children[0].agent_id == agent.id
     assert children[0].status == TaskStatus.DISPATCH and not children[0].paused
 
 

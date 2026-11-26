@@ -4,6 +4,7 @@
 
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock
+from uuid import uuid4
 
 import pytest
 from app.agent import agent_service
@@ -15,6 +16,41 @@ from core.user import UserModel
 from pydantic import ValidationError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
+
+
+@pytest.mark.asyncio
+async def test_http_creation_can_select_an_available_embedded_harness(client, monkeypatch):
+    from app.agent.models import Title
+    from core.authorize.tests.test_guard_policy_parameters import actor
+    from core.database import get_db_session
+    from core.params import runtime_settings
+
+    headers, _ = await actor(["AGENT_EDIT"])
+    read_only, _ = await actor(["AGENT_ACCESS"])
+    async with get_db_session() as db:
+        title_id = await db.scalar(select(Title.id).limit(1))
+    payload = {"title_id": title_id, "code": f"embedded-{uuid4().hex}", "first_name": "Synthetic"}
+    claude = {**payload, "agent_driver": "claude_embedded"}
+
+    drivers = (await client.get("/api/agents/drivers", headers=headers)).json()
+    registered = {driver["name"]: driver for driver in drivers}
+    assert registered["internal"]["transport"] == "embedded"
+    assert registered["claude_embedded"]["transport"] == "embedded"
+    assert registered["claude_embedded"]["available"] is False
+    assert (await client.post("/api/agents", headers=headers, json=claude)).status_code == 400
+    assert (await client.post("/api/agents", headers=headers, json={**payload, "agent_driver": "openai_messages"})).status_code == 400
+
+    monkeypatch.setattr(runtime_settings, "HARNESS_CLAUDE_EMBEDDED_ENABLED", True)
+    assert (await client.post("/api/agents", headers=read_only, json=claude)).status_code == 403
+    created = await client.post("/api/agents", headers=headers, json=claude)
+    assert created.status_code == 201, created.text
+    body = created.json()
+    assert body["agent_driver"] == "claude_embedded"
+    assert body["task_harness_id"] is None
+    selection = await client.get(f"/api/harnesses/agents/{body['id']}", headers=headers)
+    assert selection.status_code == 200, selection.text
+    assert selection.json()["driver_code"] == "claude_embedded"
+    assert selection.json()["containerized"] is False
 
 
 @pytest.mark.parametrize("names", [{}, {"last_name": ""}, {"last_name": None}])

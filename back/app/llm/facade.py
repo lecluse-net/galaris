@@ -34,7 +34,7 @@ from .capabilities import AICapability, with_capability, default_modalities
 from .handlers import LLMModelInfo
 from .provider_catalog import ProviderProfile, resolve_provider_profile
 from .provider_facade import (
-    ImageGenerationResult, NativeImageSize, ProviderTranscriptionError, RealtimeSpeechStream,
+    ImageGenerationResult, NativeImageSize, ProviderTranscriptionError, RealtimeSpeechStream, RealtimeTranscriber,
     SpeechOptions, SpeechResult, TranscriptionResult,
     ProviderResponsesPolicy,
     register_image_generation_provider,
@@ -42,6 +42,7 @@ from .provider_facade import (
     register_openai_protocol_adapter,
     register_provider,
     register_provider_quota_reader,
+    register_realtime_transcription_provider,
     register_resource_discovery,
     register_responses_policy,
 )
@@ -57,6 +58,11 @@ from .document_evidence import acquired_document_evidence, document_evidence_rev
 from .document_contracts import AcquiredDocumentEvidence
 from .document_rag import retrieve_prepared_document, DocumentRagResult
 from .document_budget import document_input_budget, document_tokens, text_tokens
+from .embedded_runtime import EmbeddedRoundInference as EmbeddedRoundInference
+from .embedded_runtime import EmbeddedTaskInference as EmbeddedTaskInference
+from .embedded_runtime import EmbeddedDeepInference as EmbeddedDeepInference
+from .embedded_runtime import EmbeddedInferenceOrigin as EmbeddedInferenceOrigin
+from .embedded_runtime import embedded_media_inference as embedded_media_inference
 
 
 async def proxy_chat_completion(body: dict[str, Any], **options: Any) -> JSONResponse | StreamingResponse:
@@ -312,11 +318,13 @@ async def aggregate_agent_run_usage(
     agent_run_id: UUID,
     *,
     agent_id: int | None = None,
+    correlation_ref: str | None = None,
 ) -> AgentRunUsage:
     """Aggregate the authoritative ``LLMCall`` accounting for one logical run.
 
     The optional agent guard is used by managed-runtime HTTP consumers. Internal
-    Harness drivers pass the frozen agent identity from their run envelope.
+    Harness drivers pass the frozen agent identity from their run envelope and
+    may restrict accounting to a single attempt of a persistent logical run.
     """
 
     from sqlalchemy import select
@@ -327,7 +335,10 @@ async def aggregate_agent_run_usage(
     fields = ("id", "agent_id", "status", "input_tokens", "output_tokens", "cache_read_tokens",
               "cache_write_tokens", "reasoning_tokens", "tool_calls", "cost", "inference_cost",
               "cost_estimated", "is_subscription", "usage", "purpose")
-    calls = list(await get_db().scalars(select(LLMCall).where(LLMCall.agent_run_id == agent_run_id)
+    scope = select(LLMCall).where(LLMCall.agent_run_id == agent_run_id)
+    if correlation_ref is not None:
+        scope = scope.where(LLMCall.correlation_ref == correlation_ref)
+    calls = list(await get_db().scalars(scope
         .execution_options(include_historized=True)
         .options(load_only(*(getattr(LLMCall, name) for name in fields), raiseload=True))))
     if agent_id is not None and any(call.agent_id != agent_id for call in calls):
@@ -394,7 +405,8 @@ async def get_managed_runtime_credential(
 
 
 __all__ = [
-    "ImageGenerationResult", "NativeImageSize", "ProviderTranscriptionError", "RealtimeSpeechStream",
+    "ImageGenerationResult", "NativeImageSize", "ProviderTranscriptionError", "RealtimeSpeechStream", "RealtimeTranscriber",
+    "register_realtime_transcription_provider",
     "SpeechOptions", "SpeechResult", "TranscriptionResult", "default_modalities", "openai_compatible_resources",
     'retrieve_prepared_document', 'DocumentRagResult',
     'document_input_budget', 'document_tokens', 'text_tokens',

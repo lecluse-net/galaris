@@ -15,6 +15,7 @@ from core.util import complete_io
 from app.file_share import (MaterializedResource, ResourceContext, ResourceDescriptor, ResourceUri, parse_resource_uri,
     ResourceListing, ResourceMutation, ResourceRead, ResourceSchemeDescription, ResourceSearchHit, ResourceSearchResult)
 
+from ..contracts import DatasetCreationContentError
 from . import service
 from .access import accessible_clause
 from .models import Dataset, DatasetAlias, DatasetAttachment
@@ -176,7 +177,11 @@ class DatasetProvider:
             from .attachments import add_bytes
             attachment = await add_bytes(UUID(uri.segments[0]), ctx.agent_id, content, name=str(options.get("name") or "file"))
             return ResourceMutation(uri=attachment.uri, operation="create", state="created", size=attachment.size_bytes)
-        dataset = await service.create(ctx.agent_id, title=str(options.get("name") or "Dataset"), content=content.decode("utf-8"))
+        try:
+            decoded = content.decode("utf-8")
+        except UnicodeDecodeError as exc:
+            raise DatasetCreationContentError("Dataset requires valid UTF-8 JSON") from exc
+        dataset = await service.create(ctx.agent_id, title=str(options.get("name") or "Dataset"), content=decoded)
         await get_db().commit()
         return ResourceMutation(uri=f"data://{dataset.id}", operation="create", state="created", revision=1, size=len(content))
 

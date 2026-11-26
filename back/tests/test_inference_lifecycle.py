@@ -38,6 +38,25 @@ async def runtime(committed_database, monkeypatch, responses_sse):
             await execution.stop()
 
 
+@pytest.mark.asyncio
+async def test_protocol_can_omit_a_private_image_preview_without_altering_the_provider_request(runtime):
+    from app.llm.facade import proxy_chat_completion
+    from app.llm.models import LLMCallEvent
+
+    db, model, requests, mode = runtime
+    mode.update(concurrent=True, chat_json="Synthetic image response")
+    image = "data:image/png;base64,aW1hZ2U="
+    response = await proxy_chat_completion({"model": model.code, "messages": [{"role": "user", "content": [
+        {"type": "text", "text": "Describe this image"}, {"type": "image_url", "image_url": {"url": image}},
+    ]}]}, task_id=None, retain_image_preview=False)
+    assert response.status_code == 200 and len(requests) == 1 and image in json.dumps(requests[0])
+    call = await db.scalar(select(LLMCall).where(LLMCall.llm_id == model.id))
+    assert call is not None and "[private image omitted]" in json.dumps(call.request_messages)
+    event = await db.scalar(select(LLMCallEvent).where(LLMCallEvent.call_id == call.id, LLMCallEvent.sequence == 0))
+    assert event is not None and "[private image omitted]" in json.dumps(event.payload)
+    assert image not in json.dumps(event.payload)
+
+
 async def state(key, expected):
     async with asyncio.timeout(10):
         while True:

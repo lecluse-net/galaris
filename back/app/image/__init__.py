@@ -5,13 +5,14 @@ connect image generation or analysis to messaging, cloud storage, and canonical 
 """
 
 from . import image_service
-from .image_service import describe_image, generate_image_bytes, image_markdown
+from .image_service import describe_image, generate_image_bytes, has_vision_model, image_markdown
 from .transport import ImageFileTransport
 
 __all__ = [
     "image_service",
     "generate_image_bytes",
     "describe_image",
+    "has_vision_model",
     "image_markdown",
     "ImageFileTransport",
 ]

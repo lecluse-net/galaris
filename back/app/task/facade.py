@@ -10,6 +10,8 @@ from core.i18n import render_prompt, t
 from core.util import convert_to_html
 from core.database import get_db
 from .access import agent_task_filter as agent_task_filter
+from .agent_adapter import authorize_internal_task_inference as authorize_internal_task_inference
+from .agent_adapter import authorize_task_inference as authorize_task_inference
 from .mcp import inspect_agent_task as inspect_agent_task, mcp_run_task as _run_task, stop_task as _stop_task
 from .work_projection import (
     TaskWorkSnapshot as TaskWorkSnapshot,

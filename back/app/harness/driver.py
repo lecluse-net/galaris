@@ -47,14 +47,9 @@ class InternalHarness:
         return await request_call_recovery(run_id)
 
     async def request_cancellation(self, run_id: UUID) -> HarnessCancellationReceipt:
-        from .run_control import cancel, is_active
+        from .run_control import request_cancellation
 
-        was_active = is_active(run_id)
-        await cancel(run_id)
-        return HarnessCancellationReceipt(
-            run_id=run_id, scope="local",
-            state="confirmed" if was_active and not is_active(run_id) else "unknown",
-        )
+        return await request_cancellation(run_id)
 
 def create_driver() -> InternalHarness:
     return InternalHarness()

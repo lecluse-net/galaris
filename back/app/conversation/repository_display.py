@@ -8,10 +8,11 @@ from uuid import UUID
 
 from sqlalchemy import select
 
-from app.code import link_repository, register_repository
+from app.code import RepositoryReferenceError, link_repository, register_repository
 from app.messenger import get_agent_chat_room, get_internal_room
 from app.task import Task, TaskStatus
 from app.services import McpToolContext
+from app.services.contracts import ToolArgumentsRejectedError
 from core.database import get_db
 
 from .contracts import ConversationTurn
@@ -68,8 +69,11 @@ async def show_repository(ctx: McpToolContext, repository: str, file: str | None
     if file is not None:
         candidate = PurePosixPath(file)
         if candidate.is_absolute() or ".." in candidate.parts or "\\" in file or len(file) > 1024 or any(ord(char) < 32 for char in file):
-            raise ValueError("file must be relative to the repository")
-    workspace = await register_repository(repository, ctx.agent_id)
+            raise ToolArgumentsRejectedError("file must be relative to the repository")
+    try:
+        workspace = await register_repository(repository, ctx.agent_id)
+    except RepositoryReferenceError as exc:
+        raise ToolArgumentsRejectedError(str(exc)) from exc
     turn = ctx.resource("conversation_turn")
     if isinstance(turn, ConversationTurn) and turn.assert_fresh_before_effect is not None and not await turn.assert_fresh_before_effect():
         raise ConversationSuperseded("Repository request superseded")

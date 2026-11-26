@@ -9,6 +9,8 @@ qualification=(docker run --rm --network none --user "$(id -u):$(id -g)" --entry
   -v "$PWD/back/scripts/release_qualification.py:/qualification.py:ro"
   -v "$RELEASE_DIR:/evidence" "$candidate_id" /qualification.py)
 "${qualification[@]}" check-upgrade /evidence
+EMBEDDED_HARNESS_IMAGE="$candidate_id" EMBEDDED_HARNESS_REVISION="$(<"$RELEASE_DIR/SOURCE_COMMIT")" \
+  bash bin/test-embedded-harness-image.sh
 bash bin/test-e2e.sh
 while read -r image_id image_tag; do
   case "$image_tag" in
@@ -29,7 +31,9 @@ while read -r image_id image_tag; do
   esac
   bash bin/security-check.sh image "$image_id"
 done < "$RELEASE_DIR/IMAGE_IDS"
-tests_sha256=$(sha256sum bin/test-release.sh bin/test-e2e.sh bin/security-check.sh back/scripts/release_qualification.py | sha256sum | cut -d ' ' -f1)
+tests_sha256=$(sha256sum bin/test-release.sh bin/test-e2e.sh bin/security-check.sh bin/test-embedded-harness-image.sh \
+  back/scripts/qualify_embedded_harness_image.py back/scripts/release_qualification.py e2e/fixtures/browser-token \
+  | sha256sum | cut -d ' ' -f1)
 "${qualification[@]}" qualify /evidence --tests-commit "$(git rev-parse HEAD)" --tests-sha256 "$tests_sha256"
 cp "$RELEASE_DIR/IMAGE_IDS" "$RELEASE_DIR/TESTED_IMAGE_IDS"
 (

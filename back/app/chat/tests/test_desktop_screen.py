@@ -17,6 +17,7 @@ from app.conversation.service import build_turn, claim_next_round
 from app.file_share import ResourceContext, resource_list
 from app.messenger.contracts import CHAT_SCREEN_SOURCE_KEY
 from app.messenger.models import Message
+from app.services.authorization import AUTHORIZATION_META_KEY, answer_action
 from app.services.mcp_loader import build_agent_galaris_fastmcp, list_enabled_native_mcp_definitions
 from core.database import get_db_session
 from core.user.auth_service import create_access_token
@@ -86,8 +87,21 @@ async def test_capture_from_the_originating_tab_becomes_an_attachable_private_fi
             resources=resources, allowed_tool_names={"chat_screenshot"}, conversation_only=True)
     async with Client(server) as tools:
         assert [tool.name for tool in await tools.list_tools()] == ["chat_screenshot"]
+
+        async def approve(reason):
+            request = await tools.call_tool("chat_screenshot", {"reason": reason}, raise_on_error=False)
+            assert request.is_error
+            control = request.meta[AUTHORIZATION_META_KEY]
+            assert control["disposition"] == "authorization_required"
+            async with get_db_session() as db:
+                assert await db.scalar(select(ChatDesktopScreenRequest.id)) is None
+                assert await answer_action(UUID(control["request_id"]), user_id=ctx["user_id"], approved=True)
+            return {AUTHORIZATION_META_KEY: {"continuation": control["continuation"]}}
+
+        reason = "Check the synthetic color"
+        allowed = await approve(reason)
         async with asyncio.timeout(12), asyncio.TaskGroup() as group:
-            pending = group.create_task(tools.call_tool("chat_screenshot", {"reason": "Check the synthetic color"}))
+            pending = group.create_task(tools.call_tool("chat_screenshot", {"reason": reason}, meta=allowed))
             delivery = (await client.post(ROOT + "/poll", headers=desktop)).json()
             assert delivery["reason"] == "Check the synthetic color"
             endpoint = f'{ROOT}/{delivery["id"]}/complete'
@@ -99,9 +113,11 @@ async def test_capture_from_the_originating_tab_becomes_an_attachable_private_fi
             assert (await client.post(endpoint, headers={**desktop, "Content-Type": "image/jpeg"},
                 content=photo.getvalue())).status_code == 204
         outcome = pending.result()
+        reason = "Synthetic decline"
+        allowed = await approve(reason)
         async with asyncio.timeout(12), asyncio.TaskGroup() as group:
-            declined = group.create_task(tools.call_tool("chat_screenshot", {"reason": "Synthetic decline"},
-                raise_on_error=False))
+            declined = group.create_task(tools.call_tool("chat_screenshot", {"reason": reason},
+                meta=allowed, raise_on_error=False))
             delivery = (await client.post(ROOT + "/poll", headers=desktop)).json()
             assert (await client.post(f'{ROOT}/{delivery["id"]}/complete', headers=desktop)).status_code == 204
         assert declined.result().is_error

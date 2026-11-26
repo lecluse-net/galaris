@@ -456,6 +456,10 @@ tests-harness-runtimes: ## Execute the real pinned Harness SDKs against an isola
 	@bash bin/test-harness-runtimes.sh $(ARGS)
 .PHONY: tests-harness-runtimes
 
+tests-embedded-harness-image: ## Run Claude, Pydantic and a routing rollback on an exact local backend image
+	@bash bin/test-embedded-harness-image.sh
+.PHONY: tests-embedded-harness-image
+
 tests-providers: ## Verify provider parameter contracts without external subscriptions or API calls
 	@PYTEST_ADDOPTS= $(MAKE) tests TEST_ARGS_BACK= ARGS='tests/test_provider_parameters.py tests/test_provider_catalog.py tests/test_pydantic_ai_internal_model.py tests/test_codex_provider.py tests/test_llm_call_trace.py app/llm/tests/test_structured_service.py app/conversation/tests/test_task_objective.py app/conversation/tests/test_task_admission.py app/conversation/tests/test_service.py --junitxml=/repo/artifacts/provider-contracts.xml'
 .PHONY: tests-providers
@@ -613,6 +617,10 @@ qualify-lab: ## Start or compare budgeted Lab runs or verify a Process campaign 
 benchmark-operating-knowledge: ## Freeze or run paired operating-prompt benchmarks in dev (ARGS='--max-cost 5 [--run]')
 	@bash bin/benchmark-operating-knowledge.sh $(COMPOSE_FILES) -- $(ARGS)
 .PHONY: benchmark-operating-knowledge
+
+benchmark-embedded-harnesses: ## Compare paired Chat and Task cases in an isolated backend (ARGS, LAB_ACCESS_TOKEN)
+	docker compose $(COMPOSE_FILES) exec -T -e LAB_ACCESS_TOKEN backend python scripts/benchmark_embedded_harnesses.py $(ARGS)
+.PHONY: benchmark-embedded-harnesses
 
 qualify-documents: ## Inventory private documents, run bounded profile trials, or check reviewed answers (ARGS)
 	@mkdir -p artifacts/document-qualification

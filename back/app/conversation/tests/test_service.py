@@ -1855,6 +1855,27 @@ async def test_expired_round_heartbeat_cannot_resurrect_its_owner(db):
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("driver_code", ["internal", "claude_embedded"])
+async def test_recovered_round_keeps_its_admitted_engine_after_agent_reassignment(db, driver_code):
+    agent, connection, room = await _scope(db)
+    agent.agent_driver = driver_code
+    inbound = await _message(db, connection, room, 1, "Answer this synthetic message")
+    assert await admit_message(inbound, agent_id=agent.id, connection_id=connection.id)
+    first_claim = await claim_next_round("first-worker")
+    assert first_claim is not None and first_claim.lease_token is not None
+    old_lease = first_claim.lease_token
+
+    agent.agent_driver = "internal" if driver_code == "claude_embedded" else "claude_embedded"
+    first_claim.lease_expires_at = datetime.now(timezone.utc) - timedelta(seconds=1)
+    await db.commit()
+    recovered = await claim_next_round("recovery-worker")
+    assert recovered is not None and recovered.lease_token is not None
+    assert recovered.id == first_claim.id and recovered.lease_token != old_lease
+    turn = await build_turn(recovered.id, lease_token=recovered.lease_token)
+    assert turn.driver_code == driver_code
+
+
+@pytest.mark.asyncio
 async def test_repeated_worker_restarts_do_not_exhaust_conversation_retries(db):
     agent, connection, room = await _scope(db)
     message = await _message(db, connection, room, 1, "Prepare a synthetic report")

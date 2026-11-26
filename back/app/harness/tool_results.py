@@ -4,7 +4,9 @@ from __future__ import annotations
 
 import hashlib
 import json
+from collections.abc import Mapping
 from typing import cast
+from uuid import UUID
 
 TOOL_ERROR_SCHEMA = "galaris.tool-error/v1"
 
@@ -28,6 +30,34 @@ def decode_tool_result(value: object) -> object:
         except (ValueError, RecursionError):
             pass
     return value
+
+
+def document_creation_receipt(effect: Mapping[str, object]) -> tuple[str, dict[str, object]] | None:
+    """Read the durable receipt for a completed native document creation."""
+    if effect.get("status") != "completed" or effect.get("tool_name") != "file_create":
+        return None
+    arguments = effect.get("arguments")
+    if not isinstance(arguments, dict) or cast(dict[str, object], arguments).get("path") not in ("data://", "document://"):
+        return None
+    raw = decode_tool_result(effect.get("result"))
+    if isinstance(raw, dict):
+        envelope = cast(dict[str, object], raw)
+        if envelope.keys() in ({"result"}, {"result", "argument_warning"}):
+            raw = decode_tool_result(envelope["result"])
+    if not isinstance(raw, dict):
+        return None
+    receipt = cast(dict[str, object], raw)
+    uri, revision = receipt.get("uri"), receipt.get("revision")
+    if (receipt.get("operation") != "create" or receipt.get("state") != "created"
+            or not isinstance(uri, str) or type(revision) is not int or revision < 1):
+        return None
+    scheme, _, identifier = uri.partition("://")
+    try:
+        if scheme not in ("data", "document") or str(UUID(identifier)) != identifier:
+            return None
+    except ValueError:
+        return None
+    return uri, receipt
 
 
 def reported_tool_failure(value: object) -> dict[str, object] | None:

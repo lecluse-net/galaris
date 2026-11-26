@@ -2626,6 +2626,12 @@ The `+` button requires `TOPIC_EDIT` and `AGENT_MANAGE_ALL`, matching the global
 API. Readonly and disabled fields cannot create topics. Task and text/voice history filters
 keep `allow-create=false` while remaining selectable.
 
+`front/browser-tests/agents.spec.mjs` also exercises the agent form during a harness
+switch. An active task prevents any write, including when other tasks are paused.
+Closing the dialog preserves paused tasks. When paused tasks are the only blockers,
+confirmation terminates them before saving. The journey also covers switching with
+no blocking tasks and preventing a save when the blocker check fails.
+
 The Memory filter is separate: its values are IDs of `MemoryItem` projections of topics,
 authorized for the selected agent. It retains its Memory catalogue and never offers creation;
 substituting topic IDs would break the filter contract. Laboratory topics are evaluation
@@ -3015,6 +3021,11 @@ mutation controls after privilege revocation.
 
 `back/app/memory/tests/test_memory_urls.py` checks the sole URL association table,
 text and binary byte SHA-256 on the node, the nullable primary URL column, stability,
+`back/tests/test_embedded_claude_lineage.py` uses the OpenAI-compatible agent API in
+JSON and SSE modes with both embedded harnesses. The scenario checks the result,
+the requester-scoped session, a single stream ending, and the match between provider
+receipts and the Task’s dispatch and execution attempts.
+
 moves and deletions. Its PostgreSQL transition covers rollback, replay and removal
 of the legacy catalogue column.
 Losing the last resource erases its Memory item, content and vector index; other URIs,

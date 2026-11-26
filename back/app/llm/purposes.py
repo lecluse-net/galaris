@@ -16,6 +16,7 @@ class LLMCallPurpose(StrEnum):
 
     CONVERSATION_TEXT = "conversation.text"
     CONVERSATION_AUDIO = "conversation.audio"
+    CONVERSATION_DEEP = "conversation.deep"
     CONVERSATION_TASK_OBJECTIVE = "conversation.task_objective"
     CONVERSATION_PROCESS_ADMISSION = "conversation.process_admission"
     CONVERSATION_PROCESS_INPUTS = "conversation.process_inputs"

@@ -65,29 +65,29 @@ def _jpeg_preview_data_url(value: str) -> str:
     return f"data:image/jpeg;base64,{preview}"
 
 
-def _compact_string(value: str) -> str:
+def _compact_string(value: str, *, retain_preview: bool) -> str:
     """Replace every embedded image data URL without altering surrounding text."""
     compacted, replacements = _DATA_IMAGE_URL.subn(
-        lambda match: _jpeg_preview_data_url(match.group(0)),
+        lambda match: _jpeg_preview_data_url(match.group(0)) if retain_preview else "[private image omitted]",
         value,
     )
     if replacements:
         return compacted
     if value.casefold().startswith(_DATA_IMAGE_PREFIX):
         # A malformed full data URL must never fall through into the stored trace.
-        return _jpeg_preview_data_url(value)
+        return _jpeg_preview_data_url(value) if retain_preview else "[private image omitted]"
     return value
 
 
-def compact_trace_images(value: Any) -> Any:
+def compact_trace_images(value: Any, *, retain_preview: bool = True) -> Any:
     """Return a detached value with all image data URLs replaced by JPEG previews."""
     if isinstance(value, str):
-        return _compact_string(value)
+        return _compact_string(value, retain_preview=retain_preview)
     if isinstance(value, list):
-        return [compact_trace_images(item) for item in as_list(value)]
+        return [compact_trace_images(item, retain_preview=retain_preview) for item in as_list(value)]
     if isinstance(value, dict):
         return {
-            key: compact_trace_images(item)
+            key: compact_trace_images(item, retain_preview=retain_preview)
             for key, item in as_dict(value).items()
         }
     return value

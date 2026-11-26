@@ -43,6 +43,62 @@ async function setupAdministration(page, request) {
   return { fixture, setup, headers, prefix, invoke, pageErrors }
 }
 
+test('the agent form creates and reopens an embedded Claude selection', async ({ page, request }) => {
+  const { fixture, headers, pageErrors } = await setupAdministration(page, request)
+  const parameters = await request.get('/api/params', { headers })
+  expect(parameters.ok(), await parameters.text()).toBeTruthy()
+  const flag = (await parameters.json()).params.find(param => param.name === 'harness.claude-embedded.enabled')
+  expect(flag).toBeDefined()
+  const setQualification = async value => {
+    const saved = await request.put(`/api/params/${flag.name}`, { headers, data: { value } })
+    expect(saved.ok(), await saved.text()).toBeTruthy()
+  }
+  const original = await (await request.get(`/api/agents/${fixture.agent_id}`, { headers })).json()
+  try {
+    await setQualification('true')
+    await page.goto('/agent')
+    await page.getByRole('button', { name: 'Nouvel Agent', exact: true }).click()
+    const dialog = page.getByRole('dialog').filter({ has: page.getByLabel('Prénom *', { exact: true }) })
+    const harness = dialog.getByRole('combobox', { name: 'Harnais', exact: true })
+    const chooseHarness = async label => {
+      await harness.click()
+      await page.getByRole('option', { name: label, exact: true }).click()
+      await expect(harness).toHaveValue(label)
+    }
+    const name = `Claude ${fixture.agent_id}`
+    await dialog.getByLabel("Code de l'agent", { exact: true }).fill(`embedded-${fixture.agent_id}`)
+    await dialog.getByLabel('Prénom *', { exact: true }).fill(name)
+    await dialog.getByRole('combobox', { name: 'Civilité *', exact: true }).click()
+    await page.getByRole('option', { name: `${original.title.label} (M)`, exact: true }).click()
+    await chooseHarness('Claude Agent (embarqué)')
+    const creation = page.waitForResponse(response => new URL(response.url()).pathname === '/api/agents' && response.request().method() === 'POST')
+    await dialog.getByRole('button', { name: 'Créer', exact: true }).click()
+    const created = await creation
+    expect(created.status(), await created.text()).toBe(201)
+    const saved = await created.json()
+    expect(saved).toMatchObject({ agent_driver: 'claude_embedded', task_harness_id: null })
+    await expect(dialog).toHaveCount(0)
+
+    const card = page.locator('.agent-card').filter({ has: page.getByText(name, { exact: true }) })
+    const open = card.getByRole('button', { name: /Modifier l.agent/ })
+    await open.click()
+    await expect(harness).toHaveValue('Claude Agent (embarqué)')
+    await chooseHarness('Pydantic AI (embarqué)')
+    const assignment = page.waitForResponse(response => new URL(response.url()).pathname === `/api/harnesses/agents/${saved.id}` && response.request().method() === 'PUT')
+    await dialog.getByRole('button', { name: 'Modifier', exact: true }).click()
+    const switched = await assignment
+    expect(switched.status(), await switched.text()).toBe(202)
+    expect(await switched.json()).toMatchObject({ driver_code: 'internal', internal: true, containerized: false })
+    await expect(dialog).toHaveCount(0)
+    await open.click()
+    await expect(harness).toHaveValue('Pydantic AI (embarqué)')
+    expect(await (await request.get(`/api/agents/${saved.id}`, { headers })).json()).toMatchObject({ agent_driver: 'internal' })
+    expect(pageErrors()).toEqual([])
+  } finally {
+    await setQualification(flag.value)
+  }
+})
+
 test('AgentAdmin creates an agent and generated portraits remain visible after reopening and replacement', async ({ page, request }) => {
   test.setTimeout(90_000)
   const { fixture, setup, headers, prefix, invoke, pageErrors } = await setupAdministration(page, request)

@@ -7,7 +7,7 @@ from typing import Any
 from pydantic import SecretStr, ValidationError
 from sqlalchemy import select
 
-from app.agent import Agent
+from app.agent import Agent, list_driver_specs
 from app.connection import Connection
 from app.connection import connection_service
 from app.services import service
@@ -122,7 +122,7 @@ async def require_ssh_connection(agent_id: int) -> SshConnectionConfig:
 
 
 async def is_embedded_executor_in_use() -> bool:
-    """Return whether an agent using the internal harness has an embedded SSH console."""
+    """Return whether a compatible agent uses the embedded SSH executor."""
     tool = await service.get_service_record("console")
     if tool is None:
         return False
@@ -133,11 +133,12 @@ async def is_embedded_executor_in_use() -> bool:
         param_value="ssh-executor",
     )
     agent_ids = [connection.agent_id for connection in connections if connection.active]
+    drivers = [spec.code for spec in list_driver_specs() if spec.tool_profile.console_execution]
     for offset in range(0, len(agent_ids), 500):
         if await get_db().scalar(
             select(Agent.id).where(
                 Agent.id.in_(agent_ids[offset:offset + 500]),
-                Agent.agent_driver == "internal",
+                Agent.agent_driver.in_(drivers),
             ).limit(1)
         ) is not None:
             return True

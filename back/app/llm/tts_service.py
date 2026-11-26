@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import Any, Optional
 
 import httpx
@@ -9,6 +10,7 @@ from core.util import post_buffered
 
 from . import llm_provider_service, llm_service
 from .provider_facade import (
+    ProviderConnection,
     RealtimeSpeechStream,
     SpeechOptions,
     SpeechResult,
@@ -90,15 +92,6 @@ def _selected_model(resource: LLM, options: TTSOptions, default: str) -> str:
     return default
 
 
-def _api_key(resource: LLM) -> str:
-    key = llm_provider_service.decrypt_api_key(resource.provider.api_key)
-    if not key:
-        raise ValueError(
-            f"provider {resource.provider.name} requires an API key for speech generation"
-        )
-    return key
-
-
 async def _post_mp3(
     url: str,
     *,
@@ -125,12 +118,21 @@ async def _generate_openai_compatible(
 ) -> GeneratedSpeech:
     """Use the canonical OpenAI-compatible speech endpoint."""
 
-    voice = _selected_voice(resource, options, "alloy")
-    model = _selected_model(resource, options, "gpt-4o-mini-tts")
+    return await _generate_openai_speech(
+        _connection(resource), text, voice=_selected_voice(resource, options, "alloy"),
+        model=_selected_model(resource, options, "gpt-4o-mini-tts"), speed=options.speed,
+    )
+
+
+async def _generate_openai_speech(
+    connection: ProviderConnection, text: str, *, voice: str, model: str, speed: float,
+) -> GeneratedSpeech:
+    if not connection.api_key:
+        raise ValueError(f"provider {connection.name} requires an API key for speech generation")
     audio = await _post_mp3(
-        f"{resource.provider.base_url.rstrip('/')}/audio/speech",
+        f"{connection.base_url.rstrip('/')}/audio/speech",
         headers={
-            "Authorization": f"Bearer {_api_key(resource)}",
+            "Authorization": f"Bearer {connection.api_key}",
             "Accept": "audio/mpeg",
         },
         json={
@@ -138,10 +140,24 @@ async def _generate_openai_compatible(
             "input": text,
             "voice": voice,
             "response_format": "mp3",
-            "speed": options.speed,
+            "speed": speed,
         },
     )
-    return GeneratedSpeech(audio, resource.provider.name, voice)
+    return GeneratedSpeech(audio, connection.name, voice)
+
+
+@dataclass(frozen=True, slots=True)
+class CallSpeechVoice:
+    """Keep the selected speaker and provider when the harness supplies the text."""
+
+    connection: ProviderConnection
+    model: str
+    voice: str
+
+    async def generate(self, message: str, options: TTSOptions) -> GeneratedSpeech:
+        return await _generate_openai_speech(
+            self.connection, _validate(message, options), voice=self.voice, model=self.model, speed=options.speed,
+        )
 
 
 async def _resource_for_agent(agent_id: int) -> LLM:

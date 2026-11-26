@@ -27,8 +27,10 @@ from .codex import CodexBridge
 from .codex_models import chatgpt_model_profile
 from .parameters import model_parameter_policy, chatgpt_parameter_policy
 from app.llm.provider_facade import register_request_parameter_policy
+from app.llm.facade import register_realtime_transcription_provider
 from .resources import OpenAIResourceDiscovery
 from .realtime import OpenAIRealtime
+from .transcription import OpenAITranscription
 from .image import OpenAIImageGeneration, native_image_size
 
 
@@ -78,6 +80,7 @@ register_request_parameter_policy(API_PROFILE.code, model_parameter_policy)
 register_request_parameter_policy(CODEX_PROFILE.code, chatgpt_parameter_policy)
 register_resource_discovery(API_PROFILE.code, OpenAIResourceDiscovery())
 register_realtime_conversation_provider(API_PROFILE.code, OpenAIRealtime())
+register_realtime_transcription_provider(API_PROFILE.code, OpenAITranscription())
 CODEX_BRIDGE = CodexBridge()
 register_resource_discovery(CODEX_PROFILE.code, CODEX_BRIDGE)
 register_model_metadata(CODEX_PROFILE.code, CODEX_BRIDGE)

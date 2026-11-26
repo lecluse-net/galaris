@@ -550,10 +550,6 @@
     },
     {
       "source": "back/app/voice/realtime_engine.py",
-      "target": "app.agent.voice"
-    },
-    {
-      "source": "back/app/voice/realtime_engine.py",
       "target": "app.llm.provider_facade"
     },
     {

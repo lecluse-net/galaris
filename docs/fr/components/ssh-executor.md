@@ -49,3 +49,12 @@ ou compilations longues, lancées par `console_start` et suivies avec `console_p
 identifiant. À la reprise, un reçu `running` confirme le lancement de `console_start`, mais ne
 termine pas un `console_exec` interrompu. Une issue inconnue reste bloquée ; la mise à jour du
 helper ne peut pas recréer les reçus absents des anciennes opérations.
+
+Les agents Pydantic AI et Claude Agent embarqué peuvent recevoir une Console par défaut.
+Quand la Console signale la perte d’un reçu, la tentative s’arrête avant une nouvelle inférence.
+Pour reprendre une tâche embarquée après la perte d’un reçu, Galaris relit l’opération par son
+identifiant sur la connexion et le compte SSH d’origine. Galaris revérifie la connexion et les
+droits après la lecture. Le reçu confirmé figure dans le détail de la tâche et le modèle le reçoit
+avant son prochain appel. Une nouvelle proposition de la même commande dans le même répertoire
+ne déclenche pas une seconde exécution quand elle change seulement l’outil ou son délai d’attente.
+Une connexion modifiée, une fonction désactivée ou un reçu indisponible bloque la reprise.

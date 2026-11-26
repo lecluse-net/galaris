@@ -568,6 +568,13 @@ class RealtimeConversationProvider(Protocol):
     ) -> RealtimeConversationSession: ...
 
 
+@runtime_checkable
+class NativeVoiceSynthesis(Protocol):
+    """Optional speech-only synthesis for a provider's native voice catalogue."""
+
+    def speech_model_for_voice(self, voice: str) -> str | None: ...
+
+
 @dataclass(frozen=True)
 class SpeechOptions:
     """Provider-neutral controls for speech synthesis."""
@@ -952,6 +959,7 @@ __all__ = [
     "RealtimeTranscriptionProvider",
     "RealtimeConversationEvent",
     "RealtimeConversationProvider",
+    "NativeVoiceSynthesis",
     "RealtimeConversationSession",
     "RealtimeToolDefinition",
     "ResourceDiscovery",

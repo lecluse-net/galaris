@@ -68,6 +68,9 @@ class DeepSubmission(Base):
     last_sequence: Mapped[int] = mapped_column(Integer, default=0)
     stop_requested: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
     lease_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    lease_token: Mapped[UUID | None] = mapped_column(nullable=True)
+    inference_admission: Mapped[dict[str, object] | None] = mapped_column(JSONB, nullable=True)
+    encrypted_checkpoint: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     __table_args__ = (
@@ -158,6 +161,7 @@ class ConversationRound(Base):
     language: Mapped[str] = mapped_column(
         String(10), nullable=False, default="fr", server_default="fr"
     )
+    driver_code: Mapped[str] = mapped_column(String(50), nullable=False, default="internal", server_default="internal")
     status: Mapped[str] = mapped_column(
         String(30), nullable=False, default="FROZEN", server_default="FROZEN", index=True
     )
@@ -321,6 +325,7 @@ class ConversationRoundAttempt(Base):
     lease_token: Mapped[UUID] = mapped_column(
         PGUUID(as_uuid=True), nullable=False, unique=True
     )
+    inference_admission: Mapped[dict[str, object] | None] = mapped_column(JSONB, nullable=True)
     status: Mapped[str] = mapped_column(
         String(30), nullable=False, default="CLAIMED", server_default="CLAIMED"
     )

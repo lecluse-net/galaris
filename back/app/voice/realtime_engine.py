@@ -14,8 +14,10 @@ from uuid import UUID, uuid4
 from loguru import logger
 from app.agent import AIMessage
 from app.conversation import ConversationRuntimeStream
+from app.llm import tts_service
 
 from app.llm.provider_facade import (
+    NativeVoiceSynthesis,
     RealtimeConversationProvider,
     RealtimeConversationEvent,
     RealtimeConversationSession,
@@ -93,13 +95,12 @@ class _TextSegmenter:
 
 async def _configuration_for_agent(
     agent_id: int,
-) -> _RealtimeConfiguration | None:
-    from app.agent import agent_service
-    from app.agent.voice import parse_voice_selection
+) -> _RealtimeConfiguration | tts_service.CallSpeechVoice | None:
+    from app.agent import conversation_driver_for_agent, get_agent_record, parse_voice_selection
     from app.llm import llm_provider_service, llm_service
     from app.llm.resource_discovery import provider_connection
 
-    agent = await agent_service.get(agent_id)
+    agent = await get_agent_record(agent_id)
     if agent is None:
         raise ValueError(f"Agent {agent_id} not found")
     selection = parse_voice_selection(getattr(agent, "voice", None))
@@ -122,6 +123,16 @@ async def _configuration_for_agent(
             f"provider {model_resource.provider.name} has no realtime conversation bridge"
         )
     assert selection.voice_code is not None
+    if await conversation_driver_for_agent(agent_id) == "claude_embedded":
+        from app.llm import transcription_service
+
+        voice = selection.voice_code.removeprefix("voice:")
+        model = service.speech_model_for_voice(voice) if isinstance(service, NativeVoiceSynthesis) else None
+        if model is None or connection.provider_type != "openai_compatible" or not connection.api_key:
+            raise RuntimeError("The selected realtime voice does not support speech synthesis for Claude Agent.")
+        if not await transcription_service.transcription_available_for_agent(agent_id):
+            raise RuntimeError("Claude Agent voice calls require a configured transcription model.")
+        return tts_service.CallSpeechVoice(connection, model, voice)
     return _RealtimeConfiguration(
         service=service,
         connection=connection,
@@ -133,7 +144,7 @@ async def _configuration_for_agent(
 
 
 async def realtime_voice_available_for_agent(agent_id: int) -> bool:
-    """Return whether an agent's native audio conversation selection is usable."""
+    """Return whether the selected native voice can take calls under the current routing."""
 
     try:
         return await _configuration_for_agent(agent_id) is not None
@@ -226,11 +237,11 @@ class RealtimeAgentVoiceEngine:
         topic_id: UUID | None = None,
         contact_memory_item_id: UUID | None = None,
         conversation_id: str | None = None,
-    ) -> RealtimeAgentVoiceEngine | None:
+    ) -> RealtimeAgentVoiceEngine | tts_service.CallSpeechVoice | None:
         async with get_db_session():
             configuration = await _configuration_for_agent(agent_id)
-        if configuration is None:
-            return None
+        if not isinstance(configuration, _RealtimeConfiguration):
+            return configuration
         return cls(
             transport=transport,
             handle=handle,

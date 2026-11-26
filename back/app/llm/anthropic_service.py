@@ -28,11 +28,15 @@ from __future__ import annotations
 import asyncio
 import json
 import math
+from collections.abc import AsyncGenerator
+from contextlib import nullcontext
 from typing import Any, AsyncIterator, cast
 from uuid import UUID, uuid4
 
+import anyio
 from fastapi.responses import JSONResponse, StreamingResponse
 
+from app.agent import conversation_reply_text
 from core.i18n import tr
 
 from .anthropic_schemas import (
@@ -50,11 +54,14 @@ from .anthropic_schemas import (
     ping_event,
 )
 from .protocol_inference import proxy_chat_completion
+from .correlation import deep_inference_scope
+from .embedded_runtime import EmbeddedInferenceOrigin, embedded_lineage
 from .provider_facade import ReasoningEffort
 
 
 _PING_SECONDS = 15.0
 _IMAGE_ESTIMATE_TOKENS = 300
+_DOCUMENT_ESTIMATE_TOKENS = 4096
 _OPENAI_ERROR_STATUS_TYPES = {
     400: "invalid_request_error",
     401: "authentication_error",
@@ -119,6 +126,8 @@ def _content_tokens(content: Any) -> int:
             total += estimate_text_tokens(str(entry.get("text") or ""))
         elif kind == "image_url":
             total += _IMAGE_ESTIMATE_TOKENS
+        elif kind == "file":
+            total += _DOCUMENT_ESTIMATE_TOKENS
         elif kind == "tool_calls":
             continue
         else:
@@ -159,9 +168,9 @@ def estimate_openai_body_tokens(body: dict[str, Any]) -> int:
     return max(1, total)
 
 
-def anthropic_input_tokens(request: MessageRequest) -> int:
+def anthropic_input_tokens(request: MessageRequest, *, filter_assistant_turns: bool = False) -> int:
     """Billable input token count used for both /v1/messages and count_tokens."""
-    return estimate_openai_body_tokens(translate_to_openai(request))
+    return estimate_openai_body_tokens(translate_to_openai(request, filter_assistant_turns=filter_assistant_turns))
 
 
 # ─────────────────────────── request translation ───────────────────────────
@@ -195,18 +204,28 @@ def _block_images(blocks: list[dict[str, Any]]) -> list[dict[str, Any]]:
     return images
 
 
-def _blocks_to_content(blocks: list[ContentBlock]) -> Any:
-    """Reduce user-facing content blocks to str | None | OpenAI vision list."""
+def _blocks_to_content(blocks: list[ContentBlock], *, filter_turns: bool = False) -> Any:
+    """Translate text and inline media while preserving their association and order."""
     raw = [block.model_dump() for block in blocks]
     text = _block_text(raw)
-    images = _block_images(raw)
-    if not images:
-        return text or None
+    if filter_turns:
+        text = conversation_reply_text(text, strip_leading=False)
+        images = _block_images(raw)
+        if not images:
+            return text or None
+        return ([{"type": "text", "text": text}] if text else []) + images
     parts: list[dict[str, Any]] = []
-    if text:
-        parts.append({"type": "text", "text": text})
-    parts.extend(images)
-    return parts
+    for block in raw:
+        kind = block.get("type")
+        source = _as_dict(block.get("source"))
+        if kind == "text" and block.get("text"):
+            parts.append({"type": "text", "text": block["text"]})
+        elif kind == "image":
+            parts.extend(_block_images([block]))
+        elif (kind == "document" and source.get("type") == "base64" and source.get("media_type") == "application/pdf"
+              and isinstance(data := source.get("data"), str) and data):
+            parts.append({"type": "file", "file": {"filename": "attachment.pdf", "file_data": f"data:application/pdf;base64,{data}"}})
+    return parts if any(part["type"] != "text" for part in parts) else text or None
 
 
 def _tool_result_content(block: ContentBlock) -> Any:
@@ -267,7 +286,7 @@ def _translate_tool_choice(tool_choice: Any) -> Any:
     return "auto"
 
 
-def translate_to_openai(request: MessageRequest) -> dict[str, Any]:
+def translate_to_openai(request: MessageRequest, *, filter_assistant_turns: bool = False) -> dict[str, Any]:
     """Translate an Anthropic Messages request into a Chat Completions body.
 
     The `model` field is passed through untouched: `proxy_chat_completion`
@@ -307,7 +326,7 @@ def translate_to_openai(request: MessageRequest) -> dict[str, Any]:
                     },
                 })
             entry: dict[str, Any] = {"role": "assistant"}
-            text = _blocks_to_content(blocks)
+            text = _blocks_to_content(blocks, filter_turns=filter_assistant_turns)
             if tool_calls:
                 entry["content"] = text
                 entry["tool_calls"] = tool_calls
@@ -696,22 +715,21 @@ async def translate_proxy_stream(
             await consumer
         for event in translator.finish():
             yield event
-    except asyncio.CancelledError:
-        # Client disconnected: let the proxy's relay finalize its trace, then
-        # propagate the cancellation as required by ASGI.
-        if not consumer.done():
-            consumer.cancel()
-            await asyncio.gather(consumer, return_exceptions=True)
-        raise
     except Exception:
         # Upstream failed mid-generation: emit the only legal non-success
         # ending and end the stream gracefully (no message_stop after error).
         yield error_event(await tr("anthropic_api.errors.stream_interrupted"))
         return
     finally:
-        if not consumer.done():
-            consumer.cancel()
+        # ASGI cancels the downstream response on disconnect. Finish the
+        # upstream relay's durable stop before that cancellation can interrupt
+        # its cleanup or send a second cancellation through gather.
+        with anyio.CancelScope(shield=True):
+            if not consumer.done():
+                consumer.cancel()
             await asyncio.gather(consumer, return_exceptions=True)
+            if isinstance(upstream, AsyncGenerator):
+                await upstream.aclose()
 
 
 def _chunk_bytes(chunk: Any) -> bytes:
@@ -739,8 +757,40 @@ async def call_proxy(
     reasoning_effort: ReasoningEffort | None = None,
     force_reasoning_effort: bool = False,
     profile_model: bool = False,
+    embedded_origin: EmbeddedInferenceOrigin | None = None,
+    embedded_requester: int | None = None,
 ) -> JSONResponse | StreamingResponse:
     """Delegate the translated body to the shared proxy seam."""
+    if embedded_origin is not None:
+        from .llm_service import get_llm
+        from .subscription_policy import llm_execution_scope
+
+        llm = await get_llm(embedded_origin.model_id)
+        if llm is None or llm.code != embedded_origin.model_code:
+            raise LookupError("The admitted inference model is unavailable.")
+        reasoning_effort = embedded_origin.reasoning_effort
+        lineage = embedded_lineage(embedded_origin)
+        deep_scope = (deep_inference_scope(lineage.deep_session_id) if lineage.deep_session_id is not None else nullcontext())
+        with deep_scope, llm_execution_scope(
+            requester_user_id=embedded_requester, source_kind=lineage.source_kind, source_id=str(lineage.source_id),
+            messenger_origin=lineage.task_id is None,
+        ):
+            return await proxy_chat_completion(
+                body,
+                llm_override=llm,
+                route_executor_model=False,
+                task_id=lineage.task_id,
+                task_attempt_id=lineage.task_attempt_id,
+                agent_id=embedded_origin.agent_id,
+                agent_run_id=embedded_origin.run_id,
+                conversation_round_id=lineage.round_id,
+                purpose=embedded_origin.purpose,
+                embedded_origin=embedded_origin,
+                preserve_message_history=True,
+                correlation_ref=embedded_origin.correlation_ref,
+                reasoning_effort=reasoning_effort,
+                force_reasoning_effort=reasoning_effort is not None,
+            )
     return await proxy_chat_completion(
         body,
         profile_model=profile_model,

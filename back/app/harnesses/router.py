@@ -19,6 +19,7 @@ from core.authorize import Privileges, authorize
 from .contracts import HarnessAction, lifecycle_actions
 from .registry import UnknownHarnessProviderError, all_providers, get_provider
 from .schemas import (
+    EmbeddedHarnessSelectionUpdate,
     HarnessActionResult,
     HarnessCatalogCreate,
     HarnessCatalogRead,
@@ -221,11 +222,14 @@ async def read_agent_harness(id: int) -> HarnessRead:
 @authorize(privileges=Privileges.AGENT_EDIT, assertion=AgentOwnerAssertion)
 async def install_agent_harness(
     id: int,
-    data: HarnessSelectionUpdate,
+    data: HarnessSelectionUpdate | EmbeddedHarnessSelectionUpdate,
     background_tasks: BackgroundTasks,
 ) -> HarnessRead:
     try:
-        selected, cleanup = await service.install(id, data)
+        if isinstance(data, EmbeddedHarnessSelectionUpdate):
+            selected, cleanup = await service.select_internal(id, data.driver_code)
+        else:
+            selected, cleanup = await service.install(id, data)
         if cleanup is not None:
             background_tasks.add_task(service.cleanup_previous_runtime, cleanup)
         return selected

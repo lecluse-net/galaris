@@ -19,8 +19,13 @@ from sqlalchemy.sql.elements import ColumnElement
 from core import websocket
 from core.database import AsyncSessionLocal, get_db
 from core.i18n import render_prompt, tr
+from core.params import runtime_settings
 from core.user import get_current_token_label, get_current_user_id
 from .correlation import current_llm_correlation_ref
+from .embedded_runtime import (
+    EmbeddedInferenceOrigin, EmbeddedRequestLimitExceeded, EmbeddedTaskInference, bind_embedded_call,
+    current_media_inference_origin,
+)
 from .accounting_scope import record_persisted_call_cost
 from .costing import token_cost
 from .cost_accounting import COST_EVIDENCE_KEY, call_cost
@@ -189,15 +194,18 @@ def task_owned_call_predicates() -> tuple[ColumnElement[bool], ...]:
     A Task created by a conversation or Process owns its ``agent.*`` pipeline calls
     while retaining that provenance. A direct ``process.exec`` or background mechanism
     can still carry a Task only as context and therefore remains outside Task accounting.
+    An embedded attempt's exact reference also includes the specialist calls it started.
     """
 
-    return (
-        or_(
+    return (or_(
+        and_(LLMCall.correlation_ref.is_(None), or_(
             LLMCall.process_run_id.is_(None),
             LLMCall.purpose.in_(tuple(_ATTEMPT_REQUIRED_PURPOSES)),
-        ),
-        LLMCall.correlation_ref.is_(None),
-    )
+        )),
+        and_(LLMCall.task_attempt_id.is_not(None), LLMCall.correlation_ref == func.concat(
+            "task:", LLMCall.task_id, ":attempt:", LLMCall.task_attempt_id,
+        )),
+    ),)
 
 
 def _optional_uuid(value: object, *, field: str) -> UUID | None:
@@ -216,8 +224,8 @@ async def _task_call_lineage(
     conversation_round_id: UUID | None,
     process_run_id: UUID | None = None,
     admitted_attempt_id: UUID | None = None,
-) -> tuple[str, UUID | None, UUID | None, UUID | None]:
-    """Resolve authoritative Task attempt, conversation, and Process lineage."""
+) -> tuple[str, UUID | None, UUID | None, UUID | None, int | None]:
+    """Resolve the Task's requester, attempt, conversation, and Process lineage."""
 
     from app.conversation import ConversationTaskLink
     from app.task.models import Task, TaskAttempt
@@ -302,6 +310,7 @@ async def _task_call_lineage(
         task_attempt_id,
         resolved_round_id,
         resolved_process_run_id,
+        task.requester_user_id,
     )
 
 
@@ -1086,10 +1095,23 @@ async def create_running_call(
     requester_user_id: int | None = None,
     is_subscription: bool = False,
     voice_dialogue: bool = False,
+    sdk_request: bool = False,
 ) -> LLMCall:
     from .call_capture import text_call_capture
 
     capture = text_call_capture.get()
+    embedded_origin = capture.embedded_origin if capture is not None else current_media_inference_origin(purpose)
+    verify_internal_attempt = (sdk_request and embedded_origin is None and task_attempt_id is not None
+                               and purpose == LLMCallPurpose.AGENT_EXEC)
+    embedded_lineage = None
+    if embedded_origin is not None:
+        embedded_lineage = bind_embedded_call(
+            embedded_origin, task_id=task_id, task_attempt_id=task_attempt_id, agent_id=agent_id,
+            agent_run_id=agent_run_id, conversation_round_id=conversation_round_id, process_run_id=process_run_id,
+        )
+        agent_id, agent_run_id = embedded_origin.agent_id, embedded_origin.run_id
+        task_id, task_attempt_id = embedded_lineage.task_id, embedded_lineage.task_attempt_id
+        conversation_round_id = embedded_lineage.round_id
     if capture is not None and capture.call_limit is not None:
         if capture.calls_started >= capture.call_limit:
             raise RuntimeError("Inference physical call budget exhausted.")
@@ -1097,12 +1119,14 @@ async def create_running_call(
     messages = as_list(request_body.get("messages"))
     typed_messages = [as_dict(m) for m in messages if isinstance(m, dict)]
     task_objective = ""
+    task_requester_user_id = None
     if task_id is not None:
         (
             task_objective,
             task_attempt_id,
             conversation_round_id,
             process_run_id,
+            task_requester_user_id,
         ) = (
             await _task_call_lineage(
                 task_id=task_id,
@@ -1184,13 +1208,14 @@ async def create_running_call(
     if api_token_label is None:
         api_token_label = await get_current_token_label()
     if requester_user_id is None:
-        requester_user_id = get_current_user_id() or (authority.requester_user_id if authority else None)
+        requester_user_id = (get_current_user_id() or (authority.requester_user_id if authority else None)
+                             or task_requester_user_id)
     from .profile_fallback import profile_fallback_route
     from .correlation import current_deep_session
 
     deep_session_id = None
     if task_id is None and conversation_round_id is None and process_run_id is None and media_generation_id is None:
-        deep_session_id = current_deep_session()
+        deep_session_id = embedded_lineage.deep_session_id if embedded_lineage is not None else current_deep_session()
         if deep_session_id is not None:
             from app.conversation import deep_session_agent
 
@@ -1199,10 +1224,16 @@ async def create_running_call(
                 raise ValueError("The Deep session does not belong to the inference agent.")
             agent_id = session_agent
 
+    submission_id = embedded_lineage.source_id if embedded_lineage is not None and embedded_lineage.deep_session_id is not None else None
+    if purpose == LLMCallPurpose.CONVERSATION_DEEP and submission_id is None:
+        raise ValueError("A Deep call requires its admitted submission.")
+    if submission_id is not None and (deep_session_id is None or submission_id != agent_run_id):
+        raise ValueError("An embedded Deep call requires its session and submission.")
     fallback_route = profile_fallback_route.get()
     call = LLMCall(
         purpose=purpose,
         deep_session_id=deep_session_id,
+        deep_submission_id=submission_id,
         task_id=task_id,
         task_attempt_id=task_attempt_id,
         agent_run_id=agent_run_id,
@@ -1211,7 +1242,7 @@ async def create_running_call(
         media_generation_id=media_generation_id,
         requester_user_id=requester_user_id,
         api_token_label=api_token_label,
-        correlation_ref=current_llm_correlation_ref(),
+        correlation_ref=embedded_origin.correlation_ref if embedded_origin is not None else current_llm_correlation_ref(),
         agent_id=agent_id,
         llm_id=llm_id,
         provider_name=provider_name,
@@ -1242,11 +1273,13 @@ async def create_running_call(
         voice_dialogue=voice_dialogue,
         task_root=roots.get(task_id) if task_id is not None else None,
     )
-    return await _admit_running_call(call, capture, context=context)
+    return await _admit_running_call(call, capture, context=context, embedded_origin=embedded_origin,
+                                     verify_internal_attempt=verify_internal_attempt)
 
 
 async def _admit_running_call(
     call: LLMCall, capture: TextCallCapture | None, *, context: AdmissionContext,
+    embedded_origin: EmbeddedInferenceOrigin | None, verify_internal_attempt: bool,
 ) -> LLMCall:
     from . import provider_scheduler
     from .provider_models import LLM, LLMProvider
@@ -1272,10 +1305,25 @@ async def _admit_running_call(
         # subscription authority has been revoked while it waited.
         from .provider_permits import lock_capacity
         provider = await lock_capacity(provider_id, context.priority)
+        if isinstance(embedded_origin, EmbeddedTaskInference) and call.purpose == embedded_origin.purpose:
+            call.requester_user_id = await embedded_origin.authorize(model_loop=True)
+        elif embedded_origin is not None:
+            call.requester_user_id = await embedded_origin.authorize()
+        elif verify_internal_attempt:
+            from app.task.facade import authorize_internal_task_inference
+
+            if (call.task_id is None or call.task_attempt_id is None or call.agent_id is None
+                    or call.agent_run_id is None):
+                raise PermissionError("The Pydantic request has no complete Task attempt identity.")
+            call.requester_user_id = await authorize_internal_task_inference(
+                call.task_id, call.task_attempt_id, call.agent_id, run_id=call.agent_run_id,
+            )
         await enforce_subscription_access(
             provider, task_id=call.task_id, conversation_round_id=call.conversation_round_id,
             process_run_id=call.process_run_id,
         )
+        if embedded_origin is not None and call.purpose == embedded_origin.purpose:
+            await _enforce_embedded_request_limit(call, embedded_origin)
         await _persist_running_call(call, capture, provider_id=provider_id, priority=context.priority)
         persisted = True
         provider_scheduler.bind_call(call.id, permit)
@@ -1293,6 +1341,22 @@ async def _admit_running_call(
     finally:
         if not persisted:
             permit.release()
+
+
+async def _enforce_embedded_request_limit(call: LLMCall, origin: EmbeddedInferenceOrigin) -> None:
+    """Reserve against the logical run, including after a change of worker or attempt."""
+    db = get_db()
+    await db.execute(select(func.pg_advisory_xact_lock(func.hashtextextended(f"app.llm.embedded:{origin.run_id}", 0))))
+    count = await db.scalar(select(func.count()).select_from(LLMCall).where(
+        LLMCall.agent_run_id == origin.run_id,
+        LLMCall.agent_id == origin.agent_id,
+        LLMCall.purpose == origin.purpose,
+        LLMCall.task_id == call.task_id,
+        LLMCall.conversation_round_id == call.conversation_round_id,
+        LLMCall.deep_session_id == call.deep_session_id,
+    ).execution_options(include_historized=True))
+    if count is not None and count >= (origin.request_limit or runtime_settings.TASK_AGENT_MAX_REQUESTS):
+        raise EmbeddedRequestLimitExceeded("The embedded execution has reached its model request limit.")
 
 
 async def _persist_running_call(call: LLMCall, capture: TextCallCapture | None, *, provider_id: int, priority: int) -> None:
@@ -1614,6 +1678,7 @@ async def _record_failure_incident(db: AsyncSession, call: LLMCall) -> None:
                 "task_id": call.task_id,
                 "run_uuid": call.agent_run_id,
                 "conversation_round_id": call.conversation_round_id,
+                "deep_submission_id": call.deep_submission_id,
                 "process_run_id": call.process_run_id,
                 "agent_id": call.agent_id,
                 "correlation_ref": call.correlation_ref,

@@ -17,6 +17,8 @@ OPENAI_MESSAGES_DRIVER = AgentDriverSpec(
     supports_streaming=True,
     # Only a persisted managed actor can acknowledge a remote cancellation.
     supports_cancellation=True,
+    deep_model_source="harness",
+    retains_authorization_run=True,
     execution_capabilities=frozenset(
         {"streaming", "semantic_events", "normalized_usage", "checkpoints", "cancellation"}
     ),

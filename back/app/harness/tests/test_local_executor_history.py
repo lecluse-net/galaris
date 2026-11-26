@@ -4,10 +4,10 @@ from uuid import uuid4
 from app.harness.executor import (
     _conversation_history_prompt_block,
     _previous_conversation_messages,
-    _scoped_tool_names,
     _task_is_real_time,
 )
 from app.agent.contracts import TaskMessageAttachment
+from app.harness.task_tool_scope import task_tool_scope
 from app.task import TaskMessage
 from app.task.models import Task, TaskStatus
 
@@ -127,7 +127,7 @@ def test_executor_tool_scope_uses_plan() -> None:
         label="Scoped", status=TaskStatus.DISPATCH,
         data={"plan_tools": ["search_web", "task_stop", "task_work_update"]},
     )
-    names = _scoped_tool_names(task)
+    names = task_tool_scope(task).eager_names
     assert names is not None
     assert "search_web" in names
     assert "task_cancel" in names
@@ -150,7 +150,7 @@ def test_intermediate_plan_leaf_cannot_access_delivery_tools() -> None:
         },
     )
 
-    names = _scoped_tool_names(task)
+    names = task_tool_scope(task).eager_names
 
     assert names is not None
     assert "file_write" in names
@@ -168,7 +168,7 @@ def test_final_plan_leaf_gets_only_explicit_delivery_tool() -> None:
         },
     )
 
-    names = _scoped_tool_names(task)
+    names = task_tool_scope(task).eager_names
 
     assert names is not None
     assert "messenger_room_send_file" in names
@@ -187,7 +187,7 @@ def test_delivery_recovery_exposes_exact_recorded_tool_only() -> None:
         },
     )
 
-    names = _scoped_tool_names(task)
+    names = task_tool_scope(task).eager_names
 
     assert names == {"messenger_room_send_file"}
 
@@ -200,7 +200,7 @@ def test_scoped_document_mutation_keeps_read_companion() -> None:
         data={"plan_tools": ["file_edit"]},
     )
 
-    names = _scoped_tool_names(task)
+    names = task_tool_scope(task).eager_names
 
     assert names is not None
     assert {"file_edit", "file_info", "file_read"} <= names
@@ -214,7 +214,7 @@ def test_scoped_mail_send_keeps_memory_contact_lookup_companions() -> None:
         data={"plan_tools": ["mail_send"]},
     )
 
-    names = _scoped_tool_names(task)
+    names = task_tool_scope(task).eager_names
 
     assert names is not None
     assert {"mail_send", "file_search", "file_read"} <= names
@@ -233,7 +233,7 @@ def test_goal_agent_referrer_keeps_task_run_in_a_scoped_plan() -> None:
         },
     )
 
-    names = _scoped_tool_names(task)
+    names = task_tool_scope(task).eager_names
 
     assert names is not None
     assert "task_run" in names

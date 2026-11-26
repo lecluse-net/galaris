@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import hashlib
+import json
 from typing import Any, Literal, Protocol
 from uuid import UUID
 
@@ -33,6 +35,12 @@ class SshConnectionConfig(BaseModel):
     code_runtime_port: int | None = Field(default=None, ge=1, le=65535)
     code_runtime_token: SecretStr | None = None
     model_config = ConfigDict(frozen=True)
+
+    @property
+    def recovery_scope(self) -> str:
+        return hashlib.sha256(json.dumps([
+            self.connection_id, self.host, self.port, self.username, self.known_host_key,
+        ], separators=(",", ":")).encode()).hexdigest()
 
 
 class RepositoryTarget(BaseModel):

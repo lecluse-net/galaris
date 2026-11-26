@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import datetime, timedelta, timezone
 from types import SimpleNamespace
 from typing import Any
 from unittest.mock import AsyncMock
@@ -11,7 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.agent.models import Agent, Title
 from app.connection.models import Connection
-from app.conversation import ConversationRound, ConversationRoundMessage
+from app.conversation import ConversationRound, ConversationRoundAttempt, ConversationRoundMessage
 from app.messenger import voice_journal
 from app.messenger.models import (
     ConversationType,
@@ -45,6 +46,36 @@ async def _agent_id(db: AsyncSession) -> int:
     db.add(agent)
     await db.flush()
     return agent.id
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("effect_started", [True, False])
+async def test_expired_direct_voice_round_is_retired_without_claiming_text_work(db, monkeypatch, effect_started):
+    from app.conversation.service import claim_next_round
+
+    agent_id = await _agent_id(db)
+    agent = await db.get(Agent, agent_id)
+    agent.agent_driver = "claude_embedded"
+    session = await _start_test_session(db, monkeypatch, agent_id=agent_id, room_id="synthetic-lease-room")
+    turn = await conversation_service.start_turn(
+        session_id=session.id, transcript="Synthetic first objective", run_id=uuid4(),
+    )
+    assert turn.lease_token is not None
+    turn.lease_expires_at = datetime.now(timezone.utc) - timedelta(seconds=1)
+    turn.effect_started = effect_started
+    await db.commit()
+    assert await claim_next_round("text-worker") is None
+    await db.refresh(turn)
+    attempt = await db.scalar(select(ConversationRoundAttempt).where(ConversationRoundAttempt.round_id == turn.id))
+    assert turn.status == "INTERRUPTED" and turn.lease_token is None
+    assert attempt.status == "INTERRUPTED" and attempt.finished_at is not None
+
+    continued = await conversation_service.start_turn(
+        session_id=session.id, transcript="Synthetic follow-up", run_id=uuid4(),
+    )
+    assert continued.source_round_id == (None if effect_started else turn.id)
+    assert continued.effective_objective.endswith("Synthetic follow-up")
+    assert ("Synthetic first objective" in continued.effective_objective) is not effect_started
 
 
 async def _messenger_connection(

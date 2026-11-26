@@ -103,6 +103,7 @@ class _InternalLLMTransport(httpx2.AsyncBaseTransport):
         llm: LLM,
         *,
         task_id: UUID | None,
+        task_attempt_id: UUID | None = None,
         agent_run_id: UUID | None,
         conversation_round_id: UUID | None,
         agent_id: int | None,
@@ -112,6 +113,7 @@ class _InternalLLMTransport(httpx2.AsyncBaseTransport):
     ) -> None:
         self._llm = llm
         self._task_id = task_id
+        self._task_attempt_id = task_attempt_id
         self._agent_run_id = agent_run_id
         self._conversation_round_id = conversation_round_id
         self._agent_id = agent_id
@@ -135,6 +137,7 @@ class _InternalLLMTransport(httpx2.AsyncBaseTransport):
         options: dict[str, Any] = {
             "purpose": self._purpose,
             "task_id": self._task_id,
+            "task_attempt_id": self._task_attempt_id,
             "agent_run_id": self._agent_run_id,
             "conversation_round_id": self._conversation_round_id,
             "agent_id": self._agent_id,
@@ -251,6 +254,7 @@ class InternalLLMResponsesModel(OpenAIResponsesModel):
         llm: LLM,
         *,
         task_id: UUID | None = None,
+        task_attempt_id: UUID | None = None,
         agent_run_id: UUID | None = None,
         conversation_round_id: UUID | None = None,
         agent_id: int | None = None,
@@ -267,6 +271,7 @@ class InternalLLMResponsesModel(OpenAIResponsesModel):
         transport = _InternalLLMTransport(
             llm,
             task_id=task_id,
+            task_attempt_id=task_attempt_id,
             agent_run_id=agent_run_id,
             conversation_round_id=conversation_round_id,
             agent_id=agent_id,
@@ -332,6 +337,7 @@ class InternalLLMChatModel(OpenAIChatModel):
         llm: LLM,
         *,
         task_id: Optional[UUID] = None,
+        task_attempt_id: UUID | None = None,
         agent_run_id: Optional[UUID] = None,
         conversation_round_id: Optional[UUID] = None,
         agent_id: Optional[int] = None,
@@ -345,6 +351,7 @@ class InternalLLMChatModel(OpenAIChatModel):
         transport = _InternalLLMTransport(
             llm,
             task_id=task_id,
+            task_attempt_id=task_attempt_id,
             agent_run_id=agent_run_id,
             conversation_round_id=conversation_round_id,
             agent_id=agent_id,
@@ -493,6 +500,7 @@ async def _build_primary_model_for_llm(
     llm: LLM,
     *,
     task_id: Optional[UUID] = None,
+    task_attempt_id: UUID | None = None,
     agent_run_id: Optional[UUID] = None,
     conversation_round_id: Optional[UUID] = None,
     agent_id: Optional[int] = None,
@@ -509,6 +517,7 @@ async def _build_primary_model_for_llm(
         responses_model = InternalLLMResponsesModel(
             llm,
             task_id=task_id,
+            task_attempt_id=task_attempt_id,
             agent_run_id=agent_run_id,
             conversation_round_id=conversation_round_id,
             agent_id=agent_id,
@@ -529,7 +538,7 @@ async def _build_primary_model_for_llm(
         return InternalLLMFallbackModel(
             responses_model,
             InternalLLMChatModel(
-                llm, task_id=task_id, agent_run_id=agent_run_id,
+                llm, task_id=task_id, task_attempt_id=task_attempt_id, agent_run_id=agent_run_id,
                 conversation_round_id=conversation_round_id, agent_id=agent_id,
                 purpose=purpose, reasoning_effort=reasoning_effort, durable=True,
             ),
@@ -538,6 +547,7 @@ async def _build_primary_model_for_llm(
     return InternalLLMChatModel(
         llm,
         task_id=task_id,
+        task_attempt_id=task_attempt_id,
         agent_run_id=agent_run_id,
         conversation_round_id=conversation_round_id,
         agent_id=agent_id,
@@ -548,7 +558,7 @@ async def _build_primary_model_for_llm(
 
 
 async def build_model_for_llm(
-    llm: LLM, *, task_id: UUID | None = None, agent_run_id: UUID | None = None,
+    llm: LLM, *, task_id: UUID | None = None, task_attempt_id: UUID | None = None, agent_run_id: UUID | None = None,
     conversation_round_id: UUID | None = None, agent_id: int | None = None,
     purpose: LLMCallPurpose | str | None = None, reasoning_effort: ReasoningEffort | None = None,
     enable_native_media: bool = False, model_field: str | None = None,
@@ -559,7 +569,7 @@ async def build_model_for_llm(
     from .subscription_policy import allows_automatic_subscription_fallback
 
     primary = await _build_primary_model_for_llm(
-        llm, task_id=task_id, agent_run_id=agent_run_id,
+        llm, task_id=task_id, task_attempt_id=task_attempt_id, agent_run_id=agent_run_id,
         conversation_round_id=conversation_round_id, agent_id=agent_id,
         purpose=purpose, enable_native_media=enable_native_media, reasoning_effort=reasoning_effort,
     )
@@ -599,7 +609,7 @@ async def build_model_for_llm(
         return primary
     profile_id, secondary_llm, effort = fallback
     secondary = await _build_primary_model_for_llm(
-        secondary_llm, task_id=task_id, agent_run_id=agent_run_id,
+        secondary_llm, task_id=task_id, task_attempt_id=task_attempt_id, agent_run_id=agent_run_id,
         conversation_round_id=conversation_round_id, agent_id=agent_id,
         purpose=purpose, enable_native_media=enable_native_media, reasoning_effort=effort,
     )

@@ -1,10 +1,11 @@
-"""Adapt the Galaris MCP catalog to Pydantic AI toolsets."""
+"""Adapt the Galaris MCP catalog to both embedded harnesses."""
 
 from __future__ import annotations
 
 import asyncio
 from collections.abc import AsyncGenerator, Collection
 from contextlib import asynccontextmanager
+from dataclasses import dataclass
 from typing import Any, cast
 from uuid import UUID
 
@@ -13,10 +14,11 @@ from anyio.lowlevel import RunVar
 from loguru import logger
 from fastmcp import Client
 from mcp.shared.exceptions import MCPError
+from mcp.types import Tool as McpTool
 from mcp.types import CONNECTION_CLOSED, TextContent
 from core import settings
 
-from app.agent.contracts import normalize_tool_name
+from app.agent.contracts import ToolEffectPolicy, normalize_tool_name
 from app.services.contracts import EXECUTION_META_KEY, TOOL_ARGUMENTS_META_KEY, current_tool_execution
 from app.services.agent_registry import (
     AgentToolAdvertisement,
@@ -168,6 +170,50 @@ async def build_agent_galaris_toolset(
         max_retries=_MCP_TOOL_MAX_RETRIES,
         cache_tools=False,
     )
+
+
+@dataclass(frozen=True)
+class MountedMcpTools:
+    client: ExecutionEvidenceClient
+    definitions: dict[str, McpTool]
+    effects: dict[str, ToolEffectPolicy]
+    native_names: frozenset[str]
+
+
+async def build_mounted_mcp_client(
+    agent_id: int, *, task_id: UUID | None = None, resources: dict[str, Any] | None = None,
+    include_effects: bool = False,
+    conversation_only: bool | None = None,
+    excluded_tool_names: Collection[str] = (),
+) -> MountedMcpTools:
+    """Freeze the tool definitions exposed to this run of the Claude SDK."""
+    from app.services import mcp_loader
+
+    policies: dict[str, ToolEffectPolicy] = {tool.name: tool.effect_policy for tool in mcp_loader.load_mcp_tools()}
+    allowed_native = {name for name, policy in policies.items()
+                      if name not in excluded_tool_names and (include_effects or policy == "read")}
+    definitions: dict[str, McpTool] = {}
+
+    async def mounted_names() -> frozenset[str]:
+        return frozenset(definitions)
+
+    conversation_only = task_id is None if conversation_only is None else conversation_only
+    slots = _conversation_mount_slots if conversation_only else _task_mount_slots
+    limit = settings.AGENT_MCP_CONVERSATION_MOUNT_CONCURRENCY if conversation_only else settings.AGENT_MCP_MOUNT_CONCURRENCY
+    async with _mount_session(slots, limit):
+        server = await mcp_loader.build_agent_mcp(
+            agent_id, task_id=task_id, conversation_only=conversation_only,
+            resources={**(resources or {}), "run_tool_names": mounted_names},
+            allowed_tool_names=allowed_native, include_external=include_effects,
+        )
+        client = ExecutionEvidenceClient(server)
+        async with client:
+            definitions.update((tool.name, tool) for tool in await client.list_tools()
+                               if tool.name not in excluded_tool_names)
+    effects: dict[str, ToolEffectPolicy] = {}
+    for name in definitions:
+        effects[name] = policies[name] if name in policies else "non_idempotent"
+    return MountedMcpTools(client, definitions, effects, frozenset(definitions.keys() & allowed_native))
 
 
 async def build_conversation_toolset(

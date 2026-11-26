@@ -10,7 +10,7 @@ from app.services import McpToolContext, mcp_tool
 from . import service, supervision
 from .contracts import HarnessAction
 from .facade import get_admin_harness
-from .schemas import HarnessSelectionUpdate
+from .schemas import EmbeddedDriverCode, HarnessSelectionUpdate
 
 
 @mcp_tool("agent", approval="enabled", approval_reason="Governed bounded read or control without a new sensitive effect", name="agent_harness_get", description="Read a managed agent's selected Harness and public execution settings.", effect_policy="read", concurrency_policy="safe")
@@ -34,11 +34,11 @@ async def agent_harness_set(ctx: McpToolContext, agent_id: int, harness_id: UUID
         return result
 
 
-@mcp_tool("agent", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval", name="agent_harness_reset", description="Return to the internal Harness using the existing cleanup workflow.", timeout_seconds=660, effect_policy="idempotent")
-async def agent_harness_reset(ctx: McpToolContext, agent_id: int) -> dict[str, object]:
+@mcp_tool("agent", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval", name="agent_harness_reset", description="Select an available embedded Harness by driver code. Omit the code to restore Pydantic AI. The regular Task blockers and cleanup apply.", timeout_seconds=660, effect_policy="idempotent")
+async def agent_harness_reset(ctx: McpToolContext, agent_id: int, driver_code: EmbeddedDriverCode = "internal") -> dict[str, object]:
     async with delegated_admin(ctx.agent_id, "agent_harness_reset", "AGENT_EDIT") as grant:
         await grant.target(agent_id)
-        _, cleanup = await service.select_internal(agent_id)
+        _, cleanup = await service.select_internal(agent_id, driver_code)
         cleaned = True
         if cleanup is not None:
             cleaned = await service.cleanup_runtime(cleanup)

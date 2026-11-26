@@ -387,6 +387,7 @@ class _ResilientProxyProvider(ProxyProvider):
         discovery_failures: set[str] | None = None,
         live_connection: tuple[int, int, int, bool] | None = None,
         mcp_apps: bool = False,
+        reserved_tool_names: frozenset[str] = frozenset(),
         **kwargs: Any,
     ) -> None:
         super().__init__(*args, **kwargs)  # pyright: ignore[reportUnknownMemberType]
@@ -395,15 +396,16 @@ class _ResilientProxyProvider(ProxyProvider):
         self._discovery_failures = discovery_failures
         self._live_connection = live_connection
         self._mcp_apps = mcp_apps
+        self._reserved_tool_names = reserved_tool_names
 
     async def _live_tool_policy(self) -> tuple[set[str], Collection[str] | None]:
         if self._live_connection is None:
-            return self._disabled_functions or set(), None
+            return set(self._reserved_tool_names).union(self._disabled_functions or ()), None
         from .live_external import resolve_live_connection
 
         agent_id, connection_id, service_id, conversation_only = self._live_connection
         service, _, disabled = await resolve_live_connection(agent_id, connection_id, service_id, conversation_only=conversation_only)
-        return disabled, conversation_tool_names(service, source="external") if conversation_only else None
+        return disabled.union(self._reserved_tool_names), conversation_tool_names(service, source="external") if conversation_only else None
 
     async def _live_disabled_kind(self, kind: Literal["resource", "prompt"]) -> set[str]:
         if self._live_connection is None:
@@ -656,9 +658,13 @@ def _wrap_tool(definition: McpToolDefinition, ctx: McpToolContext | None) -> Cal
                             raise ScopePreflightRejected(final.decision, final.reason)
 
                     from .mcp_authorization import authorize_native_call, bind_native_action
+                    before_effect = cast(Callable[[], Awaitable[None]] | None, call_ctx.resource("before_tool_effect"))
+                    if definition.effect_policy == "read":
+                        before_effect = None
                     if definition.authorization_boundary == "prepared":
                         from .authorization import prepared_authorization
-                        with prepared_authorization(await bind_native_action(call_ctx, definition, arguments)) as prepared:
+                        with prepared_authorization(await bind_native_action(call_ctx, definition, arguments),
+                                                    before_effect=before_effect) as prepared:
                             try:
                                 await recheck_scope()
                                 result = definition.function(call_ctx, *args, **kwargs)
@@ -671,6 +677,8 @@ def _wrap_tool(definition: McpToolDefinition, ctx: McpToolContext | None) -> Cal
                         from .authorization import authorized_request
                         with authorized_request(authorization_id):
                             await recheck_scope()
+                            if before_effect is not None:
+                                await before_effect()
                             result = definition.function(call_ctx, *args, **kwargs)
                             if inspect.isawaitable(result):
                                 result = await result
@@ -1331,9 +1339,11 @@ async def build_agent_mcp(
     allowed_tool_names: Collection[str] | None = None,
     allow_stdio: bool = True,
     include_task_context: bool = False,
+    include_external: bool = True,
 ) -> MountedAgentMcp:
     """Build an agent's aggregate native and external MCP server."""
     presentation_sink = cast(McpPresentationSink | None, (resources or {}).get("mcp_presentation_sink"))
+    before_tool_effect = cast(Callable[[], Awaitable[None]] | None, (resources or {}).get("before_tool_effect"))
 
     mcp = MountedAgentMcp(f"Galaris — Agent {agent_id}")
     server_ref = weakref.ref(mcp)
@@ -1355,7 +1365,7 @@ async def build_agent_mcp(
         agent_id,
         runtime=runtime,
         task_id=task_id,
-        resources={**(resources or {}), "run_tool_names": run_tool_names},
+        resources={"run_tool_names": run_tool_names, **(resources or {})},
         allowed_tool_names=allowed_tool_names,
         conversation_only=conversation_only,
         _bindings=bindings,
@@ -1366,6 +1376,9 @@ async def build_agent_mcp(
         # can reuse that inventory while subsequent discovery and calls stay live.
         mcp.initial_conversation_names = frozenset(mcp.native_server.native_execution_names)
 
+    if not include_external:
+        return mcp
+    native_names = frozenset(definition.name for definition in load_mcp_tools())
     for connection, tool in bindings:
         if not tool.mcp:
             continue
@@ -1387,6 +1400,7 @@ async def build_agent_mcp(
                 conversation_only=conversation_only,
                 presentation_sink=presentation_sink if tool.mcp.type == "http" else None,
                 source_label=tool.label,
+                before_tool_effect=before_tool_effect,
             ))
             # Capture identities only. An old run must not capture old credentials.
             def live_factory(agent: int, connection_id: int, service_id: int, conversational: bool,
@@ -1400,12 +1414,15 @@ async def build_agent_mcp(
                 return client
 
             mcp_apps = presentation_sink is not None and tool.mcp.type == "http"
+            prefix = f"{tool.code}_"
             proxy.add_provider(_ResilientProxyProvider(
                 live_factory(agent_id, connection.id, connection.service_id, conversation_only, mcp_apps),
                 discovery_source=tool.code,
                 discovery_failures=discovery_failures,
                 live_connection=(agent_id, connection.id, connection.service_id, conversation_only),
                 mcp_apps=mcp_apps,
+                reserved_tool_names=frozenset(name.removeprefix(prefix) for name in native_names
+                                              if name.startswith(prefix)),
             ))
             mcp.mount(proxy, namespace=tool.code)
             logger.info("MCP loader: proxy mounted {} ({})", tool.code, tool.mcp.type)

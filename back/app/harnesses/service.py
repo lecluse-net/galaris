@@ -13,7 +13,10 @@ from loguru import logger
 from sqlalchemy import and_, func, or_, select
 from sqlalchemy.exc import IntegrityError
 
-from app.agent import Agent, agent_has_open_tasks, get_agent_record, normalize_capabilities
+from app.agent import (
+    Agent, AgentDriverSpec, agent_has_open_tasks, driver_capabilities, get_agent_record,
+    list_driver_specs, list_driver_statuses, normalize_capabilities,
+)
 from core.database import get_db, get_db_session
 from core.params import params_service
 from core.util import get_encryption_service
@@ -281,19 +284,31 @@ def _selection_read(
     )
 
 
-def internal_read(agent_id: int) -> HarnessRead:
+def embedded_driver_specs() -> dict[str, AgentDriverSpec]:
+    return {spec.code: spec for spec in list_driver_specs() if spec.transport == "embedded"}
+
+
+def internal_read(agent_id: int, driver_code: str = "internal") -> HarnessRead:
+    spec = embedded_driver_specs().get(driver_code)
+    if spec is None:
+        raise ValueError(f"Unknown embedded Harness: {driver_code!r}.")
+    status = next(status for status in list_driver_statuses() if status.code == spec.code)
+    # Keep the historical Pydantic selection representation for existing clients.
+    capabilities: list[HarnessCapability] = (
+        ["execute", "streaming", "skills", "runtime_files", "mcp", "memory"]
+        if driver_code == "internal" else sorted(driver_capabilities(spec))
+    )
     return HarnessRead(
         agent_id=agent_id,
         internal=True,
-        name="Internal Pydantic AI",
-        provider_code="internal",
-        driver_code="internal",
-        lifecycle_status="ready",
-        capabilities=[
-            "execute", "streaming", "skills", "runtime_files", "mcp", "memory",
-        ],
+        name="Internal Pydantic AI" if driver_code == "internal" else spec.label_key,
+        provider_code=spec.code,
+        driver_code=spec.code,
+        lifecycle_status="ready" if status.available else "error",
+        capabilities=capabilities if status.available else [],
         containerized=False,
-        max_parallel_tasks=None,
+        max_parallel_tasks=spec.max_parallel_tasks,
+        last_error=status.reason,
     )
 
 
@@ -513,9 +528,11 @@ async def get_for_agent(agent_id: int) -> HarnessRead:
         raise LookupError("Agent not found.")
     assignment = await _assignment_for_agent(agent_id)
     if assignment is None:
-        return internal_read(agent_id)
+        # Legacy bridge users may not yet have a persisted Harness assignment.
+        code = agent.agent_driver if agent.agent_driver in embedded_driver_specs() else "internal"
+        return internal_read(agent_id, code)
     if bool((assignment.provider_metadata or {}).get("target_internal")):
-        return internal_read(agent_id)
+        return internal_read(agent_id, agent.agent_driver)
     if assignment.harness_id is not None and assignment.harness_id != agent.task_harness_id:
         raise HarnessConflictError("The agent Harness selection is inconsistent.")
     if assignment.harness_id is None and agent.task_harness_id is not None:
@@ -696,7 +713,7 @@ async def install(
                 request=_request(old, old_harness, agent),
             )
             assignment = old
-        elif agent.agent_driver != "internal":
+        elif agent.agent_driver not in embedded_driver_specs():
             old_provider = get_provider(agent.agent_driver)
             del old_provider
             legacy_harness = Harness(
@@ -772,10 +789,14 @@ async def install(
 
 async def select_internal(
     agent_id: int,
+    driver_code: str = "internal",
 ) -> tuple[HarnessRead, HarnessCleanup | None]:
     """Persist the local Harness preference and defer external cleanup."""
 
     async with agent_lock(agent_id):
+        selection = internal_read(agent_id, driver_code)
+        if selection.lifecycle_status != "ready":
+            raise HarnessConflictError("This embedded Harness is disabled.")
         await _require_switchable(agent_id)
         agent = await get_agent_record(agent_id)
         if agent is None:
@@ -785,7 +806,10 @@ async def select_internal(
         if assignment is not None and bool(
             (assignment.provider_metadata or {}).get("target_internal")
         ):
-            return internal_read(agent_id), None
+            if agent.agent_driver != selection.driver_code:
+                agent.agent_driver = selection.driver_code
+                await get_db().commit()
+            return selection, None
         if assignment is not None:
             harness = await _harness_for_assignment(assignment)
             if harness is None:
@@ -805,7 +829,7 @@ async def select_internal(
                 "target_internal": True,
             }
             assignment.last_error = None
-        elif agent.agent_driver != "internal":
+        elif agent.agent_driver not in embedded_driver_specs():
             provider = get_provider(agent.agent_driver)
             legacy_harness = Harness(
                 id=uuid4(),
@@ -830,9 +854,9 @@ async def select_internal(
                 request=_request(legacy_assignment, legacy_harness, agent),
             )
         agent.task_harness_id = None
-        agent.agent_driver = "internal"
+        agent.agent_driver = selection.driver_code
         await get_db().commit()
-        return internal_read(agent_id), cleanup
+        return selection, cleanup
 
 
 def _cleanup_matches(assignment: AgentHarness, cleanup: HarnessCleanup) -> bool:

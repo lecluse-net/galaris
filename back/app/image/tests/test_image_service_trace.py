@@ -22,6 +22,7 @@ async def test_image_proxy_keeps_trace_context_without_executor_routing(
         task_id: object,
         agent_id: int,
         route_executor_model: bool,
+        retain_image_preview: bool,
     ) -> JSONResponse:
         received.update({
             "body": body,
@@ -29,6 +30,7 @@ async def test_image_proxy_keeps_trace_context_without_executor_routing(
             "task_id": task_id,
             "agent_id": agent_id,
             "route_executor_model": route_executor_model,
+            "retain_image_preview": retain_image_preview,
         })
         return JSONResponse({"choices": []})
 
@@ -54,6 +56,7 @@ async def test_image_proxy_keeps_trace_context_without_executor_routing(
         "task_id": task_id,
         "agent_id": 17,
         "route_executor_model": False,
+        "retain_image_preview": True,
     }
 
 
@@ -199,6 +202,7 @@ async def test_describe_image_uses_only_the_configured_vision_model(
         *,
         task_id: object = None,
         agent_id: int | None = None,
+        retain_image_preview: bool = True,
     ) -> dict[str, object]:
         received.update({
             "body": body,
@@ -207,6 +211,7 @@ async def test_describe_image_uses_only_the_configured_vision_model(
             "proxy_language": language,
             "task_id": task_id,
             "agent_id": agent_id,
+            "retain_image_preview": retain_image_preview,
         })
         return {"choices": [{"message": {"content": "A test image"}}]}
 
@@ -220,6 +225,7 @@ async def test_describe_image_uses_only_the_configured_vision_model(
         instruction="Inspect",
         language="en",
         agent_id=17,
+        retain_image_preview=False,
     )
 
     assert result == "A test image"
@@ -228,6 +234,7 @@ async def test_describe_image_uses_only_the_configured_vision_model(
     assert received["kind"] == "vision"
     assert received["model"] == "provider/vision-model"
     assert received["agent_id"] == 17
+    assert received["retain_image_preview"] is False
     assert received["body"] == {
         "model": "vision-code",
         "messages": [{

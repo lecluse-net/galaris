@@ -11,7 +11,7 @@ from uuid import UUID
 from pydantic import BaseModel, Field, JsonValue, model_validator, SerializeAsAny
 
 from app.agent import AIMessage, AIResult
-from app.agent.contracts import AgentRunCheckpoint, ReasoningEffort
+from app.agent.contracts import AgentRunCheckpoint, ReasoningEffort, ResolvedModel, ScopedInferenceAdmission
 from app.process import ProcessRunRead
 from app.services.contracts import McpPresentation
 from app.task import TaskRead
@@ -21,6 +21,34 @@ from .trace_projection import public_mapping, public_text
 
 FreshnessGuard = Callable[[], Awaitable[bool]]
 ConversationControlAction = Literal["pause", "stop", "resume", "restart", "respond"]
+
+
+def inference_limit(
+    admission: Mapping[str, object] | None, key: Literal["request_limit", "tool_call_limit"],
+) -> int | None:
+    value = admission.get(key) if admission is not None else None
+    return value if type(value) is int and value > 0 else None
+
+
+def inference_tool_calls_used(admission: Mapping[str, object] | None) -> int:
+    value = admission.get("tool_calls_used") if admission is not None else None
+    return value if type(value) is int and value >= 0 else 0
+
+
+def inference_binding(admission: Mapping[str, object] | None) -> dict[str, object] | None:
+    if admission is None:
+        return None
+    return {key: value for key, value in admission.items() if key not in {"tool_call_limit", "tool_calls_used"}}
+
+
+def reserve_inference_tool(
+    admission: Mapping[str, object] | None, previously_recorded: int,
+) -> dict[str, object] | None:
+    limit = inference_limit(admission, "tool_call_limit")
+    if admission is None or limit is None:
+        raise PermissionError("This attempt has no admitted tool budget.")
+    used = max(inference_tool_calls_used(admission), previously_recorded)
+    return {**admission, "tool_calls_used": used + 1} if used < limit else None
 
 
 class ConversationControlConflict(ValueError):
@@ -163,6 +191,8 @@ class ConversationTurn:
     # Server-rendered annotations for the newest input, kept separate from the full source.
     display_context: str = ""
     desktop_screen_session: UUID | None = None
+    driver_code: str = "internal"
+    admit_inference: Callable[[ResolvedModel], Awaitable[ScopedInferenceAdmission]] | None = None
 
     @property
     def sender_is_ai(self) -> bool:

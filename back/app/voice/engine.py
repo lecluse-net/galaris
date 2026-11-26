@@ -7,7 +7,7 @@ import re
 import time
 import unicodedata
 from dataclasses import dataclass
-from contextlib import aclosing
+from contextlib import aclosing, nullcontext
 from datetime import datetime, timezone
 from typing import Any, AsyncIterator, Literal, cast
 from uuid import UUID, uuid4
@@ -15,8 +15,10 @@ from uuid import UUID, uuid4
 from loguru import logger
 
 from app.agent.contracts import TaskMessage as Message
-from app.agent import ExecutionResult
-from app.conversation import ConversationRuntimeStream
+from app.agent.contracts import ScopedInferenceAdmission
+from app.agent import ExecutionResult, ResolvedModel
+from app.conversation import ConversationRuntimeStream, RoundCheckpointWriter, admit_round_inference, mark_effect_if_fresh
+from app.llm import tts_service
 from core.database import get_db_session
 from core.i18n import render_prompt, t
 
@@ -259,11 +261,13 @@ class AgentVoiceEngine:
         self._outbound_idle.set()
         self._stop_requested = stop_requested or asyncio.Event()
         self._response_task: asyncio.Task[None] | None = None
+        self._response_tool_lock: asyncio.Lock | None = None
         self._history: list[Message] = []
         self._turn_index = 0
         self._pending_turn_indexes: set[int] = set()
         self._pending_message_ids: set[UUID] = set()
         self._pending_transcription_id: UUID | None = None
+        self._call_speech_voice: tts_service.CallSpeechVoice | None = None
 
     async def run(self) -> None:
         from .runtime_control import own_session
@@ -274,7 +278,7 @@ class AgentVoiceEngine:
     async def _run_owned(self) -> None:
         from .realtime_engine import RealtimeAgentVoiceEngine
 
-        realtime_engine = await RealtimeAgentVoiceEngine.create(
+        route = await RealtimeAgentVoiceEngine.create(
             transport=self._transport,
             handle=self._handle,
             agent_id=self._agent_id,
@@ -287,8 +291,10 @@ class AgentVoiceEngine:
             language=self._language,
             stop_requested=self._stop_requested,
         )
-        if realtime_engine is not None:
-            await realtime_engine.run()
+        if isinstance(route, tts_service.CallSpeechVoice):
+            self._call_speech_voice = route
+        elif route is not None:
+            await route.run()
             return
 
         sender = asyncio.create_task(
@@ -343,19 +349,19 @@ class AgentVoiceEngine:
                 )
                 self._pending_transcription_id = None
 
+    async def _synthesize(self, text: str) -> tts_service.GeneratedSpeech:
+        options = tts_service.TTSOptions(language=self._language)
+        if self._call_speech_voice is not None:
+            return await self._call_speech_voice.generate(text, options)
+        async with get_db_session():
+            return await tts_service.generate_for_agent(self._agent_id, text, options)
+
     async def _speak_initial_greeting(self, generation: int) -> None:
         """Acknowledge the answered call while remaining immediately interruptible."""
-        from app.llm import tts_service
-
         greeting = render_prompt(t("voice.initial_greeting", self._language))
         started_at = time.monotonic()
         try:
-            async with get_db_session():
-                speech = await tts_service.generate_for_agent(
-                    self._agent_id,
-                    greeting,
-                    tts_service.TTSOptions(language=self._language),
-                )
+            speech = await self._synthesize(greeting)
             # TTS generation overlaps the transport's normal connection setup.
             # If a remote subscriber is still attaching, retain the encoded
             # greeting instead of losing its first (or only) audio frames.
@@ -392,36 +398,45 @@ class AgentVoiceEngine:
         from app.llm import transcription_service
 
         realtime: transcription_service.RealtimeTranscriber | None = None
+        realtime_failed = False
         pending_transcriptions: set[UUID] = set()
         streaming_transcription_id: UUID | None = None
 
         async def on_partial(text: str) -> None:
             await self._update_transcription_progress(streaming_transcription_id, text)
 
-        try:
+        async def open_realtime() -> transcription_service.RealtimeTranscriber | None:
+            nonlocal realtime_failed
+            realtime_failed = False
             try:
                 async with get_db_session():
-                    realtime = await transcription_service.create_realtime_transcriber(
+                    transcriber = await transcription_service.create_realtime_transcriber(
                         agent_id=self._agent_id,
                         language=self._language,
                         on_partial=on_partial,
                     )
-                if realtime is not None:
+                if transcriber is not None:
                     logger.info(
                         "Voice agent: realtime transcription ready room={}",
                         self._room_id,
                     )
+                return transcriber
             except asyncio.CancelledError:
                 raise
             except Exception:
+                realtime_failed = True
                 logger.opt(exception=True).warning(
                     "Voice agent: realtime transcription unavailable room={} "
                     "(using complete-audio fallback)",
                     self._room_id,
                 )
+                return None
+
+        try:
+            realtime = await open_realtime()
 
             async def stream_speech_audio(pcm: bytes, *, speech_detected: bool) -> None:
-                nonlocal realtime
+                nonlocal realtime, realtime_failed
                 if realtime is None:
                     return
                 try:
@@ -431,6 +446,7 @@ class AgentVoiceEngine:
                 except Exception:
                     failed = realtime
                     realtime = None
+                    realtime_failed = True
                     logger.opt(exception=True).warning(
                         "Voice agent: realtime transcription stream failed room={} "
                         "(using complete-audio fallback)",
@@ -481,9 +497,13 @@ class AgentVoiceEngine:
                 incoming.put_nowait(None)
 
             async def transcribe() -> None:
-                nonlocal realtime, pending_audio_bytes, streaming_transcription_id
+                nonlocal realtime, realtime_failed, pending_audio_bytes, streaming_transcription_id
                 deferred: list[str] = []
+                reconnect = False
                 while (item := await incoming.get()) is not None:
+                    if reconnect:
+                        reconnect = False
+                        realtime = await open_realtime()
                     if isinstance(item, _TranscriptionStarted):
                         streaming_transcription_id = item.transcription_id
                         continue
@@ -506,6 +526,7 @@ class AgentVoiceEngine:
                         except Exception:
                             failed = realtime
                             realtime = None
+                            realtime_failed = True
                             logger.opt(exception=True).warning(
                                 "Voice agent: realtime transcript commit failed room={} "
                                 "(using complete-audio fallback)",
@@ -515,6 +536,9 @@ class AgentVoiceEngine:
                     # commit() has consumed the final provider event for this
                     # turn. Ignore keepalives while awaiting batch/persistence.
                     streaming_transcription_id = None
+                    # Reconnect only after this turn has used its complete-audio fallback.
+                    # Audio for the next turn remains in the ordered capture queue.
+                    reconnect = realtime_failed
                     try:
                         if transcript is None:
                             transcript = await self._transcribe(item.utterance)
@@ -580,9 +604,7 @@ class AgentVoiceEngine:
         self._response_generation = self._generation
         self._drain_outbound()
         await self._transport.interrupt_output(self._handle)
-        if (self._response_task is not None and not self._response_task.done()
-                and not self._response_task.cancelling()):
-            self._response_task.cancel()
+        if await self._cancel_response(self._response_task):
             logger.info(
                 "Voice agent: confirmed speech interrupted response room={}",
                 self._room_id,
@@ -652,6 +674,7 @@ class AgentVoiceEngine:
         transcription_finished = False
         progress: ConversationRuntimeStream | None = None
         completed_successfully = False
+        tool_lock: asyncio.Lock | None = None
         try:
             transcription_mode = "realtime" if transcript is not None else "batch"
             if transcript is None:
@@ -696,6 +719,22 @@ class AgentVoiceEngine:
                     conversation_round.id,
                     transcript,
                 )
+            round_driver_code = getattr(conversation_round, "driver_code", None)
+            round_lease_token: UUID | None = getattr(conversation_round, "lease_token", None)
+            if round_lease_token is not None:
+                tool_lock = self._response_tool_lock = asyncio.Lock()
+
+            async def before_effect() -> bool:
+                return (round_lease_token is not None and generation == self._response_generation
+                        and await mark_effect_if_fresh(conversation_round.id, lease_token=round_lease_token)
+                        and generation == self._response_generation)
+
+            async def admit_inference(model: ResolvedModel) -> ScopedInferenceAdmission:
+                if round_lease_token is None or round_driver_code is None:
+                    raise PermissionError("The voice runtime does not own this conversation round.")
+                return await admit_round_inference(conversation_round.id, lease_token=round_lease_token,
+                    driver_code=round_driver_code, model=model, voice_session_id=self._session_id)
+
             self._pending_message_ids.add(message_id)
             await self._update_transcription_progress(transcription_id, transcript)
             await self._finish_transcription_progress(
@@ -734,7 +773,8 @@ class AgentVoiceEngine:
                                 conversation_round.id, checkpoint
                             )
 
-                        async for event in stream_conversation_turn_events(
+                        writer = RoundCheckpointWriter(conversation_round.id, round_lease_token) if round_lease_token is not None else None
+                        events = stream_conversation_turn_events(
                             agent_id=self._agent_id,
                             objective=objective,
                             messenger_connection_id=self._connection_id,
@@ -749,45 +789,55 @@ class AgentVoiceEngine:
                             run_id=run_id,
                             conversation_round_id=conversation_round_id,
                             voice_session_id=self._session_id,
-                            control=AgentRunControl(save_checkpoint=save_checkpoint),
+                            round_driver_code=round_driver_code,
+                            control=AgentRunControl(
+                                save_checkpoint=writer.save if writer is not None else save_checkpoint,
+                                before_conversation_effect=before_effect if tool_lock is not None else None,
+                                conversation_tool_lock=tool_lock,
+                                admit_conversation_inference=admit_inference if round_lease_token is not None else None,
+                            ),
                             topic_id=conversation_round.topic_id,
                             contact_memory_item_id=getattr(
                                 conversation_round,
                                 "contact_memory_item_id",
                                 None,
                             ),
-                        ):
-                            if generation != self._response_generation:
-                                return
-                            if event.kind == "result" and event.result is not None:
-                                execution_result = live_progress.snapshot(event.result).model_dump(
-                                    mode="json"
-                                )
-                                continue
-                            message = event.message
-                            if message is None:
-                                continue
-                            await live_progress.append(message)
-                            if message.type != "text":
-                                continue
-                            if not message.success:
-                                driver_error = (
-                                    message.content.strip()
-                                    or "the configured agent failed during the voice turn"
-                                )
-                                continue
-                            if first_text_at is None:
-                                first_text_at = time.monotonic()
-                                first_text_timestamp = datetime.now(timezone.utc)
-                                logger.info(
-                                    "Voice agent: first text turn={} room={} latency={:.2f}s",
-                                    turn_index,
-                                    self._room_id,
-                                    first_text_at - started_at,
-                                )
-                            response_parts.append(message.content)
-                            for segment in segmenter.feed(message.content):
-                                await text_queue.put(segment)
+                        )
+                        async with conversation_service.keep_turn_lease(conversation_round.id, round_lease_token), aclosing(events):
+                            async for event in events:
+                                if generation != self._response_generation:
+                                    async with tool_lock if tool_lock is not None else nullcontext():
+                                        return
+                                if event.kind == "result" and event.result is not None:
+                                    result = event.result
+                                    execution_result = live_progress.snapshot(result).model_dump(mode="json")
+                                    if round_lease_token is not None and not result.success and result.disposition == "completed":
+                                        driver_error = result.failure.message if result.failure is not None else "Voice conversation failed."
+                                    continue
+                                message = event.message
+                                if message is None:
+                                    continue
+                                await live_progress.append(message)
+                                if message.type != "text":
+                                    continue
+                                if not message.success:
+                                    driver_error = (
+                                        message.content.strip()
+                                        or "the configured agent failed during the voice turn"
+                                    )
+                                    continue
+                                if first_text_at is None:
+                                    first_text_at = time.monotonic()
+                                    first_text_timestamp = datetime.now(timezone.utc)
+                                    logger.info(
+                                        "Voice agent: first text turn={} room={} latency={:.2f}s",
+                                        turn_index,
+                                        self._room_id,
+                                        first_text_at - started_at,
+                                    )
+                                response_parts.append(message.content)
+                                for segment in segmenter.feed(message.content):
+                                    await text_queue.put(segment)
                     if driver_error:
                         raise _AgentResponseError(driver_error)
                 finally:
@@ -796,8 +846,6 @@ class AgentVoiceEngine:
                     await text_queue.put(None)
 
             async def synthesize_text() -> None:
-                from app.llm import tts_service
-
                 streamed_segments: list[str] = []
 
                 async def segments() -> AsyncIterator[str]:
@@ -825,11 +873,12 @@ class AgentVoiceEngine:
 
                 speech_stream = None
                 try:
-                    async with get_db_session():
-                        speech_stream = await tts_service.create_realtime_speech_stream_for_agent(
-                            self._agent_id,
-                            tts_service.TTSOptions(language=self._language),
-                        )
+                    if self._call_speech_voice is None:
+                        async with get_db_session():
+                            speech_stream = await tts_service.create_realtime_speech_stream_for_agent(
+                                self._agent_id,
+                                tts_service.TTSOptions(language=self._language),
+                            )
                 except tts_service.TTSStreamingUnavailable:
                     logger.opt(exception=True).warning(
                         "Voice agent: realtime TTS setup unavailable turn={} room={} "
@@ -877,12 +926,7 @@ class AgentVoiceEngine:
                 async for segment in batch_segments():
                     if generation != self._response_generation:
                         return
-                    async with get_db_session():
-                        speech = await tts_service.generate_for_agent(
-                            self._agent_id,
-                            segment,
-                            tts_service.TTSOptions(language=self._language),
-                        )
+                    speech = await self._synthesize(segment)
                     async for frame in encoded_audio_frames(speech.content):
                         if generation != self._response_generation:
                             return
@@ -892,6 +936,8 @@ class AgentVoiceEngine:
                 group.create_task(produce_text(), name="voice_agent_llm")
                 group.create_task(synthesize_text(), name="voice_agent_tts")
 
+            if generation != self._response_generation:
+                raise asyncio.CancelledError
             response = "".join(response_parts).strip()
             if execution_result is None:
                 execution_result = live_progress.snapshot().model_dump(mode="json")
@@ -963,6 +1009,8 @@ class AgentVoiceEngine:
             if hangup_after_response:
                 self._request_graceful_stop(turn_index)
         finally:
+            if self._response_tool_lock is tool_lock:
+                self._response_tool_lock = None
             if progress is not None:
                 await asyncio.shield(
                     progress.finish(
@@ -1103,10 +1151,17 @@ class AgentVoiceEngine:
         await self._transport.interrupt_output(self._handle)
         task = self._response_task
         self._response_task = None
-        if task is not None and not task.done():
-            task.cancel()
+        await self._cancel_response(task)
         if task is not None:
             await asyncio.gather(task, return_exceptions=True)
+
+    async def _cancel_response(self, task: asyncio.Task[None] | None) -> bool:
+        lock = self._response_tool_lock
+        async with lock if lock is not None else nullcontext():
+            if task is None or task.done() or task.cancelling():
+                return False
+            task.cancel()
+            return True
 
     def _drain_outbound(self) -> None:
         while True:

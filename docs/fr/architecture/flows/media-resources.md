@@ -150,6 +150,16 @@ télécharger une image, un audio, une vidéo ou un PDF dans un fichier temporai
 multimodale, mais ce chemin n'est ni adressable par l'agent, ni durable, ni inscrit dans le Working
 Set. Les médias non transmis nativement restent chez le provider et sont consommés par leur URI.
 
+Claude embarqué utilise la préparation commune pour les messages du tour et de son historique.
+Les images et les PDF passent au modèle en blocs natifs lorsque le modèle et le budget le
+permettent. Les autres formats suivent les voies de préparation ou d’analyse disponibles.
+Les blocs préparés sont retirés du transcript SDK conservé. Deep repart des références des
+messages canoniques et vérifie à nouveau les droits avant de transmettre leur contenu.
+Les appels aux modèles d’analyse d’image, de transcription et d’analyse vidéo conservent
+le modèle spécialisé et leur finalité. Leur `LLMCall` est rattaché à la tentative de tâche,
+au round ou à la soumission Deep qui a demandé la préparation. Galaris vérifie de nouveau
+le bail après l’attente de capacité chez le fournisseur, avant l’envoi.
+
 `console://` existe uniquement lorsqu'une console est attachée au run et désigne son home. Sans
 console, aucun système de fichiers local n'est annoncé : l'agent ne peut manipuler que les
 ressources du Messenger courant et les providers compatibles file-share retournés par

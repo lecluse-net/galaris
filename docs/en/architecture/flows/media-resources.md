@@ -136,6 +136,16 @@ Canonical attachment
 Input staging never changes the identity presented to the model. The internal harness may download an image or document into a temporary file in order to construct a multimodal input, but this path is neither addressable by the agent, nor durable, nor recorded in the Working
 Set. Media not transmitted natively remains with the provider and is consumed through its URI.
 
+Embedded Claude uses the shared media preparation for both current and historical messages.
+Images and PDFs reach the model as native blocks when the model and budget allow them. Other
+formats use the applicable preparation or analysis path. Prepared blocks are removed from
+saved SDK transcripts. Deep starts again from canonical message references and rechecks
+access before sending their contents.
+Image analysis, transcription and video analysis keep their specialist model and purpose.
+Their `LLMCall` belongs to the Task attempt, round or Deep submission that requested
+preparation. Galaris verifies the lease again after waiting for provider capacity and
+before dispatch.
+
 `console://` exists only when a console is attached to the run and designates its home. Without a console, no local filesystem is announced: the agent can manipulate only resources from the current Messenger and file-share-compatible providers returned by
 `file_schemes`. Creation then requires an explicit provider destination.
 

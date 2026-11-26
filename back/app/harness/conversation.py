@@ -1,16 +1,16 @@
-"""Pydantic AI implementation of the low-latency conversation controller."""
+"""Low-latency conversation controller for the embedded harnesses."""
 
 from __future__ import annotations
 
 from app.llm import LLMCallPurpose, model_usages
 
 import asyncio
-from contextlib import suppress
+from contextlib import aclosing, suppress
 import re
 import time
 from datetime import datetime
 from dataclasses import replace
-from collections.abc import AsyncIterator, Awaitable, Callable, Collection, Mapping, Sequence
+from collections.abc import AsyncGenerator, Awaitable, Callable, Collection, Mapping, Sequence
 from typing import cast
 from uuid import UUID
 
@@ -30,6 +30,8 @@ from app.agent import (
     AgentSnapshot,
     ExecutionResult,
     agent_service,
+    aggregate_llm_run_usage,
+    assess_checkpoint,
     build_agent_run_context,
     dispatch_conversation,
     capture_conversation_contact_infos,
@@ -37,6 +39,7 @@ from app.agent import (
     conversation_work_analysis_context,
     memory_context_trace,
     executor_instructions,
+    resolve_driver,
 )
 from app.agent.executor_prompts import ExecutorPromptContext, build_executor_prompt_tree
 from app.agent.prompt_tree import ExecutorKind, render_prompt_tree
@@ -52,28 +55,33 @@ from app.conversation import (
     ConversationExecutionError,
     ConversationOutcome,
     ConversationSuspended,
+    ConversationSuperseded,
     ConversationTurn,
     parse_direct_task_directive,
     run_preparation,
 )
+from app.file_share import ResourceContext
 from app.llm import llm_service
+from app.llm.facade import EmbeddedRoundInference
 from app.messenger import build_conversation_session
 from app.agent.contracts import TaskMessage as Message
 from app.agent.contracts import AgentRunControl, ResolvedModel, ConversationWorkAnalysis
 from app.process import build_agent_process_advertisement, agent_process_dispatch_candidates
-from app.services.agent_registry import AgentToolAdvertisement
-from app.services.contracts import MAX_PRESENTATIONS, McpPresentation
+from app.services.agent_registry import AgentToolAdvertisement, build_agent_tool_advertisement
+from app.services.contracts import MAX_PRESENTATIONS, McpPresentation, ToolPermissionRejectedError
+from app.services.facade import authorization_status
 from app.services.mcp_loader import McpToolContext
 from core.database import get_db_session, release_db_transaction
 from core.i18n import t
 from core.params import Params, params_service
 from core.params import runtime_settings
 
-from .mcp_toolset import build_conversation_toolset
+from .mcp_toolset import MountedMcpTools, build_conversation_toolset, build_mounted_mcp_client
 from .conversation_interrupt import ConversationInterruption
-from .conversation_protocol import ConversationTurnProtocol
+from .conversation_protocol import CONVERSATION_TURN_BOUNDARY, ConversationTurnProtocol
 from .runtime import Agent, create_agent
 from .checkpoint import HarnessRunCheckpoint
+from .claude_checkpoint import ClaudeEffectJournal
 from .skills import build_internal_skill_capabilities
 from .prompt import harness_system_prompt_tree
 from .tool_results import decode_tool_result, reported_tool_failure
@@ -373,7 +381,7 @@ def _deterministic_effect_outcome(
             "run_id": str(turn.round_id),
             "conversation_round_id": str(turn.round_id),
             "agent_id": turn.agent_id,
-            "driver_code": "internal",
+            "driver_code": turn.driver_code,
             "deterministic_control": True,
         },
     )
@@ -399,7 +407,7 @@ def _deterministic_text_outcome(
             "run_id": str(turn.round_id),
             "conversation_round_id": str(turn.round_id),
             "agent_id": turn.agent_id,
-            "driver_code": "internal",
+            "driver_code": turn.driver_code,
             "deterministic_control": True,
         },
     )
@@ -641,8 +649,146 @@ def _context_task_data(turn: ConversationTurn) -> dict[str, object]:
     return data
 
 
+def _claude_conversation_prompt(agent_id: int, history: Sequence[Message], current_prompt: str) -> str:
+    prior = "\n\n".join(filter(None, (message_prompt(message, self_agent_id=agent_id) for message in history)))
+    if not prior:
+        return current_prompt
+    return f"<conversation_history>\n{prior}\n</conversation_history>\n\n<current_message>\n{current_prompt}\n</current_message>"
+
+
+async def _run_claude_conversation(
+    turn: ConversationTurn,
+    *,
+    model: ResolvedModel,
+    history: Sequence[Message],
+    current_prompt: str,
+    system_prompt: str,
+    context: AgentRunContext,
+    dispatch_trace: dict[str, object],
+    preparation_time: float,
+    preparation_cost: float,
+    tools: MountedMcpTools | None,
+    journal: ClaudeEffectJournal | None,
+) -> ConversationOutcome:
+    from .claude_driver import stream_inference
+
+    admit = turn.admit_inference
+    if admit is None:
+        raise RuntimeError("Claude conversation execution requires an admitted round attempt.")
+    admission = await admit(model)
+    origin = EmbeddedRoundInference(
+        agent_id=turn.agent_id, attempt_id=admission.attempt_id, run_id=turn.round_id, round_id=turn.round_id,
+        driver_code=turn.driver_code, model_id=model.id, model_code=model.code,
+        reasoning_effort=model.reasoning_effort, audio=turn.origin == "voice",
+        request_limit=admission.request_limit,
+    )
+    prompt = _claude_conversation_prompt(turn.agent_id, history, current_prompt)
+
+    previous = turn.resume_checkpoint
+    decision = None
+    if previous is not None:
+        if not assess_checkpoint(previous).resumable:
+            raise ConversationExecutionError("The Claude round cannot safely resume its tool effects.")
+        if journal is not None and (pending := journal.pending) is not None:
+            decision = await authorization_status(pending.request_id, agent_id=turn.agent_id)
+
+    tool_lock = asyncio.Lock()
+    partial = ExecutionResult(prompt=prompt, system_prompt=system_prompt, success=True)
+
+    async def interrupt_between_tools() -> bool:
+        suspend = turn.should_suspend
+        pending_input = turn.should_interrupt
+        if not (suspend is not None and suspend()) and not (pending_input is not None and await pending_input()):
+            return False
+        async with tool_lock:
+            if suspend is not None and suspend():
+                raise ConversationSuspended
+            return pending_input is not None and await pending_input()
+
+    async def stream_reply() -> ExecutionResult:
+        terminal = None
+        publisher = turn.publish_progress
+        progress = _LiveTextProgressBuffer(publisher) if publisher is not None else None
+        reply_filter = ConversationReplyFilter()
+        try:
+            async with aclosing(stream_inference(
+                origin, prompt=prompt, system_prompt=system_prompt, mounted_tools=tools,
+                journal=journal, authorization_decision=decision, tool_lock=tool_lock,
+                tool_limit=admission.tool_call_limit, reserve_tool=admission.reserve_tool,
+                current_messages=tuple(Message.model_validate(raw) for raw in turn.messages), history=history,
+                media_context=ResourceContext(turn.agent_id, "internal", language=turn.language, conversation_turn=turn),
+            )) as events:
+                async for event in events:
+                    message = event.message
+                    if message is not None:
+                        partial.add_message(message.model_copy(deep=True))
+                    if message is not None and progress is not None and publisher is not None:
+                        if message.type == "text":
+                            await progress.append(reply_filter.feed(message.content), message.stream_id)
+                        elif message.type == "tool":
+                            await progress.append(reply_filter.finish())
+                            await progress.flush()
+                            await publisher(message)
+                            reply_filter = ConversationReplyFilter()
+                    if event.result is not None:
+                        terminal = event.result
+            if progress is not None:
+                await progress.append(reply_filter.finish(), None)
+                await progress.flush()
+        finally:
+            if progress is not None:
+                await progress.cancel()
+        if terminal is None:
+            raise ConversationExecutionError("Claude conversation closed without a terminal result.")
+        return terminal
+
+    interrupted = False
+    reused = previous is not None and previous.status == "completed" and previous.result is not None
+    if reused:
+        assert previous is not None and previous.result is not None
+        result = previous.result.model_copy(deep=True)
+    elif decision == "pending":
+        result = partial
+    else:
+        guarded_turn = replace(turn, should_interrupt=interrupt_between_tools, should_suspend=None)
+        try:
+            result = await run_preparation(guarded_turn, stream_reply)
+        except ConversationSuperseded:
+            result = partial
+            interrupted = True
+    if interrupted:
+        result.reconcile_terminal_text("")
+    safe_memory_context = memory_context_trace(context.metadata)
+    result.metadata.update({
+        "run_id": str(turn.round_id), "conversation_round_id": str(turn.round_id), "agent_id": turn.agent_id,
+        "driver_code": turn.driver_code, "model_id": model.id, "model_name": model.model_name,
+        "dispatch_result": dispatch_trace,
+        **({"memory_context": safe_memory_context} if safe_memory_context is not None else {}),
+    })
+    if not reused:
+        result.execution_time += preparation_time
+        result.cost = preparation_cost
+        accounting = await aggregate_llm_run_usage(
+            turn.round_id, agent_id=turn.agent_id, correlation_ref=origin.correlation_ref,
+        )
+        if accounting is not None:
+            result.usage, inference_cost = accounting
+            result.cost += inference_cost
+        if journal is not None:
+            await journal.finalize(result, terminal=not interrupted)
+    if result.disposition == "waiting_for_authorization":
+        return ConversationOutcome(text="", metadata={"waiting_for_authorization": True}, execution_result=result)
+    if not result.success:
+        failure = result.failure.message if result.failure is not None else "Claude conversation failed."
+        result.metadata["error"] = failure
+        raise ConversationExecutionError(failure, execution_result=result)
+    reply = conversation_reply_text(result.result or "").strip()
+    result.reconcile_terminal_text(reply)
+    return ConversationOutcome(text=reply, metadata={"interrupted": True} if interrupted else {}, execution_result=result)
+
+
 class HarnessConversationController:
-    """Dedicated harness controller; it never inherits the agent's Task driver."""
+    """Run the engine frozen when the canonical round was admitted."""
 
     async def run(self, turn: ConversationTurn) -> ConversationOutcome:
         async with get_db_session():
@@ -729,6 +875,10 @@ class HarnessConversationController:
                     started_at=started_at,
                 )
 
+            embedded_claude = turn.driver_code == "claude_embedded"
+            if embedded_claude:
+                resolve_driver(turn.driver_code)
+
             current_message_id = str(
                 current_message.get("external_message_id")
                 or current_message.get("id")
@@ -799,7 +949,7 @@ class HarnessConversationController:
                             "run_id": str(turn.round_id),
                             "conversation_round_id": str(turn.round_id),
                             "agent_id": turn.agent_id,
-                            "driver_code": "internal",
+                            "driver_code": turn.driver_code,
                             "dispatch_result": dispatch_trace,
                         },
                     ),
@@ -830,7 +980,7 @@ class HarnessConversationController:
                         "run_id": str(turn.round_id),
                         "conversation_round_id": str(turn.round_id),
                         "agent_id": turn.agent_id,
-                        "driver_code": "internal",
+                        "driver_code": turn.driver_code,
                         "dispatch_result": dispatch_trace,
                     },
                 )
@@ -882,7 +1032,7 @@ class HarnessConversationController:
                         code=str(getattr(agent, "code", "") or ""),
                         first_name=str(getattr(agent, "first_name", "") or ""),
                         last_name=str(getattr(agent, "last_name", "") or ""),
-                        driver_code="internal",
+                        driver_code=turn.driver_code,
                         gender=(
                             "F"
                             if getattr(title, "gender", None) == "F"
@@ -914,10 +1064,12 @@ class HarnessConversationController:
                     first_name=str(getattr(agent, "first_name", "")), last_name=str(getattr(agent, "last_name", "")), driver_code="internal"),
                 model=ResolvedModel(id=llm.id, code=llm.code, model_name=llm.llm_name, label=llm.label, requested_effort="standard"),
                 resume_checkpoint=turn.resume_checkpoint, control=AgentRunControl(save_checkpoint=turn.save_checkpoint),
-            )) if turn.save_checkpoint is not None else None
+            )) if not embedded_claude and turn.save_checkpoint is not None else None
             if checkpoint is not None:
                 turn = replace(turn, produced_document_references=checkpoint.produced_document_references)
             toolset = None
+            mounted_tools = None
+            claude_journal = None
             presentations: list[McpPresentation] = []
 
             def present(result: McpPresentation) -> None:
@@ -929,14 +1081,33 @@ class HarnessConversationController:
             if not turn.force_response:
                 # Release memory usage writes before waiting for a catalog slot.
                 await release_db_transaction()
-                toolset, tool_advertisement = await build_conversation_toolset(
-                    turn.agent_id,
-                    resources={
-                        "conversation_turn": turn,
-                        **({"mcp_presentation_sink": present}
-                           if turn.origin == "text" and turn.messaging_context.get("platform") == "internal" else {}),
-                    },
-                )
+                resources: dict[str, object] = {
+                    "conversation_turn": turn,
+                    **({"mcp_presentation_sink": present}
+                       if turn.origin == "text" and turn.messaging_context.get("platform") == "internal" else {}),
+                }
+                if embedded_claude:
+                    if turn.save_checkpoint is not None and turn.assert_fresh_before_effect is not None:
+                        previous = turn.resume_checkpoint
+                        claude_journal = ClaudeEffectJournal(driver_code=turn.driver_code, run_id=turn.round_id,
+                            save=turn.save_checkpoint, previous=previous if previous is not None
+                            and previous.status == "waiting_for_authorization" else None)
+                        freshness = turn.assert_fresh_before_effect
+
+                        async def before_tool_effect() -> None:
+                            if not await freshness():
+                                raise ToolPermissionRejectedError("This conversation round no longer authorizes the action.")
+
+                        resources["before_tool_effect"] = before_tool_effect
+                    mounted_tools = await build_mounted_mcp_client(
+                        turn.agent_id, resources=resources, include_effects=claude_journal is not None,
+                    )
+                    tool_advertisement = await build_agent_tool_advertisement(
+                        turn.agent_id, runtime="internal", conversation_only=True, include_task_only_tools=True,
+                        mounted_native_tool_names=mounted_tools.native_names,
+                    )
+                else:
+                    toolset, tool_advertisement = await build_conversation_toolset(turn.agent_id, resources=resources)
                 process_advertisement = await build_agent_process_advertisement(
                     turn.agent_id,
                     tool_advertisement.tool_names,
@@ -962,6 +1133,24 @@ class HarnessConversationController:
                 )
                 or ""
             )
+            if embedded_claude:
+                system_prompt = _system_prompt(
+                    turn, agent, tool_advertisement=tool_advertisement.text,
+                    process_advertisement=process_advertisement, tool_names=tool_advertisement.tool_names,
+                    context=context, executor="conversation", has_prior_history=bool(history), has_skills=False,
+                    suffix=prompt_suffix, action_policy=action_policy, dispatch_analysis=work_analysis,
+                )
+                outcome = await _run_claude_conversation(
+                    turn, model=ResolvedModel(
+                        id=llm.id, code=llm.code, model_name=llm.llm_name, label=llm.label,
+                        requested_effort="standard", reasoning_effort=reasoning_effort,
+                    ), history=history, current_prompt=_current_turn_prompt(turn, context),
+                    system_prompt=f"{system_prompt}\n\n{CONVERSATION_TURN_BOUNDARY}",
+                    context=context, dispatch_trace=dispatch_trace,
+                    preparation_time=dispatch_time, preparation_cost=dispatch_cost,
+                    tools=mounted_tools, journal=claude_journal,
+                )
+                return replace(outcome, mcp_presentations=tuple(presentations))
             async def pending_interruption() -> bool:
                 if turn.should_suspend is not None and turn.should_suspend():
                     return True
@@ -1221,8 +1410,8 @@ def _voice_turn_messaging_context(request: AgentRunRequest) -> dict[str, object]
 
 async def stream_voice_conversation(
     request: AgentRunRequest,
-) -> AsyncIterator[AgentEvent]:
-    """Run a voice turn through the internal conversation prompt and tool projection."""
+) -> AsyncGenerator[AgentEvent, None]:
+    """Run a voice turn through the selected conversational engine and governed tools."""
 
     raw_conversation_round_id = request.task_data.get("conversation_round_id")
     conversation_round_id = (
@@ -1232,6 +1421,11 @@ async def stream_voice_conversation(
         else None
     )
     correlation_id = conversation_round_id or request.run_id
+    try:
+        room_id = UUID(request.message_group_id or "")
+    except ValueError:
+        room_id = correlation_id
+    embedded_claude = request.driver_code == "claude_embedded"
     raw_history = tuple(request.conversation_history)
     history: list[Message] = []
     serialized_history: list[Mapping[str, object]] = []
@@ -1246,7 +1440,7 @@ async def stream_voice_conversation(
     from app.conversation.facade import active_work_snapshot
 
     turn = ConversationTurn(
-        room_id=correlation_id,
+        room_id=room_id,
         round_id=correlation_id,
         agent_id=request.agent_id,
         language=str(request.task_data.get("language") or "en"),
@@ -1260,6 +1454,8 @@ async def stream_voice_conversation(
             if isinstance(item, Mapping)
         ),
         origin="voice",
+        driver_code=request.driver_code,
+        assert_fresh_before_effect=request.control.before_conversation_effect,
         resume_checkpoint=request.resume_checkpoint,
         save_checkpoint=request.save_checkpoint,
     )
@@ -1275,13 +1471,34 @@ async def stream_voice_conversation(
         messaging_context=request.messaging_context,
         metadata=request.metadata,
     )
-    checkpoint = HarnessRunCheckpoint(request)
-    turn = replace(turn, produced_document_references=checkpoint.produced_document_references)
+    checkpoint = None if embedded_claude else HarnessRunCheckpoint(request)
+    if checkpoint is not None:
+        turn = replace(turn, produced_document_references=checkpoint.produced_document_references)
     await release_db_transaction()
-    toolset, tool_advertisement = await build_conversation_toolset(
-        request.agent_id,
-        resources={"conversation_turn": turn},
-    )
+    resources: dict[str, object] = {"conversation_turn": turn}
+    toolset = mounted_tools = journal = None
+    if embedded_claude:
+        guard = turn.assert_fresh_before_effect
+        if guard is not None and request.save_checkpoint is not None:
+            previous = request.resume_checkpoint
+            journal = ClaudeEffectJournal(driver_code=request.driver_code, run_id=request.run_id,
+                save=request.save_checkpoint, previous=previous if previous is not None
+                and previous.status == "waiting_for_authorization" else None)
+
+            async def before_tool_effect() -> None:
+                if not await guard():
+                    raise ToolPermissionRejectedError("This voice round no longer authorizes the action.")
+
+            resources["before_tool_effect"] = before_tool_effect
+        mounted_tools = await build_mounted_mcp_client(
+            request.agent_id, resources=resources, include_effects=journal is not None,
+        )
+        tool_advertisement = await build_agent_tool_advertisement(
+            request.agent_id, runtime="internal", conversation_only=True, include_task_only_tools=True,
+            mounted_native_tool_names=mounted_tools.native_names,
+        )
+    else:
+        toolset, tool_advertisement = await build_conversation_toolset(request.agent_id, resources=resources)
     process_advertisement = await build_agent_process_advertisement(
         request.agent_id,
         tool_advertisement.tool_names,
@@ -1294,22 +1511,32 @@ async def stream_voice_conversation(
         await params_service.get_or_default(Params.AI_CONVERSATION_ACTION_POLICY)
         or ""
     )
-    capabilities = await build_internal_skill_capabilities(request.agent_id)
+    capabilities = [] if embedded_claude else await build_internal_skill_capabilities(request.agent_id)
+    system_prompt = _system_prompt(
+        turn,
+        request.agent,
+        tool_advertisement=tool_advertisement.text,
+        process_advertisement=process_advertisement,
+        tool_names=tool_advertisement.tool_names,
+        context=context,
+        executor="voice",
+        has_prior_history=bool(history),
+        has_skills=bool(capabilities),
+        suffix=prompt_suffix,
+        action_policy=action_policy,
+    )
+    if embedded_claude:
+        if conversation_round_id is None or request.attempt_id is None or mounted_tools is None:
+            raise PermissionError("Claude voice requires an admitted conversation attempt.")
+        async with aclosing(_stream_claude_voice(
+            request, conversation_round_id, mounted_tools, journal, history, system_prompt,
+        )) as events:
+            async for event in events:
+                yield event
+        return
     runtime = await create_agent(
         llm=llm,
-        system_prompt=_system_prompt(
-            turn,
-            request.agent,
-            tool_advertisement=tool_advertisement.text,
-            process_advertisement=process_advertisement,
-            tool_names=tool_advertisement.tool_names,
-            context=context,
-            executor="voice",
-            has_prior_history=bool(history),
-            has_skills=bool(capabilities),
-            suffix=prompt_suffix,
-            action_policy=action_policy,
-        ),
+        system_prompt=system_prompt,
         mcp_servers=[toolset],
         capabilities=capabilities,
         task_id=None,
@@ -1398,6 +1625,67 @@ async def stream_voice_conversation(
         result.schema_version = "galaris.execution-result/v2"
         result.authorization_requests = list(pending_authorizations)
     yield AgentEvent.from_result(result)
+
+
+async def _stream_claude_voice(
+    request: AgentRunRequest, round_id: UUID, tools: MountedMcpTools,
+    journal: ClaudeEffectJournal | None, history: Sequence[Message], system_prompt: str,
+) -> AsyncGenerator[AgentEvent, None]:
+    from .claude_driver import stream_inference
+
+    assert request.attempt_id is not None
+    origin = EmbeddedRoundInference(
+        agent_id=request.agent_id, round_id=round_id, attempt_id=request.attempt_id,
+        run_id=request.run_id, driver_code=request.driver_code,
+        model_id=request.model.id, model_code=request.model.code,
+        reasoning_effort=request.model.reasoning_effort, audio=True,
+        request_limit=request.limits.request_limit,
+    )
+    previous = request.resume_checkpoint
+    if previous is not None and previous.status == "completed" and previous.result is not None:
+        yield AgentEvent.from_result(previous.result.model_copy(deep=True))
+        return
+    decision = None
+    if journal is not None and (pending := journal.pending) is not None:
+        decision = await authorization_status(pending.request_id, agent_id=request.agent_id)
+        if decision == "pending":
+            result = ExecutionResult(prompt=request.objective)
+            await journal.finalize(result)
+            yield AgentEvent.from_result(result)
+            return
+    prompt = _claude_conversation_prompt(request.agent_id, history, request.objective)
+    await release_db_transaction()
+    reply_filter = ConversationReplyFilter()
+    async with aclosing(stream_inference(
+        origin, prompt=prompt, system_prompt=f"{system_prompt}\n\n{CONVERSATION_TURN_BOUNDARY}",
+        mounted_tools=tools, journal=journal, authorization_decision=decision,
+        tool_lock=request.control.conversation_tool_lock,
+        tool_limit=request.limits.tool_call_limit, reserve_tool=request.control.reserve_conversation_tool,
+        history=history, media_context=ResourceContext(
+            request.agent_id, "internal", language=str(request.task_data.get("language") or ""),
+        ),
+    )) as events:
+        async for event in events:
+            message, result = event.message, event.result
+            if message is not None and message.type == "text":
+                content = reply_filter.feed(message.content)
+                if content:
+                    yield AgentEvent.from_message(message.model_copy(update={"content": content}))
+                continue
+            pending_text = reply_filter.finish()
+            if pending_text:
+                yield AgentEvent.from_message(AIMessage(type="text", content=pending_text))
+            reply_filter = ConversationReplyFilter()
+            if result is not None:
+                result.reconcile_terminal_text(conversation_reply_text(result.result).strip())
+                accounting = await aggregate_llm_run_usage(
+                    request.run_id, agent_id=request.agent_id, correlation_ref=origin.correlation_ref,
+                )
+                if accounting is not None:
+                    result.usage, result.cost = accounting
+                if journal is not None:
+                    await journal.finalize(result)
+            yield event
 
 
 __all__ = ["HarnessConversationController", "stream_voice_conversation"]

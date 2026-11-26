@@ -39,6 +39,12 @@ instantanés. Pour une Task, PostgreSQL réutilise les préfixes du journal lors
 la révision correspond et conserve le checkpoint complet dans la tentative. Une
 modification concurrente déclenche une écriture complète sous le bail courant.
 
+Pour une Task, les deux harnais embarqués enregistrent le checkpoint avant la
+première inférence et conservent le résultat final réussi avant de le remettre au
+scheduler. Si le worker disparaît pendant le flux, une nouvelle tentative reprend
+le même run selon l’état des effets. Si le résultat final est déjà enregistré, elle
+l’applique sans appeler le modèle de nouveau. [Contrat de reprise](../../../../project/decisions/0100-harness-capability-and-recovery-contract.md)
+
 Les discussions et les tâches disposent de files de préparation MCP indépendantes.
 La limite fournisseur est partagée en base. Le scheduler réserve la capacité
 interactive avant la prise d'une tâche de fond. [Admission LLM](../../../../project/decisions/0181-provider-llm-admission.md)
@@ -101,9 +107,11 @@ et [0256](../../../../project/decisions/0256-contact-acquisition-and-dream-recon
 Seul `messenger_send_message_to_user(..., wait_for_reply=True)` demande une attente immédiate
 `waiting_for_children` après l'admission du collègue. Le défaut `False` et `task_run` permettent
 de poursuivre le travail indépendant et de solliciter d'autres contributions avant l'attente
-en fin de tour. Le harnais interne termine le lot d'outils avant toute nouvelle
-inférence ; les runtimes réseau managés bloquent les nouveaux départs, conservent les reçus
-des appels engagés puis ferment l'inférence. Un effet incertain conserve sa réconciliation.
+en fin de tour. Les deux harnais embarqués terminent le lot d’outils avant toute nouvelle
+inférence. Pour Claude, la passerelle relit le checkpoint de la tentative avant d’admettre
+l’appel modèle suivant. Un worker de remplacement peut appliquer l’attente enregistrée sans
+relancer le SDK. Les runtimes réseau managés bloquent les nouveaux départs, conservent les reçus
+des appels engagés puis ferment l’inférence. Un effet incertain conserve sa réconciliation.
 Task applique ensuite sa suspension et reprend une fois avec les résultats durables,
 y compris lorsque le collègue a répondu avant la suspension. Les images managées doivent
 être actualisées pour appliquer ce signal. Voir [0260](../../../../project/decisions/0260-peer-wait-at-tool-boundary.md).
@@ -473,13 +481,11 @@ Le scheduler applique la limite sous le verrou transactionnel de l'agent en comp
 leases non expirés. Le harnais interne transporte explicitement `task_id` et `agent_run_id`.
 Le service LLM redérive le round et le Process depuis la Tâche.
 Voir [0304](../../../../project/decisions/0304-runtime-llm-call-attribution.md).
-Un Harness n'exécute jamais un round conversationnel et ne transporte donc jamais de
-`conversation_round_id` : les conversations texte et voix utilisent exclusivement leur contrôleur
-interne dédié.
-Les appels bas niveau du contrôleur conversationnel interne conservent en revanche leur corrélation
-`agent_id` pour l'audit sans devenir des exécutions de Harness ni des requêtes de runtime managé :
-un round conversationnel ou vocal sans tâche reste donc autorisé quel que soit le driver configuré
-sur l'agent. La configuration
+Le contrôleur conversationnel embarqué conserve le `conversation_round_id` pour ses appels
+sans tâche. Pour Claude Agent SDK, le jeton de la tentative lie le round, l'agent, le modèle
+et l'exécution à la passerelle locale. Celle-ci contrôle la tentative avant l'envoi au fournisseur.
+Le pipeline vocal transcription et synthèse utilise la même règle d’admission que Chat.
+Voir [0327](../../../../project/decisions/0327-embedded-conversation-inference-origin.md). La configuration
 opérateur d'Hermès est possédée par `/api/hermes/configurations` et n'est plus exposée par le CRUD
 Agent générique. Sa présentation reste une contribution de `front/bridge/hermes` à l'onglet de la
 fiche Agent et au sous-menu `Préférences > Harnais`, sans entrée de navigation autonome.
@@ -781,6 +787,14 @@ La barrière d'exécution laisse plusieurs lecteurs sûrs progresser ensemble, m
 politique reste volontairement pessimiste : déclarer une fonction sûre est une décision de contrat,
 pas une inférence depuis son nom.
 
+Une tâche Claude conserve le plafond d’outils fixé à l’admission de son run. Chaque appel
+admis en exécution réserve un emplacement dans le checkpoint, y compris une lecture. La
+reprise hérite du compteur et du plafond. Un accord humain poursuit l’appel déjà réservé.
+Pour Chat et la voix avec Claude, ces valeurs sont conservées sur la tentative du round.
+Deep les conserve sur la soumission, y compris quand celle-ci change de bail. Chaque nouvel
+appel réserve sa place sous le verrou du propriétaire. Le round ou la soumission suivante
+prend le réglage courant.
+
 Avant chaque requête modèle, l'historique est compacté selon la fenêtre de contexte résolue. Les
 paires appel/retour d'outil restent des unités atomiques et les éléments les plus récents sont
 conservés dans le budget restant. Les arguments JSON d'un appel d'outil restent structurellement
@@ -966,6 +980,35 @@ projection dédiée : connexion active, fonction présente dans la liste de son 
 effectifs et profil du runtime. La liste des Services intégrés est fixée par le code. Pour un
 Service personnalisé, le catalogue et l'appel exigent une activation par fonction. Un
 connecteur MCP externe dont la liste est vide n'est pas résolu.
+
+Le SDK embarqué utilise le proxy Galaris pour les outils MCP externes. Leur exécution passe par
+le journal d’effets et le contrôle du bail avant l’envoi. Le proxy garde les métadonnées
+d’autorisation et de reprise dans Galaris. Les noms des fonctions natives leur sont réservés.
+
+Lorsqu’une étape a une sélection d’outils, Claude voit au premier appel cette sélection et ses
+outils complémentaires. `search_deferred_tools` recherche parmi les autres outils autorisés au
+moyen du catalogue commun. `call_discovered_tool` utilise leur nom exact et leurs arguments.
+La recherche et l’appel revérifient la visibilité actuelle. Le journal d’effets et la reprise
+après accord utilisent l’identité de l’outil physique. Les résultats de recherche expirent à
+la fin de la tentative.
+
+Claude embarqué et Pydantic AI utilisent les mêmes affectations de compétences de bibliothèque
+et personnelles. Claude reçoit les guides configurés en chargement immédiat dans le prompt
+système. Ce prompt contient aussi le catalogue des compétences différées, que `load_capability`
+charge par identifiant. `read_skill_file` lit une ressource ou une section Markdown d’une compétence chargée.
+Chaque ouverture ou lecture vérifie les droits courants. À la reprise d’une session SDK,
+Galaris conserve l’appariement des appels dans le transcript et remplace le contenu des anciens
+résultats de compétence pour que le moteur puisse consulter le catalogue courant.
+
+Une tâche Claude peut suspendre son exécution en attendant une autorisation de Service. Le
+checkpoint associe la session SDK chiffrée et l’appel d’outil à cette exécution. À la reprise,
+une décision encore en attente ne produit aucun appel modèle. La tentative qui reprend un accord
+revalide le bail et les droits courants, transmet l’opération d’origine au Service, puis poursuit
+la session SDK avec le reçu. Les nouveaux appels modèle appartiennent à la tentative de reprise.
+
+Dans Chat, le même journal est stocké dans le checkpoint chiffré du round. Un nouveau message peut
+invalider son autorisation encore en attente. Une action déjà en cours se termine avant l’arrêt du
+tour précédent. Les messages et les appels modèle gardent leur rattachement à leur round d’origine.
 
 Le profil conversationnel du dispatcher répond directement aux humains et arbitre `EXEC`/`END`
 pour un message émis par une autre IA. Ce `END` termine uniquement le round conversationnel sans
@@ -1211,11 +1254,16 @@ Dans le pipeline STT, la détection locale pendant la lecture met d'abord la sor
 en pause sans consommer l'audio restant ni annuler le run. Une transcription finale
 vide retire l'indicateur provisoire et reprend la lecture conservée. Une transcription
 finale non vide confirme la prise de parole : elle annule le run courant et termine le round en
-`INTERRUPTED`, pas en `Task.ERROR`. Son objectif effectif reste en attente dans la session et est
-préfixé au transcript suivant. Seule une réponse complète efface cet objectif. Le prompt commun
+`INTERRUPTED`. Lorsqu’aucun effet n’a commencé, son objectif effectif reste en attente dans la
+session et est préfixé au transcript suivant. Le prompt commun
 autorise la parole et les consultations bornées. Toute autre action doit lancer sans attente un
 Process affecté via `process_start_conversation`, ou une tâche autosuffisante via
 `task_run`; le runtime conversationnel ne réalise jamais cette action directement.
+
+Le pipeline vocal sélectionne son harnais à l’ouverture de chaque round, selon la même règle
+que Chat. Avec Claude embarqué, le transport vocal possède un bail sur la tentative. Chaque
+appel du SDK est journalisé en `conversation.audio` avec le round, sa tentative et le demandeur.
+Une interruption ou une clôture retire l’autorité de la tentative précédente.
 
 Le mode vocal `realtime` ne découpe pas l’audio en exécutions textuelles. `app.agent` compose une
 fois l’identité, le prompt commun et les providers de contexte dans un
@@ -1244,6 +1292,23 @@ pipeline STT → exécuteur conversationnel → TTS. Une voix native associée �
 ouvre une session audio → audio ; aucun faux transcript n'est créé. Les deux variantes
 conservent le même contexte, la même politique conversationnelle, une surface d’outils bornée aux
 conversations et la même persistance de session vocale.
+
+Pour les nouveaux appels routés vers Claude Agent embarqué, Galaris utilise le pipeline
+STT → Claude → TTS. Une voix OpenAI compatible conserve son compte et son identifiant de voix
+pour l’API Speech. Le modèle **Transcription** du profil reçoit l’audio. Le bridge OpenAI peut
+ouvrir une session WebSocket dédiée à la transcription et Galaris décide quand valider la parole.
+Le bail et la filiation des appels Claude restent attachés au round conversationnel.
+
+### Mode Deep
+
+Le mode `@deep` utilise le harnais affecté à l’agent. Avec Claude embarqué, chaque soumission
+possède un bail et un modèle admis. Les appels Claude portent la finalité `conversation.deep`
+et les références `deep_session_id` et `deep_submission_id`. Claude reprend l’historique SDK
+chiffré de cette session lors de la soumission suivante. Les autres salles ont leur propre historique.
+
+Une autorisation d’outil concerne une soumission précise. Deep libère son bail pendant l’attente
+et garde les soumissions suivantes dans l’ordre. Après la décision, Deep restaure le checkpoint
+chiffré sous un nouveau bail. Un arrêt pendant l’attente annule l’autorisation et débloque la file.
 
 ## Matrice d’exécution
 

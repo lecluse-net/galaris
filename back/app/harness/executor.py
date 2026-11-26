@@ -3,32 +3,34 @@
 from __future__ import annotations
 
 import asyncio
-import re
 import time
+from contextlib import aclosing
 from datetime import datetime, timezone
 from collections.abc import Callable, Sequence
-from typing import Any, AsyncIterator, List, Optional, TypedDict, cast
+from typing import Any, AsyncGenerator, AsyncIterator, List, Optional, TypedDict, cast
 from uuid import UUID
 from core.i18n import is_supported, render_prompt, t
+from core.database import get_db_session, release_db_transaction
 from core.params import runtime_settings
 from app.llm import LLM, LLMCallPurpose, llm_service
+from app.agent import HarnessCheckpointError, aggregate_llm_run_usage, assess_checkpoint
 from app.agent.contracts import (
     AgentEvent,
     AgentRunRequest,
     AgentSnapshot,
     ExecutionResult,
     HarnessFailure,
-    AIResult,
     AIMessage,
+    AIResult,
 )
 from app.services.agent_registry import (
     build_agent_tool_advertisement,
     build_tool_context_instructions,
 )
-from core.database import release_db_transaction
-from app.services.facade import canonical_service_call
 from app.process import build_agent_process_advertisement
 from .mcp_toolset import build_agent_mcp_toolset
+from .task_tool_scope import CONSOLE_RECOVERY_TOOLS, recover_console_receipt, task_receipts_are_current, task_tool_scope
+from .tool_results import decode_tool_result, document_creation_receipt
 from .runtime import AgentRuntime, create_agent
 from .checkpoint import HarnessRunCheckpoint
 from .run_control import RunResources
@@ -54,42 +56,6 @@ _HISTORY_MAX_MESSAGES = 30
 _HISTORY_MAX_CHARS_PER_MESSAGE = 760
 # Minimum interval between partial task snapshots while model text is streaming.
 _PROGRESS_PERSIST_INTERVAL = 0.5
-
-_DELIVERY_TOOLS = frozenset(
-    {
-        "messenger_room_send_message",
-        "messenger_send_message_to_user",
-        "messenger_room_send_file",
-        "messenger_send_file_to_user",
-    }
-)
-_SCOPED_PROCESS_TOOLS = frozenset(
-    {
-        "process_start",
-        "process_analyze_run",
-    }
-)
-_SCOPED_TOOL_COMPANIONS: dict[str, frozenset[str]] = {
-    # A writer without its read/inspection companions leaves an executor unable to
-    # verify the artifact it just produced. These are capability dependencies, not
-    # driver-specific branches.
-    "file_write": frozenset(
-        {"file_schemes", "file_list", "file_info", "file_read"}
-    ),
-    "file_create": frozenset(
-        {"file_schemes", "file_list", "file_info", "file_read"}
-    ),
-    "file_append": frozenset(
-        {"file_schemes", "file_list", "file_info", "file_read"}
-    ),
-    "file_edit": frozenset(
-        {"file_schemes", "file_list", "file_info", "file_read"}
-    ),
-    # A human name is not an SMTP address. Keep the governed Memory lookup
-    # functions in every planner-narrowed run that is allowed to send Mail.
-    "mail_send": frozenset({"file_search", "file_read"}),
-    "process_start": frozenset({"file_list", "file_read"}),
-}
 
 
 def _task_language(task: AgentRunRequest | None) -> str:
@@ -119,62 +85,6 @@ def _correlation_ids(
     return task.task_id, task.run_id, conversation_round_id
 
 
-def _scoped_tool_names(task: AgentRunRequest) -> set[str] | None:
-    """Return the planner tool scope when one exists."""
-    selected: set[str] = set()
-    data = task.data if isinstance(task.data, dict) else {}
-    raw_plan_tools = data.get("plan_tools")
-    if isinstance(raw_plan_tools, list):
-        selected.update(
-            str(item).strip()
-            for item in cast(list[Any], raw_plan_tools)
-            if str(item).strip()
-        )
-    # Legacy plans created before ``plan_tools`` often name exact MCP functions in their
-    # objectives. Extract only snake_case identifiers; the toolset drops unknown names.
-    if task.parent_id is not None and not selected:
-        selected.update(
-            re.findall(
-                r"(?<![\w])([A-Za-z][A-Za-z0-9]*(?:_[A-Za-z0-9]+)+)(?![\w])",
-                task.objective or "",
-            )
-        )
-
-    if data.get("goal_referrer_type") == "AGENT":
-        selected.add("task_run")
-
-    if not selected:
-        return None
-    legacy_task_tools = selected & {"task_stop", "task_work_update"}
-    selected.difference_update(legacy_task_tools)
-    selected.update(canonical_service_call(name, {})[0] for name in legacy_task_tools)
-    # A planned leaf may only publish when its materialized step explicitly permits it.
-    # Delivery tools are no longer unconditional support capabilities: adding them behind
-    # the planner's back caused intermediate artifacts to be sent and consumed too early.
-    if task.parent_id is not None and data.get("delivery_policy") != "required":
-        selected.difference_update(_DELIVERY_TOOLS)
-    raw_delivery_recovery = data.get("delivery_recovery")
-    delivery_recovery = (
-        cast(dict[str, Any], raw_delivery_recovery)
-        if isinstance(raw_delivery_recovery, dict)
-        else None
-    )
-    if (
-        delivery_recovery is not None
-        and delivery_recovery.get("status") == "running"
-    ):
-        # Recovery is intentionally narrower than an ordinary planned leaf: the final
-        # artifact already exists and only the exact recorded delivery may be retried.
-        # Exposing process discovery or mutation companions here would reopen the work
-        # and make a duplicate or altered delivery possible.
-        return selected
-    for tool_name in tuple(selected):
-        selected.update(_SCOPED_TOOL_COMPANIONS.get(tool_name, ()))
-    # Planned leaves retain Process launch and analysis. File companions follow an
-    # explicit Process launch in the plan and retain their normal resource ACLs.
-    return selected | set(_SCOPED_PROCESS_TOOLS)
-
-
 class AgentExecutor:
     def __init__(self) -> None:
         self.agent_id: int | None
@@ -196,7 +106,7 @@ class AgentExecutor:
         # The internal harness and Hermes consume the same aggregated MCP catalog. Pydantic AI
         # uses it in-process while Hermes uses the streamable HTTP endpoint.
         self.tools = []
-        allowed_tool_names = _scoped_tool_names(task) if task is not None else None
+        allowed_tool_names = task_tool_scope(task).eager_names if task is not None else None
         expected_catalog_version = (
             str(task.data.get("tool_catalog_version") or "").strip()
             if task is not None and isinstance(task.data, dict)
@@ -401,7 +311,7 @@ def _conversation_history_prompt_block(  # pyright: ignore[reportUnusedFunction]
 async def _stream(
     task: AgentRunRequest,
     lifecycle: RunResources,
-) -> AsyncIterator[AgentEvent]:
+) -> AsyncGenerator[AgentEvent, None]:
     """Stream an internal harness run and emit a terminal execution result."""
     if bool(task.task_data.get("conversation_only")):
         from .conversation import stream_voice_conversation
@@ -409,6 +319,42 @@ async def _stream(
         async for event in stream_voice_conversation(task):
             yield event
         return
+
+    durable_task = task.task_id is not None and task.attempt_id is not None and task.save_checkpoint is not None
+    previous = task.resume_checkpoint
+    if (durable_task and previous is not None and previous.driver_code == "internal"
+            and previous.status == "completed" and previous.result is not None and previous.result.success):
+        if previous.runtime_run_id != str(task.run_id) or not assess_checkpoint(previous).resumable:
+            raise HarnessCheckpointError("The internal Task checkpoint does not permit recovery.")
+        yield AgentEvent.from_result(previous.result.model_copy(deep=True))
+        return
+
+    checkpoint = HarnessRunCheckpoint(task)
+    recorded_documents = {
+        receipt[0]: (effect, receipt[1])
+        for effect in checkpoint.effects
+        if (receipt := document_creation_receipt(effect)) is not None
+    } if task.task_id is not None else {}
+    if task.task_id is not None and recorded_documents:
+        async with get_db_session():
+            if not await task_receipts_are_current(task.agent_id, task.task_id, {"file_create"}, set(recorded_documents)):
+                raise HarnessCheckpointError("The internal Task could not verify the recorded document creations.")
+
+    from app.console import ConsoleRunResource, resolve_ssh_connection
+
+    ssh_config = await resolve_ssh_connection(task.agent_id)
+    settled_console = {
+        (name, scope) for effect in checkpoint.effects
+        if effect.get("status") == "completed" and isinstance(name := effect.get("tool_name"), str)
+        and name in CONSOLE_RECOVERY_TOOLS and isinstance(scope := effect.get("recovery_scope"), str) and scope
+    }
+    if task.task_id is not None and settled_console:
+        if ssh_config is None or any(scope != ssh_config.recovery_scope for _, scope in settled_console):
+            raise HarnessCheckpointError("The internal Task could not verify the original Console connection.")
+        async with get_db_session():
+            if not await task_receipts_are_current(task.agent_id, task.task_id, {name for name, _ in settled_console}, set(),
+                                                   console_scope=ssh_config.recovery_scope):
+                raise HarnessCheckpointError("The internal Task could not verify the recorded Console effects.")
 
     start_time = time.time()
     from app.agent import executor_service
@@ -470,36 +416,34 @@ async def _stream(
         )
     )
 
-    checkpoint = HarnessRunCheckpoint(task)
     run_resources: dict[str, Any] = {
         "run": lifecycle,
         "checkpoint": checkpoint,
     }
-    from app.console import ConsoleRunResource, resolve_ssh_connection
-    ssh_config = await resolve_ssh_connection(task.agent_id)
     if ssh_config is not None:
-        import hashlib
-        import json
-
-        checkpoint.recovery_scope = hashlib.sha256(
-            json.dumps([ssh_config.connection_id, ssh_config.host, ssh_config.port,
-                        ssh_config.username, ssh_config.known_host_key], separators=(",", ":")).encode()
-        ).hexdigest()
         created_console = ConsoleRunResource(ssh_config)
+        checkpoint.recovery_scope = ssh_config.recovery_scope
         run_resources["console"] = created_console
 
         async def recover_console_effect(effect: dict[str, Any]) -> tuple[bool, Any]:
-            if effect.get("tool_name") not in {"console_exec", "console_start"}:
+            name, task_id = effect.get("tool_name"), task.task_id
+            if not isinstance(name, str) or name not in CONSOLE_RECOVERY_TOOLS or task_id is None:
                 return False, None
             try:
-                recovered = await created_console.execution.recover_operation(
-                    UUID(str(effect["operation_id"])),
-                    allow_running=effect.get("tool_name") == "console_start",
-                )
-            except Exception:
-                # A failed reconciliation cannot authorize a new execution.
+                operation_id = UUID(str(effect["operation_id"]))
+            except (KeyError, ValueError):
                 return False, None
-            return (True, recovered.model_dump(mode="json")) if recovered is not None else (False, None)
+            scope = created_console.config.recovery_scope
+            async with get_db_session():
+                if not await task_receipts_are_current(task.agent_id, task_id, {name}, set(), console_scope=scope):
+                    return False, None
+            receipt = await recover_console_receipt(created_console, name, operation_id)
+            if receipt is None:
+                return False, None
+            async with get_db_session():
+                if not await task_receipts_are_current(task.agent_id, task_id, {name}, set(), console_scope=scope):
+                    return False, None
+            return True, receipt.model_dump(mode="json")
 
         checkpoint.recover_effect = recover_console_effect
 
@@ -542,6 +486,7 @@ async def _stream(
             system_prompt=system_prompt,
         )
     )
+    prior_trace_length = len(ai_result.messages)
     checkpoint.result_factory = lambda: ExecutionResult(
         **ai_result.model_dump(exclude={"execution_time"}),
         execution_time=time.time() - start_time,
@@ -588,7 +533,7 @@ async def _stream(
     native_history: _NativeHistoryOptions = {}
     if task.deep_session_id is not None:
         native_history = {"native_history": task.deep_native_history, "save_native_history": task.control.save_native_history}
-    message_stream: AsyncIterator[AIMessage] = runtime_agent.run(
+    message_stream = runtime_agent.run(
         prompt=human_prompt,
         message_history=message_history or None,
         group_id=task.message_group_id,
@@ -608,34 +553,35 @@ async def _stream(
     await run_control.set_cancel_request(task.run_id, cooperative_cancel)
     await run_control.set_call_recovery_request(task.run_id, getattr(runtime_agent, "request_call_recovery", None))
     try:
+        if durable_task and previous is None:
+            await checkpoint.begin_run()
         # Make the execution panel (and its live LLM-call subscription) available
         # before the first provider request starts.
         await persist_progress(force=True)
-        async for message in message_stream:
-            ai_result.add_message(message.model_copy(deep=True))
-            if message.type == "text" and not message.success:
-                ai_result.success = False
+        async with aclosing(message_stream) as messages:
+            async for message in messages:
+                ai_result.add_message(message.model_copy(deep=True))
+                if message.type == "text" and not message.success:
+                    ai_result.success = False
 
-            if message.stream_complete is not False or not message.stream_id or not message.success:
-                # The live trace records visible fragments. Tool results and
-                # closed blocks also update the durable result used on reopening.
-                await persist_progress(
-                    force=(message.type == "tool" and message.tool_name != "thinking")
-                    or not message.success or message.stream_complete is True,
-                )
+                if message.stream_complete is not False or not message.stream_id or not message.success:
+                    # The live trace records visible fragments. Tool results and
+                    # closed blocks also update the durable result used on reopening.
+                    await persist_progress(
+                        force=(message.type == "tool" and message.tool_name != "thinking")
+                        or not message.success or message.stream_complete is True,
+                    )
 
-            # Empty completion markers make a Task block visible without replaying text.
-            if message.has_visible_content() or message.stream_complete is True:
-                yield AgentEvent.from_message(message)
-    except asyncio.CancelledError:
-        console_resource = run_resources.get("console")
-        if isinstance(console_resource, ConsoleRunResource):
-            await asyncio.shield(console_resource.execution.cancel_active())
-        raise
-    except Exception:
-        console_resource = run_resources.get("console")
-        if isinstance(console_resource, ConsoleRunResource):
-            await asyncio.shield(console_resource.execution.cancel_active())
+                # Empty completion markers make a Task block visible without replaying text.
+                if message.has_visible_content() or message.stream_complete is True:
+                    yield AgentEvent.from_message(message)
+    except (Exception, asyncio.CancelledError, GeneratorExit):
+        try:
+            console_resource = run_resources.get("console")
+            if isinstance(console_resource, ConsoleRunResource):
+                await asyncio.shield(console_resource.execution.cancel_active())
+        finally:
+            reset_context(_ctx_token)
         raise
     finally:
         await run_control.set_call_recovery_request(task.run_id, None)
@@ -658,26 +604,57 @@ async def _stream(
     if ai_result.success and isinstance(terminal_output, str):
         ai_result.reconcile_terminal_text(terminal_output)
 
-    await executor_service.recover_after_verified_delivery(
-        task,
-        ai_result,
-        failure_kind=failure_kind,
-    )
+    if recorded_documents:
+        displayed_documents = {
+            uri for message in ai_result.messages
+            if message.type == "tool" and message.tool_name == "file_create" and message.success
+            and message.tool_result is not None and isinstance(uri := message.tool_result.get("uri"), str)
+        }
+        # A worker can lose the live tool event after committing the receipt.
+        # Keep it in the Task trace even when the resumed model calls no tools.
+        ai_result.messages[prior_trace_length:prior_trace_length] = [
+            AIMessage(type="tool", tool_name="file_create", content=uri, stream_mode="snapshot",
+                      stream_id=f"recovered-tool:{effect.get('operation_id') or effect.get('id') or uri}",
+                      tool_call_external_id=call_id if isinstance(call_id := effect.get("tool_call_id"), str) else None,
+                      tool_result={key: receipt[key] for key in ("operation", "state", "uri", "revision")})
+            for uri, (effect, receipt) in recorded_documents.items() if uri not in displayed_documents
+        ]
+
+    if task.task_id is not None and (console_effects := checkpoint.recorded_console_effects()):
+        displayed_operations = {
+            run_id for message in ai_result.messages if message.type == "tool" and message.success
+            and message.tool_result is not None and isinstance(run_id := message.tool_result.get("run_id"), str)
+        }
+        console_trace: list[AIMessage] = []
+        for effect in console_effects:
+            payload = decode_tool_result(effect.get("result"))
+            operation_id = effect.get("operation_id")
+            if not isinstance(payload, dict) or not isinstance(operation_id, str) or operation_id in displayed_operations:
+                continue
+            receipt = cast(dict[str, object], payload)
+            if receipt.get("run_id") != operation_id:
+                continue
+            call_id = effect.get("tool_call_id")
+            console_trace.append(AIMessage(
+                type="tool", tool_name=str(effect["tool_name"]), content=str(receipt.get("stdout") or "")[:500],
+                stream_id=f"recovered-tool:{operation_id}", stream_mode="snapshot",
+                tool_call_external_id=call_id if isinstance(call_id, str) else None,
+                tool_result={key: receipt[key] for key in ("run_id", "status", "exit_code") if key in receipt},
+            ))
+        ai_result.messages[prior_trace_length:prior_trace_length] = console_trace
+
+    console_failure = checkpoint.console_failure()
+    if console_failure is None:
+        await executor_service.recover_after_verified_delivery(task, ai_result, failure_kind=failure_kind)
+    else:
+        ai_result.success = False
 
     result = ExecutionResult(
         **ai_result.model_dump(exclude={"execution_time"}),
         execution_time=time.time() - start_time,
-        failure=HarnessFailure(code="runtime", message=str(getattr(runtime_agent, "error", ""))[:4000])
-        if failure_kind == "document_read_loop" else None,
+        failure=console_failure or (HarnessFailure(code="runtime", message=str(getattr(runtime_agent, "error", ""))[:4000])
+                                   if failure_kind == "document_read_loop" else None),
     )
-    if getattr(runtime_agent, "profile_fallback_used", False) is True:
-        from app.agent import aggregate_llm_run_usage
-
-        accounting = await aggregate_llm_run_usage(task.run_id, agent_id=task.agent_id)
-        if accounting is not None:
-            result.usage, result.cost = accounting
-        result.metadata["profile_fallback_used"] = True
-
     authorization_requests = getattr(runtime_agent, "authorization_requests", [])
     if getattr(runtime_agent, "waiting_for_children", False) and not authorization_requests:
         result.success = False
@@ -690,8 +667,18 @@ async def _stream(
         result.authorization_requests = list(authorization_requests)
         result.schema_version = "galaris.execution-result/v2"
 
+    profile_fallback = getattr(runtime_agent, "profile_fallback_used", False) is True
+    if profile_fallback or (durable_task and result.disposition == "waiting_for_children"):
+        accounting = await aggregate_llm_run_usage(task.run_id, agent_id=task.agent_id)
+        if accounting is not None:
+            result.usage, result.cost = accounting
+    if profile_fallback:
+        result.metadata["profile_fallback_used"] = True
+
     # Release task-scoped messenger context.
     reset_context(_ctx_token)
+    if durable_task and (result.success or result.disposition == "waiting_for_children"):
+        await checkpoint.finish_run(result)
     yield AgentEvent.from_result(result)
 
 
@@ -703,8 +690,9 @@ async def stream(task: AgentRunRequest) -> AsyncIterator[AgentEvent]:
     lifecycle = RunResources()
     await run_control.register(task.run_id, task.task_id, lifecycle)
     try:
-        async for event in _stream(task, lifecycle):
-            yield event
+        async with aclosing(_stream(task, lifecycle)) as events:
+            async for event in events:
+                yield event
     finally:
         await asyncio.shield(lifecycle.close())
         await run_control.unregister(task.run_id, task.task_id)

@@ -425,25 +425,29 @@ async def create_file(
 ) -> str:
     """Create a complete resource without overwriting an existing one."""
 
+    from app.document.contracts import DatasetCreationContentError
+
     payload = _decode_content(content, encoding)
     if not payload.strip():
         reference = parse_resource_uri(path, allow_empty=True)
         if ((reference.scheme == "data" and not reference.locator)
                 or (reference.scheme == "document" and not reference.locator and document_format in {"data", "dataset"})):
-            raise ToolCallRejectedError(
+            raise ToolArgumentsRejectedError(
                 "Dataset creation requires the content argument containing valid JSON, "
                 "for example content='[]' or content='{}'. Create at path='data://' "
                 "and return its exact data:// URI. No Dataset was created."
             )
-    return _json_model(
-        await resource_create(
+    try:
+        created = await resource_create(
             await _resource_context(ctx),
             path,
             payload,
             name=name,
             document_format=document_format,
         )
-    )
+    except DatasetCreationContentError as exc:
+        raise ToolArgumentsRejectedError(f"{exc}. Correct the content argument and retry. No Dataset was created.") from exc
+    return _json_model(created)
 
 
 @mcp_tool("file_sharing", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",

@@ -1,8 +1,8 @@
-"""Expose authorized skills using their declared Pydantic AI loading policy."""
+"""Resolve authorized skills and expose them to Pydantic AI."""
 
 from __future__ import annotations
 
-from dataclasses import replace
+from dataclasses import dataclass, replace
 from typing import Any
 
 from loguru import logger
@@ -18,7 +18,7 @@ from app.skill.contracts import runtime_skill_name
 _MAX_INLINE_SKILL_INSTRUCTIONS_CHARS = 12_000
 _MAX_RESOURCE_PATH_HINT_CHARS = 1_200
 _MAX_SECTION_SCHEMA_VALUES = 200
-_RESOURCE_ERROR_PREFIXES = (
+SKILL_RESOURCE_ERROR_PREFIXES = (
     "The section parameter",
     "Section ",
     "Unable to read resource",
@@ -109,11 +109,11 @@ def _section_schema_values(code: str, *, owner_agent_id: int | None = None) -> t
     return tuple(values)
 
 
-def _read_skill_resource(code: str, path: str = "", section: str = "", *, owner_agent_id: int | None = None) -> str:
+def read_skill_resource(code: str, path: str = "", section: str = "", *, owner_agent_id: int | None = None) -> str:
     """List a skill package or read one of its text resources."""
     if not path.strip():
         if section.strip():
-            return _read_skill_resource(code, "SKILL.md", section, owner_agent_id=owner_agent_id)
+            return read_skill_resource(code, "SKILL.md", section, owner_agent_id=owner_agent_id)
         files = storage.list_files(code, owner_agent_id=owner_agent_id)
         if not files:
             return f"Skill {code!r} has no files."
@@ -129,21 +129,23 @@ def _read_skill_resource(code: str, path: str = "", section: str = "", *, owner_
                 return "The section parameter is supported only for Markdown resources."
             return _read_markdown_section(content, section)
         return content
-    except (FileNotFoundError, OSError, ValueError) as exc:
+    except (OSError, ValueError) as exc:
         files = storage.list_files(code, owner_agent_id=owner_agent_id)
         available = ", ".join(str(item["path"]) for item in files) or "none"
+        reason = type(exc).__name__ if isinstance(exc, OSError) else str(exc)
         return (
-            f"Unable to read resource {path!r} from skill {code!r}: {exc}. "
+            f"Unable to read resource {path!r} from skill {code!r}: {reason}. "
             f"Available files: {available}. Do not retry the same missing path; use an "
             "available path, or omit path to list files."
         )
 
 
-def _capability_instructions(code: str, instructions: str, tool_name: str) -> str:
+def skill_guide_instructions(code: str, instructions: str, tool_name: str, *, skill_id: str | None = None) -> str:
     """Keep large skills progressive instead of billing their full guide every turn."""
+    skill_argument = f"`id=\"{skill_id}\"` and " if skill_id is not None else ""
     resource_guide = (
         "## Internal harness resources\n\n"
-        f"The primary guide is `SKILL.md`. Use `{tool_name}` with `path=\"SKILL.md\"` "
+        f"The primary guide is `SKILL.md`. Use `{tool_name}` with {skill_argument}`path=\"SKILL.md\"` "
         "and an exact `section` when the guide section is known. A section without a path "
         "reads `SKILL.md`; omit both to list the package's actual files; "
         "never guess or synthesize a resource filename. "
@@ -201,19 +203,15 @@ def _build_capability(code: str, *, defer_loading: bool = True, owner_agent_id: 
     capability: Capability[None] = Capability(
         id=runtime_name or code,
         description=inspection.description,
-        instructions=_capability_instructions(code, instructions, tool_name),
+        instructions=skill_guide_instructions(code, instructions, tool_name),
         defer_loading=defer_loading,
     )
 
     async def read_file(path: str = "", section: str = "") -> str:
         if agent_id is not None:
-            if owner_agent_id is None:
-                if code not in await skill_service.get_assigned_codes(agent_id):
-                    raise PermissionError("Skill authorization has been revoked")
-            elif package_id not in {item.id for item in await skill_interface.personal_packages(agent_id)}:
-                raise PermissionError("Personal skill authorization has been revoked")
-        result = _read_skill_resource(code, path, section, owner_agent_id=owner_agent_id)
-        if result.startswith(_RESOURCE_ERROR_PREFIXES):
+            await require_skill_access(agent_id, code, owner_agent_id, package_id)
+        result = read_skill_resource(code, path, section, owner_agent_id=owner_agent_id)
+        if result.startswith(SKILL_RESOURCE_ERROR_PREFIXES):
             raise ModelRetry(result)
         return result
 
@@ -256,42 +254,53 @@ def _build_capability(code: str, *, defer_loading: bool = True, owner_agent_id: 
 
 async def build_eager_skill_capabilities(agent_id: int) -> list[Capability[None]]:
     """Load only authorized skills explicitly configured for every conversation."""
-    capabilities: list[Capability[None]] = []
-    occupied: set[str] = set()
-    for code in sorted(await skill_service.get_assigned_codes(agent_id)):
-        name = runtime_skill_name(code, "generic", code, occupied)
-        if storage.runtime_loading(code) != "eager":
-            continue
-        capability = _build_capability(code, defer_loading=False, runtime_name=name, agent_id=agent_id)
-        if capability is not None:
-            capabilities.append(capability)
-    for package in await skill_interface.personal_packages(agent_id):
-        name = runtime_skill_name(package.code, "personal", str(package.id), occupied)
-        if storage.runtime_loading(package.code, owner_agent_id=agent_id) != "eager":
-            continue
-        capability = _build_capability(package.code, defer_loading=False, runtime_name=name,
-            owner_agent_id=agent_id, agent_id=agent_id, package_id=package.id)
-        if capability is not None:
-            capabilities.append(capability)
-    return capabilities
+    return await _build_authorized_capabilities(agent_id, eager_only=True)
 
 
 async def build_internal_skill_capabilities(agent_id: int) -> list[Any]:
     """Build authorized skills with deferred loading unless explicitly configured."""
-    capabilities: list[Any] = []
+    return await _build_authorized_capabilities(agent_id, eager_only=False)
+
+
+@dataclass(frozen=True)
+class RuntimeSkill:
+    id: str
+    code: str
+    owner_agent_id: int | None
+    package_id: int | None
+    eager: bool
+
+
+async def list_runtime_skills(agent_id: int) -> list[RuntimeSkill]:
+    """Resolve stable runtime names within the agent's currently authorized catalog."""
     occupied: set[str] = set()
-    for code in sorted(await skill_service.get_assigned_codes(agent_id)):
-        name = runtime_skill_name(code, "generic", code, occupied)
-        capability = _build_capability(
-            code, defer_loading=storage.runtime_loading(code) != "eager", runtime_name=name, agent_id=agent_id,
-        )
-        if capability is not None:
-            capabilities.append(capability)
+    skills = [RuntimeSkill(runtime_skill_name(code, "generic", code, occupied), code, None, None,
+                          storage.runtime_loading(code) == "eager")
+              for code in sorted(await skill_service.get_assigned_codes(agent_id))]
     for package in await skill_interface.personal_packages(agent_id):
-        name = runtime_skill_name(package.code, "personal", str(package.id), occupied)
-        capability = _build_capability(package.code, runtime_name=name,
-            defer_loading=storage.runtime_loading(package.code, owner_agent_id=agent_id) != "eager",
-            owner_agent_id=agent_id, agent_id=agent_id, package_id=package.id)
+        eager = storage.runtime_loading(package.code, owner_agent_id=agent_id) == "eager"
+        skills.append(RuntimeSkill(runtime_skill_name(package.code, "personal", str(package.id), occupied),
+                                   package.code, agent_id, package.id, eager))
+    return skills
+
+
+async def require_skill_access(agent_id: int, code: str, owner_agent_id: int | None, package_id: int | None) -> None:
+    if owner_agent_id is None:
+        if code not in await skill_service.get_assigned_codes(agent_id):
+            raise PermissionError("Skill authorization has been revoked")
+    elif package_id not in {item.id for item in await skill_interface.personal_packages(agent_id)}:
+        raise PermissionError("Personal skill authorization has been revoked")
+
+
+async def _build_authorized_capabilities(agent_id: int, *, eager_only: bool) -> list[Capability[None]]:
+    capabilities: list[Capability[None]] = []
+    for skill in await list_runtime_skills(agent_id):
+        if eager_only and not skill.eager:
+            continue
+        capability = _build_capability(
+            skill.code, defer_loading=not skill.eager, runtime_name=skill.id,
+            owner_agent_id=skill.owner_agent_id, agent_id=agent_id, package_id=skill.package_id,
+        )
         if capability is not None:
             capabilities.append(capability)
     return capabilities

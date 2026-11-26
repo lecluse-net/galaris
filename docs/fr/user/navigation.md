@@ -264,6 +264,10 @@ Un portrait humain réaliste peut être demandé. L’avatar actuel est conserv�
 les consignes restent disponibles pour réessayer. Ce bouton exige un modèle image configuré
 dans le profil LLM par défaut et une fiche enregistrée.
 Les profils et les voix sont actualisés à l’ouverture de **Modèles**. L’administration des harnais se trouve dans
+À la création, **Pydantic AI (embarqué)** est présélectionné. **Claude Agent (embarqué)**
+est proposé lorsque ce harnais est activé. Ces deux choix utilisent le backend Galaris.
+Sur une fiche existante, attendez la fin des tâches ouvertes pour changer de harnais.
+**Claude Agent (managé)** correspond à l’instance qui se supervise depuis la carte de l’agent.
 **Administrer → Préférences → Harnais** (`/params/harnesses`). Les entrées de harnais
 dépendent du catalogue serveur : utilisez le lien affiché, sans inventer leur identifiant.
 

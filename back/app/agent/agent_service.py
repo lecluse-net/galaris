@@ -249,8 +249,8 @@ async def create(agent_data: AgentCreate, *, actor_user_id: int | None = None) -
     db = get_db()
     code = await _normalize_code(agent_data.code)
     manager_user_id = await _validate_manager(agent_data.user_id)
-    validate_agent_driver(agent_data.agent_driver)
-    if agent_data.agent_driver != resolve_driver(None).code:
+    driver = resolve_driver(agent_data.agent_driver)
+    if driver.transport != "embedded":
         raise ValueError(
             "Create the agent with its internal Harness, then install another Harness "
             "through /harnesses/agents/{id}."
@@ -282,6 +282,7 @@ async def create(agent_data: AgentCreate, *, actor_user_id: int | None = None) -
     data.pop("team_ids")
     data["code"] = code
     data["user_id"] = manager_user_id
+    data["agent_driver"] = driver.code
     new_agent = Agent(**data)
     db.add(new_agent)
     try:

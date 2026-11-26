@@ -48,3 +48,11 @@ those with `console_start`, and follow them with `console_poll` using the same i
 During recovery, a `running` receipt acknowledges the launch of `console_start`, but does not
 complete an interrupted `console_exec`. An unknown outcome remains blocked; upgrading the
 helper cannot recreate missing receipts for older operations.
+
+Pydantic AI and embedded Claude Agent can both receive the default Console. When the Console
+reports a lost receipt, the attempt ends before another inference request. To resume the Task,
+Galaris looks up the operation ID on the original SSH connection and
+account. It checks the connection and permissions again after lookup. The confirmed receipt
+appears in the Task details and reaches the model before its next request. Proposing the same
+command in the same directory with a different tool or timeout does not run it again. A changed
+connection, a disabled function, or an unavailable receipt blocks recovery.

@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal
 from typing import Any
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from tempfile import TemporaryDirectory
 
 import anyio
@@ -58,6 +58,7 @@ async def prepare_native_inputs(
     current: Sequence[TaskMessage],
     history: Sequence[TaskMessage],
     *, prompt: str = '', system_prompt: str = '', tools: Sequence[dict[str, Any]] = (),
+    transport_accepts: Callable[[str], bool] | None = None,
 ) -> dict[str, NativeInput]:
     """Resolve authorized media once per run, current first, within one total byte budget.
 
@@ -84,12 +85,13 @@ async def prepare_native_inputs(
                 # Resolve authoritative metadata and ACLs even for old/reopened messages.
                 info = await resource_info(ctx, uri)
                 mime = normalized_media_type(info.media_type, info.name)
+                native = supports_native_input(llm, mime) and (transport_accepts is None or transport_accepts(mime))
                 if (mime == 'application/pdf' or mime.startswith('text/') or Path(info.name).suffix.lower()
                     in OFFICE_EXTENSIONS | {'.pdf', '.md', '.html', '.htm', '.epub', '.txt', '.csv', '.tsv', '.json', '.xml'}):
                     document_input, used_tokens, used_bytes = await _prepare_document_input(
                         llm, ctx, message, uri, mime,
                         '\n'.join(item.text for item in current).strip() or prompt,
-                        token_budget=remaining_tokens // max(1, remaining_resources), byte_budget=remaining,
+                        token_budget=remaining_tokens // max(1, remaining_resources), byte_budget=remaining, native=native,
                     )
                     remaining_tokens -= used_tokens
                     remaining_text = min(remaining_text, max(0, remaining_tokens * 3))
@@ -100,7 +102,7 @@ async def prepare_native_inputs(
                 if remaining <= 0:
                     result[uri] = NativeInput(reason="native media byte budget exhausted")
                     continue
-                if not supports_native_input(llm, mime):
+                if not native:
                     if not mime.startswith(("image/", "audio/", "video/")):
                         result[uri] = NativeInput(reason="format unsupported by the selected model/transport")
                         continue
@@ -119,7 +121,7 @@ async def prepare_native_inputs(
                         result[uri] = NativeInput(reason="file exceeds the remaining native media byte budget")
                         continue
                     remaining -= size
-                    if not supports_native_input(llm, mime):
+                    if not native:
                         try:
                             text = await _analyze_input(path, mime, source.name, ctx)
                         except Exception:
@@ -150,7 +152,7 @@ async def prepare_native_inputs(
 
 async def _prepare_document_input(
     llm: LLM, ctx: ResourceContext, message: TaskMessage, uri: str, mime: str, query: str,
-    *, token_budget: int, byte_budget: int,
+    *, token_budget: int, byte_budget: int, native: bool,
 ) -> tuple[NativeInput | None, int, int]:
     from app.file_share import document_rag_cache, prepared_resource, resource_info
 
@@ -160,7 +162,7 @@ async def _prepare_document_input(
     fields = {'size', 'revision', 'checksum', 'etag', 'modified_at'}
     async with prepared_resource(ctx, uri) as (document, directory):
         required = document_tokens(document, visual=bool(llm.input_image))
-        if required > token_budget or (supports_native_input(llm, mime) and before.size is not None and before.size > byte_budget):
+        if required > token_budget or (native and before.size is not None and before.size > byte_budget):
             cache = await document_rag_cache(ctx, uri, document.sha256)
             selection = await retrieve_prepared_document(document, query, token_budget=token_budget, cache=cache)
             after = await resource_info(ctx, uri)
@@ -170,7 +172,7 @@ async def _prepare_document_input(
             return NativeInput(owner=message, prepared_parts=(text,),
                                reason="RAG selected deterministically because the complete document exceeds available input capacity. "
                                       "For additional questions, call file_search on this exact URI with mode='semantic'"), text_tokens(text), 0
-        if supports_native_input(llm, mime):
+        if native:
             return None, required, 0  # Preserve native file delivery when it fits.
         text = document.text()
         parts: list[UserContent] = [text]

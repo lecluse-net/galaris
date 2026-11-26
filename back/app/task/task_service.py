@@ -903,6 +903,7 @@ async def request_cancellation(task: Task) -> None:
 async def stop_activity_task(task_id: UUID) -> bool:
     """Stop a workflow-owned Task and confirm any suspended managed actor has stopped."""
     from app.agent import cancel as cancel_agent_run
+    from app.agent.facade import retains_authorization_run
 
     db = get_db()
     task = await _get_by_id_for_update(task_id, refresh=True)
@@ -919,8 +920,9 @@ async def stop_activity_task(task_id: UUID) -> bool:
     checkpoint = type_cast(dict[str, Any], raw) if isinstance(raw, dict) else {}
     # The network Harness retains a live actor during approval, even after its
     # Task lease and transient agent-run identity have been released.
+    driver = checkpoint.get("driver_code")
     if (checkpoint.get("status") != "waiting_for_authorization"
-            or checkpoint.get("driver_code") != "openai_messages"):
+            or not isinstance(driver, str) or not retains_authorization_run(driver)):
         await db.commit()
         return local_stopped
     run_key = str(checkpoint.get("request_run_id") or "")
@@ -930,7 +932,7 @@ async def stop_activity_task(task_id: UUID) -> bool:
 
     await db.commit()  # Release the Task lock before revoking authority and calling the driver.
     try:
-        receipt = await cancel_agent_run("openai_messages", UUID(run_key), task_id=task_id)
+        receipt = await cancel_agent_run(driver, UUID(run_key), task_id=task_id)
     except (RuntimeError, ValueError):
         logger.warning("Could not request stop for the activity's managed actor task={}", task_id)
         return False

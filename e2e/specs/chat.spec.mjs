@@ -3,6 +3,7 @@ import { collectPageErrors } from '../page-errors.mjs'
 import { notificationPrompt } from '../notification-prompt.mjs'
 
 const socketEvents = new WeakMap()
+const embeddedConversationDrivers = [['embedded-pydantic', 'internal'], ['embedded-claude', 'claude_embedded']]
 test.beforeEach(async ({ page }) => {
   await page.addLocatorHandler(notificationPrompt(page), prompt => prompt.getByRole('button', { name: 'Plus tard', exact: true }).click())
   const events = []
@@ -56,6 +57,26 @@ async function prepare(page, request, mode = 'normal', errors) {
     await (await request.get(`/api/__test/subscription/${fixture.rooms[0]}`)).json()
   ).joined).toBe(true)
   return fixture
+}
+
+async function enableEmbeddedConversation(request, headers, driver) {
+  if (driver !== 'claude_embedded') return async () => {}
+  const flag = 'harness.claude-embedded.enabled'
+  const parameters = await request.get('/api/params', { headers })
+  expect(parameters.ok(), await parameters.text()).toBeTruthy()
+  const original = (await parameters.json()).params.find(param => param.name === flag).value
+  const write = async value => {
+    const response = await request.put(`/api/params/${flag}`, { headers, data: { value } })
+    expect(response.ok(), await response.text()).toBeTruthy()
+  }
+  await write('true')
+  return () => write(original)
+}
+
+async function readConversationCalls(request, headers, round) {
+  const journal = await request.get('/api/llm-calls', { headers, params: { conversation_round_id: round } })
+  expect(journal.ok(), await journal.text()).toBeTruthy()
+  return (await journal.json()).filter(call => call.purpose === 'conversation.text')
 }
 
 async function send(page, text = 'Vérifie le scénario de streaming') {
@@ -269,74 +290,69 @@ test('progress is visible before completion and survives durable handoff and rel
   await final(page)
 })
 
-test('human controls pause and resume, then stopping removes the reply and preserves a new request', async ({ page, request }) => {
+for (const [mode, driver] of embeddedConversationDrivers) test(
+  `human controls pause and resume, then stopping allows a new request (${mode})`, async ({ page, request }) => {
   test.setTimeout(90_000)
-  const fixture = await prepare(page, request, 'conversation-control')
-  await send(page)
-  const activeRounds = await (await request.get(`/api/__test/rounds/${fixture.rooms[0]}`)).json()
-  const roundId = activeRounds[0].id
-  const controlPath = `/api/chat/rooms/${fixture.rooms[0]}/activity/${roundId}/control`
-  expect((await request.post(controlPath, { data: { action: 'stop', expected_attempt: 1 } })).status()).toBe(401)
-  const authenticatedControl = (path, expectedAttempt) => page.evaluate(async ({ path, expectedAttempt }) => {
-    const response = await fetch(path, { method: 'POST',
-      headers: { Authorization: `Bearer ${localStorage.getItem('access_token')}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'stop', expected_attempt: expectedAttempt }),
+  const fixture = await prepare(page, request, mode)
+  const [room, otherRoom] = fixture.rooms
+  const headers = { Authorization: `Bearer ${await page.evaluate(() => localStorage.getItem('access_token'))}` }
+  const restore = await enableEmbeddedConversation(request, headers, driver)
+  const readRounds = async () => (await request.get(`/api/__test/rounds/${room}`)).json()
+  const readCalls = id => readConversationCalls(request, headers, id)
+  try {
+    await send(page)
+    const [{ id: roundId }] = await readRounds()
+    const controlPath = `/api/chat/rooms/${room}/activity/${roundId}/control`
+    const stop = (path, expected_attempt, authorization) => request.post(path, {
+      headers: authorization, data: { action: 'stop', expected_attempt },
     })
-    return response.status
-  }, { path, expectedAttempt })
-  expect(await authenticatedControl(`/api/chat/rooms/${fixture.rooms[1]}/activity/${roundId}/control`, 1)).toBe(404)
-  expect(await authenticatedControl(controlPath, 0)).toBe(409)
-  await page.getByRole('button', { name: 'Mettre en pause', exact: true }).click()
-  await expect(page.getByText('Réponse en pause', { exact: true })).toBeVisible()
-  await page.reload()
-  await expect(page.getByText('Réponse en pause', { exact: true })).toBeVisible()
-  await page.getByRole('button', { name: 'Reprendre la réponse', exact: true }).click()
-  await expect(page.locator('.message-timeline')).toContainText('Réponse progressive')
-  await page.getByRole('button', { name: 'Arrêter la réponse', exact: true }).click()
-  await expect(page.locator('.message-bubble--live')).toHaveCount(0)
-  await expect.poll(async () => {
-    const rounds = await (await request.get(`/api/__test/rounds/${fixture.rooms[0]}`)).json()
-    return rounds.find(round => round.id === roundId)?.status
-  }).toBe('CANCELLED')
-  await expect(page.locator('.message-row')).toHaveCount(1)
-  await page.reload()
-  await expect(page.locator('.composer-fields textarea')).toBeVisible()
-  await expect(page.locator('.message-row')).toHaveCount(1)
-  await expect(page.getByText('Réponse arrêtée', { exact: true })).toHaveCount(0)
-  await send(page)
-  await release(request, fixture.rooms[0])
-  await final(page)
-  await page.reload()
-  await final(page)
-  const rounds = await (await request.get(`/api/__test/rounds/${fixture.rooms[0]}`)).json()
-  expect(rounds.filter(round => round.status === 'CANCELLED')).toHaveLength(1)
-  expect(rounds.filter(round => round.status === 'SUCCEEDED')).toHaveLength(1)
-})
+    expect((await stop(controlPath, 1)).status()).toBe(401)
+    expect((await stop(`/api/chat/rooms/${otherRoom}/activity/${roundId}/control`, 1, headers)).status()).toBe(404)
+    expect((await stop(controlPath, 0, headers)).status()).toBe(409)
 
-test('posting a supplement automatically continues a paused response', async ({ page, request }, testInfo) => {
-  test.setTimeout(90_000)
-  const fixture = await prepare(page, request, 'conversation-control')
-  await send(page)
-  await page.screenshot({ path: testInfo.outputPath('response-controls.png'), fullPage: true })
-  await page.getByRole('button', { name: 'Mettre en pause', exact: true }).click()
-  await expect(page.getByText('Réponse en pause', { exact: true })).toBeVisible()
-  await page.reload()
-  await expect(page.getByText('Réponse en pause', { exact: true })).toBeVisible()
-  const input = page.locator('.composer-fields textarea')
-  await input.fill('Ajoute un exemple synthétique à la réponse')
-  await input.press('Enter')
-  await expect.poll(async () => {
-    const rounds = await (await request.get(`/api/__test/rounds/${fixture.rooms[0]}`)).json()
-    return rounds.filter(round => round.status === 'RUNNING').length
-  }).toBe(1)
-  await release(request, fixture.rooms[0])
-  await final(page)
-  await page.reload()
-  await final(page)
-  const rounds = await (await request.get(`/api/__test/rounds/${fixture.rooms[0]}`)).json()
-  expect(rounds.filter(round => round.status === 'PAUSED')).toHaveLength(0)
-  expect(rounds.filter(round => round.status === 'SUPERSEDED')).toHaveLength(1)
-  expect(rounds.filter(round => round.status === 'SUCCEEDED')).toHaveLength(1)
+    await page.getByRole('button', { name: 'Mettre en pause', exact: true }).click()
+    await expect(page.getByText('Réponse en pause', { exact: true })).toBeVisible()
+    await expect.poll(async () => (await readCalls(roundId)).map(call => call.status)).toEqual(['cancelled'])
+    await page.reload()
+    await expect(page.getByText('Réponse en pause', { exact: true })).toBeVisible()
+    await page.getByRole('button', { name: 'Reprendre la réponse', exact: true }).click()
+    await expect.poll(async () => (await readCalls(roundId)).map(call => call.status).sort()).toEqual(['cancelled', 'running'])
+    await expect(page.locator('.message-timeline')).toContainText('Réponse progressive')
+    await page.getByRole('button', { name: 'Arrêter la réponse', exact: true }).click()
+    await expect(page.locator('.message-bubble--live')).toHaveCount(0)
+    await expect.poll(async () => (await readRounds()).find(round => round.id === roundId)?.status).toBe('CANCELLED')
+    await expect.poll(async () => (await readCalls(roundId)).map(call => call.status)).toEqual(['cancelled', 'cancelled'])
+    const cancelled = await readCalls(roundId)
+    expect(new Set(cancelled.map(call => call.id)).size).toBe(2)
+    if (driver === 'claude_embedded') {
+      const references = cancelled.map(call => call.correlation_ref)
+      expect(new Set(references).size).toBe(2)
+      for (const reference of references) expect(reference).toMatch(new RegExp(`^round:${roundId}:attempt:[0-9a-f-]+$`))
+    }
+    await expect(page.locator('.message-row')).toHaveCount(1)
+    await page.reload()
+    await expect(page.locator('.composer-fields textarea')).toBeVisible()
+    await expect(page.locator('.message-row')).toHaveCount(1)
+    await expect(page.getByText('Réponse arrêtée', { exact: true })).toHaveCount(0)
+
+    await send(page, 'Vérifie la nouvelle demande synthétique')
+    await release(request, room)
+    await final(page)
+    await page.reload()
+    await final(page)
+    const rounds = await readRounds()
+    expect(rounds.filter(round => round.status === 'CANCELLED')).toHaveLength(1)
+    const successful = rounds.filter(round => round.status === 'SUCCEEDED')
+    expect(successful).toHaveLength(1)
+    const completed = await readCalls(successful[0].id)
+    expect(completed).toHaveLength(1)
+    expect(completed[0]).toMatchObject({ status: 'completed', conversation_round_id: successful[0].id,
+      agent_run_id: successful[0].id, agent_id: fixture.agent_id, llm_id: fixture.model_id })
+    expect(cancelled.map(call => call.id)).not.toContain(completed[0].id)
+  } finally {
+    await release(request, room)
+    await restore()
+  }
 })
 
 test('a second tab opened during execution catches up without duplicate messages', async ({ page, context, request }) => {
@@ -473,17 +489,63 @@ test('Task tool details remain inspectable live, after reload and after completi
   expect(errors()).toEqual([])
 })
 
-test('reconnection catches up when completion happened offline', async ({ page, context, request }) => {
-  const fixture = await prepare(page, request)
-  await send(page)
-  await context.setOffline(true)
-  await release(request, fixture.rooms[0])
-  await expect.poll(async () => (await (await request.get(`/api/__test/rounds/${fixture.rooms[0]}`)).json())[0]?.status).toBe('SUCCEEDED')
-  await context.setOffline(false)
-  await final(page)
-  await page.reload()
-  await final(page)
-})
+for (const [mode, driver] of embeddedConversationDrivers) {
+  test(`reconnection catches up when completion happened offline (${mode})`, async ({ page, context, request }) => {
+    test.setTimeout(90_000)
+    const errors = collectPageErrors(page)
+    const fixture = await prepare(page, request, mode, errors)
+    const room = fixture.rooms[0]
+    const headers = { Authorization: `Bearer ${await page.evaluate(() => localStorage.getItem('access_token'))}` }
+    const restore = await enableEmbeddedConversation(request, headers, driver)
+    let offline = false
+    try {
+      await send(page)
+      await context.setOffline(true)
+      offline = true
+      await release(request, room)
+      let round
+      await expect.poll(async () => {
+        round = (await (await request.get(`/api/__test/rounds/${room}`)).json())[0]
+        return round?.status
+      }).toBe('SUCCEEDED')
+      await context.setOffline(false)
+      offline = false
+      await final(page)
+      await page.reload()
+      await final(page)
+      const response = await request.get(`/api/conversations/rounds/${round.id}`, { headers })
+      expect(response.ok(), await response.text()).toBeTruthy()
+      const detail = await response.json()
+      expect(detail.execution_result.metadata).toMatchObject({ driver_code: driver, run_id: round.id })
+
+      const journal = page.waitForResponse(response => {
+        const url = new URL(response.url())
+        return url.pathname === '/api/llm-calls' && url.searchParams.get('conversation_round_id') === round.id
+      }, { timeout: 15_000 })
+      const trace = page.locator('.execution-trace').filter({ has: page.getByRole('button', { name: 'Détails', exact: true }) })
+      await trace.getByRole('button', { name: 'Détails', exact: true }).click()
+      const callResponse = await journal
+      expect(callResponse.ok(), await callResponse.text()).toBeTruthy()
+      const [primary, ...extra] = (await callResponse.json()).filter(call => call.purpose === 'conversation.text')
+      expect(extra).toHaveLength(0)
+      expect(primary).toMatchObject({ conversation_round_id: round.id, agent_run_id: round.id,
+        agent_id: fixture.agent_id, llm_id: fixture.model_id, total_tokens: 16,
+        upstream_request_id: expect.stringMatching(/^chatcmpl-browser-/) })
+      if (driver === 'claude_embedded') {
+        expect(primary.correlation_ref).toMatch(new RegExp(`^round:${round.id}:attempt:[0-9a-f-]+$`))
+      }
+      expect(primary.cost).toBeGreaterThan(0)
+      expect(detail.execution_result.cost).toBeCloseTo(primary.cost, 8)
+      await trace.getByRole('tab', { name: 'Détails', exact: true }).click()
+      await expect(trace.getByRole('region', { name: 'Consommation enregistrée' })).toContainText('16 tokens')
+    } finally {
+      if (offline && !page.isClosed()) await context.setOffline(false)
+      await restore()
+    }
+    await errors.settle()
+    expect(errors()).toEqual([])
+  })
+}
 
 test('delegated chat delivers another account’s messages only while its view is open', async ({ page, request }) => {
   const other = await (await request.post('/api/__test/seed?mode=load-dialogue')).json()
@@ -613,27 +675,66 @@ test('partial provider failure reaches a durable error and leaves the composer u
   await expect(page.locator('.composer-fields textarea')).toBeEnabled()
 })
 
-test('a correction supersedes the active round and survives offline completion without duplicate delivery', async ({ page, context, request }) => {
-  const fixture = await prepare(page, request, 'interruptible')
-  await send(page)
-  const composer = page.locator('.composer-fields textarea')
-  await composer.fill('Complète la demande avec cette précision')
-  await composer.press('Enter')
-  await expect.poll(async () => {
-    const rounds = await (await request.get(`/api/__test/rounds/${fixture.rooms[0]}`)).json()
-    return rounds.map(round => round.status).sort()
-  }).toEqual(['RUNNING', 'SUPERSEDED'])
-  await expect(page.locator('.message-row').filter({ hasText: 'Réponse progressive' })).toHaveCount(1)
-  await context.setOffline(true)
-  await release(request, fixture.rooms[0])
-  await expect.poll(async () => {
-    const rounds = await (await request.get(`/api/__test/rounds/${fixture.rooms[0]}`)).json()
-    return rounds.map(round => round.status).sort()
-  }).toEqual(['SUCCEEDED', 'SUPERSEDED'])
-  await context.setOffline(false)
-  await final(page)
-  await page.reload()
-  await final(page)
-  await expect(page.locator('.message-row').filter({ hasText: 'Vérifie le scénario de streaming' })).toHaveCount(1)
-  await expect(page.locator('.message-row').filter({ hasText: 'Complète la demande avec cette précision' })).toHaveCount(1)
-})
+for (const [mode, driver] of embeddedConversationDrivers) {
+  for (const previousState of ['active', 'paused']) {
+    test(`a correction replaces the ${previousState} round and delivers one reply (${mode})`, async ({ page, context, request }) => {
+      test.setTimeout(90_000)
+      const fixture = await prepare(page, request, mode)
+      const [room] = fixture.rooms
+      const headers = { Authorization: `Bearer ${await page.evaluate(() => localStorage.getItem('access_token'))}` }
+      const restore = await enableEmbeddedConversation(request, headers, driver)
+      const readRounds = async () => (await request.get(`/api/__test/rounds/${room}`)).json()
+      let offline = false
+      try {
+        await send(page)
+        const [{ id: originalRound }] = await readRounds()
+        if (previousState === 'paused') {
+          await page.getByRole('button', { name: 'Mettre en pause', exact: true }).click()
+          await expect(page.getByText('Réponse en pause', { exact: true })).toBeVisible()
+          await page.reload()
+          await expect(page.getByText('Réponse en pause', { exact: true })).toBeVisible()
+        }
+
+        const correction = 'Complète la demande avec cette précision'
+        const composer = page.locator('.composer-fields textarea')
+        await composer.fill(correction)
+        await composer.press('Enter')
+        await expect.poll(async () => {
+          const rounds = await readRounds()
+          return rounds.map(round => round.status).sort()
+        }).toEqual(['RUNNING', 'SUPERSEDED'])
+        const replacement = (await readRounds()).find(round => round.id !== originalRound)
+        await expect.poll(async () => (await readConversationCalls(request, headers, originalRound)).map(call => call.status))
+          .toEqual(['cancelled'])
+        await expect(page.locator('.message-row').filter({ hasText: 'Réponse progressive' })).toHaveCount(1)
+
+        await context.setOffline(true)
+        offline = true
+        await release(request, room)
+        await expect.poll(async () => {
+          const rounds = await readRounds()
+          return rounds.map(round => round.status).sort()
+        }).toEqual(['SUCCEEDED', 'SUPERSEDED'])
+        await context.setOffline(false)
+        offline = false
+        await final(page)
+        await page.reload()
+        await final(page)
+        await expect(page.locator('.message-row').filter({ hasText: 'Vérifie le scénario de streaming' })).toHaveCount(1)
+        await expect(page.locator('.message-row').filter({ hasText: correction })).toHaveCount(1)
+
+        const originalCalls = await readConversationCalls(request, headers, originalRound)
+        const replacementCalls = await readConversationCalls(request, headers, replacement.id)
+        expect(originalCalls).toHaveLength(1)
+        expect(replacementCalls).toHaveLength(1)
+        expect(originalCalls[0]).toMatchObject({ status: 'cancelled', agent_run_id: originalRound, conversation_round_id: originalRound })
+        expect(replacementCalls[0]).toMatchObject({ status: 'completed', agent_run_id: replacement.id, conversation_round_id: replacement.id })
+        expect(replacementCalls[0].id).not.toBe(originalCalls[0].id)
+      } finally {
+        if (offline && !page.isClosed()) await context.setOffline(false)
+        await release(request, room)
+        await restore()
+      }
+    })
+  }
+}

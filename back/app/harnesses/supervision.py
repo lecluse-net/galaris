@@ -25,6 +25,11 @@ async def status(agent_id: int) -> HarnessRuntimeState:
         raise LookupError("Agent not found")
     target = await service.resolve_target(agent)
     if target is None:
+        if agent.agent_driver in service.embedded_driver_specs():
+            selection = service.internal_read(agent_id, agent.agent_driver)
+            if selection.lifecycle_status == "error":
+                return HarnessRuntimeState(status="disabled", lifecycle_status="error", managed=False,
+                                           capabilities=[], last_error=selection.last_error)
         return HarnessRuntimeState(status="internal", lifecycle_status="internal", managed=False, capabilities=[])
     provider = get_provider(target.provider_code)
     skills_status, skills_error = await skill_sync_status(agent_id)

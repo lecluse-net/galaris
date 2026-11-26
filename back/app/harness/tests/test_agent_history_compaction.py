@@ -307,9 +307,10 @@ def test_malformed_or_deep_provider_text_can_be_compacted_without_crashing(sourc
 
 
 @pytest.mark.parametrize("raw", [False, True])
-@pytest.mark.parametrize("offset_unit,next_offset", [("block", 8), (None, None)])
+@pytest.mark.parametrize("offset_unit,next_offset,selector", [("block", 8, None), (None, None, None),
+    (None, 8, "findings/body_html")])
 def test_stale_resource_reads_keep_pagination_without_presenting_a_read_failure(
-    raw: bool, offset_unit: str | None, next_offset: int | None,
+    raw: bool, offset_unit: str | None, next_offset: int | None, selector: str | None,
 ) -> None:
     body = (
         "<p>Synthetic inventory entry</p>" * 500
@@ -328,6 +329,8 @@ def test_stale_resource_reads_keep_pagination_without_presenting_a_read_failure(
     }
     if offset_unit is not None:
         payload.update(offset_unit=offset_unit, blocks=[{"number": 4, "html": body}])
+    if selector is not None:
+        payload["selector"] = selector
     original = json.dumps(payload) if raw else payload
     read_return = ModelRequest(parts=[ToolReturnPart("file_read", original, "read-1")])
     messages: list[ModelMessage] = [
@@ -349,6 +352,7 @@ def test_stale_resource_reads_keep_pagination_without_presenting_a_read_failure(
     for key in ("uri", "start", "end", "total", "next_offset", "revision", "media_type"):
         assert summary[key] == payload[key]
     assert summary.get("offset_unit") == offset_unit
+    assert summary.get("selector") == selector
     assert "history_note" in summary
     assert summary["content_preview"] == body[:600]
     assert "content omitted after execution" in summary["content"]

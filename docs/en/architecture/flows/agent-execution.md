@@ -37,6 +37,12 @@ and can also read older single snapshots. For Tasks, PostgreSQL reuses journal
 prefixes when the revision matches and archives the complete checkpoint with the
 attempt. A concurrent change triggers a full write under the current lease.
 
+For a Task, both embedded harnesses write a checkpoint before the first inference
+and persist a successful final result before handing it to the scheduler. If the
+worker disappears during streaming, a new attempt resumes the same run according
+to its recorded effects. If the final result is already available, the new
+attempt applies it without calling the model again. [Recovery contract](../../../../project/decisions/0100-harness-capability-and-recovery-contract.md)
+
 Conversations and Tasks have independent MCP preparation queues. The database
 coordinates provider capacity. The scheduler reserves interactive capacity before
 claiming background work. [LLM admission](../../../../project/decisions/0181-provider-llm-admission.md)
@@ -95,9 +101,11 @@ findings use that same setting. LLM work remains outside the detection budget. S
 Only `messenger_send_message_to_user(..., wait_for_reply=True)` requests an immediate
 `waiting_for_children` yield after colleague admission. The default `False` and `task_run`
 allow independent work and more contributions before the end-of-turn wait.
-The internal harness finishes its tool batch before another model
-request; managed network runtimes block new actions, retain engaged calls' receipts and
-close the inference. Uncertain effects retain their reconciliation path. Task then suspends
+Both embedded harnesses finish the tool batch before another model request. For Claude,
+the gateway checks the attempt's checkpoint before admitting the next model call. A
+replacement worker can apply the recorded wait without restarting the SDK. Managed network
+runtimes block new actions, retain engaged calls' receipts and close the inference. Uncertain
+effects retain their reconciliation path. Task then suspends
 and resumes once with durable results, including replies received before suspension.
 Managed images must be refreshed to consume this signal. See
 [0260](../../../../project/decisions/0260-peer-wait-at-tool-boundary.md).
@@ -449,13 +457,12 @@ requires a single active Task from the local registry or its durable lease.
 The scheduler counts unexpired leases under the agent's transaction lock. The internal
 harness carries explicit `task_id` and `agent_run_id`. The LLM service derives the room's
 round and Process from the Task. See [0304](../../../../project/decisions/0304-runtime-llm-call-attribution.md).
-A Harness never executes a conversational round and therefore never carries a
-`conversation_round_id`: text and voice conversations use only their dedicated internal
-controller.
-The low-level calls of the internal conversational controller, on the other hand, retain their
-`agent_id` correlation for auditing without becoming Harness executions or managed-runtime
-requests: a conversational or voice round without a Task therefore remains authorized regardless
-of the driver configured on the agent. Hermes operator configuration is owned by
+The embedded conversation controller retains the `conversation_round_id` on calls without a Task.
+For the Claude Agent SDK, an attempt credential binds the round, agent, model and run to the
+local gateway. The gateway checks the attempt before sending the request to the provider.
+The voice transcription and synthesis pipeline uses the same admission rule as Chat.
+See [0327](../../../../project/decisions/0327-embedded-conversation-inference-origin.md).
+Hermes operator configuration is owned by
 `/api/hermes/configurations` and is no longer exposed by the generic Agent CRUD. Its presentation
 remains a contribution from `front/bridge/hermes` to the Agent record tab and the
 `Preferences > Harnesses` submenu, without an independent navigation entry.
@@ -742,6 +749,13 @@ waiting writer and returns results to the model in invocation order. This policy
 deliberately pessimistic: declaring a function safe is a contract decision, not an inference from
 its name.
 
+A Claude Task retains the tool call limit set when its run was admitted. Each call admitted to
+dispatch reserves a slot in the checkpoint, including reads. A resumed run inherits the limit
+and its used slots. Human approval continues the call under its original reservation.
+Claude Chat and voice keep these values on the round attempt. Deep keeps them on the
+submission, including across a lease change. Each new call reserves its slot under its
+owner's lock. The next round or submission takes the current setting.
+
 Before each model request, history is compacted according to the resolved context window.
 Service call/return pairs remain atomic units, and the most recent elements are retained within the
 remaining budget. The JSON arguments of a tool call remain structurally valid: compaction bounds
@@ -921,6 +935,33 @@ projection: active connection, a tool on its Service's allowlist, effective perm
 the runtime profile. Built-in Services get their allowlists from code. Custom Services need
 an opt-in for each tool at discovery and invocation. An external MCP connector with an empty
 allowlist is skipped.
+
+The embedded SDK uses the Galaris proxy for external MCP tools. The effect journal and the
+active run lease govern each dispatch. Authorization and continuation metadata stay inside
+Galaris. The proxy reserves native function names for their original tools.
+
+When a plan step selects tools, Claude initially sees that selection and its companion tools.
+`search_deferred_tools` uses the shared catalog to find other authorized tools.
+`call_discovered_tool` uses their exact names and arguments. Search and dispatch both recheck
+current visibility. The effect journal and approval recovery use the physical tool's identity.
+Search results expire at the end of the attempt.
+
+Embedded Claude and Pydantic AI use the same library and personal skill assignments. Claude
+receives eager guides and the deferred skill catalog in its system prompt. The `load_capability`
+tool loads a deferred skill by ID. `read_skill_file` reads a resource or Markdown section of a
+loaded skill. Every load or read checks current permissions. When an SDK session resumes,
+Galaris preserves tool call pairing in the transcript and replaces the old skill result
+content so the engine can consult the current catalog.
+
+A Claude Task can suspend while it waits for a Service authorization. Its checkpoint binds the
+sealed SDK session and original tool call to the run. A pending decision produces no model calls
+on retry. The attempt resuming an approval revalidates its lease and current Service permissions,
+dispatches the original operation, and continues the SDK session with the receipt. New model
+calls belong to the resuming attempt.
+
+Chat stores the same journal in the round's encrypted checkpoint. A newer message can invalidate
+a pending authorization. A tool already running settles before the earlier turn stops. Messages
+and model calls retain their original round.
 
 The conversational dispatcher profile responds directly to humans and arbitrates `EXEC`/`END`
 for a message emitted by another AI. This `END` terminates only the conversational round without
@@ -1156,11 +1197,16 @@ In the STT pipeline, local detection during playback first pauses output without
 consuming retained audio or cancelling the run. An empty final transcript removes
 the provisional indicator and resumes retained playback. A nonempty final transcript
 confirms the interruption: it cancels the current run and ends the round as
-`INTERRUPTED`, not as `Task.ERROR`. Its effective objective remains pending in the session and
-is prefixed to the next transcript. Only a complete response clears this objective. The shared
+`INTERRUPTED`. If no effect has started, its effective objective remains pending in the session
+and is prefixed to the next transcript. The shared
 prompt authorizes speech and bounded consultations. Any other action must launch an assigned
 Process asynchronously through `process_start_conversation`, or a self-contained Task through
 `task_run`; the conversational runtime never performs this action directly.
+
+The voice pipeline selects its harness at the opening of each round using the same rule as
+Chat. With embedded Claude, the voice transport holds a lease on the attempt. Every SDK call
+is logged as `conversation.audio` with its round, attempt, and requester. Interruption or
+closure revokes the previous attempt's authority.
 
 The `realtime` voice mode does not split audio into text executions. `app.agent` composes the
 identity, shared prompt, and context providers once in a `RealtimeAgentContext`. `app.voice` then
@@ -1188,6 +1234,23 @@ STT → conversational executor → TTS pipeline. A native voice associated with
 opens an audio → audio session; no artificial transcript is created. Both variants retain the
 same context, the same conversational policy, a tool surface bounded to conversations, and the
 same voice-session persistence.
+
+New calls routed to embedded Claude Agent use the STT → Claude → TTS pipeline. A compatible
+OpenAI voice retains its provider account and voice code for the Speech API. The profile's
+**Transcription** model receives the audio. The OpenAI bridge can open a separate transcription
+WebSocket, and Galaris chooses when to commit speech. Claude's call ownership and lease remain
+attached to the conversation round.
+
+### Deep Mode
+
+The `@deep` mode uses the agent's assigned harness. With embedded Claude, each submission
+owns a lease and an admitted model. Claude calls carry the `conversation.deep` purpose and the
+`deep_session_id` and `deep_submission_id` references. Claude resumes the encrypted SDK history
+of that session on the next submission. Other rooms have their own history.
+
+A tool authorization belongs to one submission. Deep releases its lease while it waits and
+keeps later submissions in order. After the decision, Deep restores the encrypted checkpoint
+under a new lease. Stopping a waiting submission cancels its authorization and releases the queue.
 
 ## Execution Matrix
 

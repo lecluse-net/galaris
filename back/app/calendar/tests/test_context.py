@@ -89,16 +89,19 @@ async def test_personal_agenda_tools_are_available_in_tasks_and_conversations_wi
     definitions = await list_enabled_native_mcp_definitions(
         agent.id, runtime="internal", conversation_only=conversation_only,
     )
-    assert {"calendar_list", "calendar_events", "calendar_create_event", "calendar_update_event"} <= {
-        definition.name for definition in definitions
-    }
-    await set_connection_function_state(connection.id, "calendar_create_event", "disabled")
+    names = {definition.name for definition in definitions if definition.service_code == "calendar"}
+    if conversation_only:
+        assert names == {"calendar_list", "calendar_events"}
+    else:
+        assert {"calendar_list", "calendar_events", "calendar_create_event", "calendar_update_event"} <= names
+    revoked = "calendar_events" if conversation_only else "calendar_create_event"
+    await set_connection_function_state(connection.id, revoked, "disabled")
     definitions = await list_enabled_native_mcp_definitions(
         agent.id, runtime="internal", conversation_only=conversation_only,
     )
     names = {definition.name for definition in definitions}
-    assert "calendar_create_event" not in names
-    assert {"calendar_list", "calendar_events"} <= names
+    assert revoked not in names
+    assert "calendar_list" in names
 
 
 class Clock(datetime):
@@ -204,7 +207,7 @@ async def test_readable_calendar_does_not_claim_write_access_and_inventory_match
     from core.i18n import default_language, t
     from tests.sql_reads import measured_reads
 
-    connection, feed = personal
+    connection, _feed = personal
     await set_connection_function_state(connection.id, "calendar_create_event", state)
     await set_connection_function_state(connection.id, "calendar_update_event", state)
     allowed = {"calendar_list", "calendar_events", "calendar_create_event", "calendar_update_event"}
@@ -220,32 +223,26 @@ async def test_readable_calendar_does_not_claim_write_access_and_inventory_match
     assert len(after_reads) < len(before_reads)
     async with toolset:
         assert inventory.tool_names == frozenset(await toolset.get_tools(None))
-    assert {"calendar_list", "calendar_events"} <= inventory.tool_names
-    assert ("calendar_create_event" in inventory.tool_names) == (state != "disabled")
-    assert ("Use calendar_create_event with an exact calendar ID" in inventory.text) == (state != "disabled")
-    assert ("calendar_update_event" in inventory.tool_names) == (state != "disabled")
-    assert ("Use calendar_update_event for an existing event" in inventory.text) == (state != "disabled")
+    assert inventory.tool_names == {"calendar_list", "calendar_events"}
+    assert "calendar_create_event" not in inventory.text
+    assert "calendar_update_event" not in inventory.text
     contribution = await context.calendar_context_provider(request(agent, conversation_round_id=uuid4()))
     assert contribution.turn_data["upcoming_agenda"]["items"] == []
     assert "grants no calendar action" in contribution.system_instructions
     assert "calendar_create_event" not in contribution.system_instructions
     if state == "enabled":
         # The assembled server can outlive the permission snapshot used for its prompt.
-        await set_connection_function_state(connection.id, "calendar_create_event", "disabled")
+        await set_connection_function_state(connection.id, "calendar_events", "disabled")
         async with Client(server) as client:
-            denied = await client.call_tool("calendar_create_event", {
-                "calendar_id": feed.id, "summary": "Synthetic forbidden appointment",
-                "start": (NOW + timedelta(hours=1)).isoformat(),
-                "end": (NOW + timedelta(hours=2)).isoformat(),
+            denied = await client.call_tool("calendar_events", {
+                "start": NOW.isoformat(), "end": (NOW + timedelta(days=1)).isoformat(),
             }, raise_on_error=False)
         assert denied.is_error
         assert denied.meta[EXECUTION_META_KEY]["permission_rejected"] is True
         error_text = "\n".join(part.text for part in denied.content if isinstance(part, TextContent))
         assert t("services.call_failure_hints.permission_denied", default_language()) in error_text
-        page = await service.event_window(agent.id, NOW, NOW + timedelta(days=1))
-        assert page.total == 0
         _, refreshed = await build_conversation_toolset(agent.id, resources={}, allowed_tool_names=allowed)
-        assert "calendar_create_event" not in refreshed.tool_names
+        assert refreshed.tool_names == {"calendar_list"}
 
 
 @pytest.mark.asyncio

@@ -10,6 +10,7 @@ from app.agent.contracts import AIMessage, AIResult
 from . import model_usages
 from .provider_facade import ReasoningEffort
 from .decision_contracts import ChoiceQuestion
+from .embedded_runtime import EmbeddedInferenceOrigin
 from .profile_fallback import ProfileFallbackRoute
 
 
@@ -81,11 +82,13 @@ class ProtocolInferenceRequest(InferenceInput):
     protocol: Literal["chat", "responses", "compact"]
     body: dict[str, JsonValue]
     task_attempt_id: UUID | None = None
+    embedded_origin: EmbeddedInferenceOrigin | None = None
     deep_session_id: UUID | None = None
     sdk_request: bool = False
     managed_runtime_request: bool = False
     unwrap_deferred_tools: bool = False
     preserve_message_history: bool = False
+    retain_image_preview: bool = True
     force_reasoning_effort: bool = False
     request_timeout: dict[str, float | None] | None = None
 

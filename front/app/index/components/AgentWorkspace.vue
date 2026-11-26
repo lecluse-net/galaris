@@ -386,18 +386,16 @@
               />
 
               <!-- Runtime selection follows the agent's identity. -->
-              <template v-if="isAgentEdit">
-                <q-select
-                  v-model="selectedHarnessId"
-                  :options="harnessSelectionOptions"
-                  :label="$t('harnesses.selection')"
-                  :hint="$t('harnesses.selectionHint')"
-                  filled emit-value map-options
-                  hide-bottom-space
-                  :loading="harnessSelectionLoading"
-                  :disable="!canManageCurrentAgent || !harnessSelectionLoaded"
-                />
-              </template>
+              <q-select
+                v-model="selectedHarness"
+                :options="harnessSelectionOptions"
+                :label="$t('harnesses.selection')"
+                :hint="isAgentEdit ? $t('harnesses.selectionHint') : undefined"
+                filled emit-value map-options
+                hide-bottom-space
+                :loading="harnessSelectionLoading"
+                :disable="!canSaveAgent || !harnessSelectionLoaded || harnessChangePending"
+              />
 
               <!-- Personality and job description are edited after creation. -->
               <template v-if="isAgentEdit">
@@ -458,7 +456,8 @@
             <template v-slot:avatar><q-icon name="warning" /></template>
             {{ $t('agent.harness.changeConfirmMessage') }}
           </q-banner>
-          <p class="q-mb-none q-mt-md">{{ $t('agent.harness.changeConfirmNextStep') }}</p>
+          <p v-if="harnessCatalog.some(harness => harness.id === selectedHarness && harness.containerized)"
+            class="q-mb-none q-mt-md">{{ $t('agent.harness.changeConfirmNextStep') }}</p>
         </q-card-section>
         <q-separator />
         <q-card-actions align="right" class="q-pa-md galaris-dialog-actions">
@@ -608,12 +607,14 @@ import { DialogHeader, ResourceDetailDialog, useResourceDetail } from '@/core/ut
 import { showConfirmationDialog } from '@/core/util'
 import { ref, shallowRef, onUnmounted, reactive, computed, useId, watch, type Component } from 'vue'
 import { useAgentStore, agentService } from '@/app/agent/facade'
-import type { Agent, AgentManagerInfo } from '@/app/agent/contracts'
+import type { Agent, AgentManagerInfo, ExecutorDriverInfo } from '@/app/agent/contracts'
 import { AgentCard, getAgentDriverTab, titleLabel } from '@/app/agent/interface'
 import { harnessService } from '@/app/harnesses'
 import type {
   HarnessCatalogEntry,
+  HarnessSelection,
   HarnessTaskBlocker,
+  HarnessTaskBlockers,
 } from '@/app/harnesses'
 import { useLLMProviderStore } from '@/app/llm/facade'
 import { llmProviderService } from '@/app/llm/facade'
@@ -791,9 +792,11 @@ const titleOptions = computed(() => {
 
 const managers = ref<AgentManagerInfo[]>([])
 const managersLoading = ref(false)
+const DEFAULT_HARNESS = 'internal'
+const embeddedDrivers = ref<ExecutorDriverInfo[]>([])
 const harnessCatalog = ref<HarnessCatalogEntry[]>([])
-const selectedHarnessId = ref<string | null>(null)
-const initialHarnessId = ref<string | null>(null)
+const selectedHarness = ref(DEFAULT_HARNESS)
+const initialHarness = ref<HarnessSelection | null>(null)
 const harnessSelectionLoading = ref(false)
 const harnessSelectionLoaded = ref(false)
 const showHarnessChangeConfirm = ref(false)
@@ -822,34 +825,54 @@ const managerOptions = computed(() => {
   }))
 })
 
-const harnessSelectionOptions = computed(() => [
-  { label: t('harnesses.internal'), value: null },
-  ...harnessCatalog.value.map(harness => ({
-    label: harness.provider_code === 'openai_messages'
-      ? `${harness.name} · API`
-      : harness.name,
-    value: harness.id,
-  })),
-])
+const initialHarnessValue = computed(() =>
+  initialHarness.value?.harness_id ?? initialHarness.value?.driver_code ?? DEFAULT_HARNESS,
+)
 
-async function loadHarnessSelection(agent: Agent, generation: number): Promise<void> {
+const harnessSelectionOptions = computed(() => {
+  const options = [{ label: t('harnesses.internal'), value: DEFAULT_HARNESS, disable: false }]
+  for (const driver of embeddedDrivers.value) {
+    if (driver.name === DEFAULT_HARNESS || (!driver.available && driver.name !== initialHarnessValue.value)) continue
+    const name = t(driver.label_key)
+    options.push({
+      label: driver.available ? name : t('harnesses.unavailableOption', { name }),
+      value: driver.name,
+      disable: !driver.available,
+    })
+  }
+  for (const harness of harnessCatalog.value) {
+    let label = harness.name
+    if (harness.provider_code === 'claude_agent') label = t('harnesses.managedOption', { name: label })
+    if (harness.provider_code === 'openai_messages') label = `${label} · API`
+    options.push({ label, value: harness.id, disable: false })
+  }
+  if (initialHarness.value && !options.some(option => option.value === initialHarnessValue.value)) {
+    options.push({
+      label: t('harnesses.unavailableOption', { name: initialHarness.value.name }),
+      value: initialHarnessValue.value,
+      disable: true,
+    })
+  }
+  return options
+})
+
+async function loadHarnessSelection(agent: Agent | null, generation: number): Promise<void> {
   harnessSelectionLoading.value = true
   harnessSelectionLoaded.value = false
   try {
-    const [catalogResponse, selectionResponse] = await Promise.all([
-      harnessService.catalog(true),
-      harnessService.selection(agent.id),
+    const [drivers, catalogue, selection] = await Promise.all([
+      agentService.getDrivers(),
+      agent ? harnessService.catalog(true) : null,
+      agent ? harnessService.selection(agent.id) : null,
     ])
     if (!isCurrentAgentDialog(generation)) return
-    harnessCatalog.value = catalogResponse.data
-    selectedHarnessId.value = selectionResponse.data.harness_id
-    initialHarnessId.value = selectionResponse.data.harness_id
+    embeddedDrivers.value = drivers.data.filter(driver => driver.transport === 'embedded')
+    harnessCatalog.value = catalogue?.data ?? []
+    initialHarness.value = selection?.data ?? null
+    selectedHarness.value = initialHarnessValue.value
     harnessSelectionLoaded.value = true
   } catch {
     if (!isCurrentAgentDialog(generation)) return
-    harnessCatalog.value = []
-    selectedHarnessId.value = null
-    initialHarnessId.value = null
     $q.notify({ type: 'negative', message: t('harnesses.catalog.loadError') })
   } finally {
     if (isCurrentAgentDialog(generation)) harnessSelectionLoading.value = false
@@ -910,15 +933,7 @@ function settlePausedHarnessTasksConfirmation(confirmed: boolean): void {
   resolve?.(confirmed)
 }
 
-async function loadPausedHarnessTasks(agentId: number): Promise<void> {
-  const blockers = (await harnessService.taskBlockers(agentId)).data
-  pausedHarnessTasks.value = blockers.paused_tasks
-  activeHarnessTasks.value = blockers.active_tasks ?? []
-  activeHarnessTaskCount.value = blockers.active_count
-}
-
-async function terminatePausedHarnessTasks(agentId: number): Promise<void> {
-  const blockers = (await harnessService.terminatePausedTasks(agentId)).data
+function updateHarnessTaskBlockers(blockers: HarnessTaskBlockers): void {
   pausedHarnessTasks.value = blockers.paused_tasks
   activeHarnessTasks.value = blockers.active_tasks ?? []
   activeHarnessTaskCount.value = blockers.active_count
@@ -1163,9 +1178,10 @@ const resetAgentForm = () => {
   agentForm.profile_id = null
   agentForm.fallback_profile_id = null
   agentForm.voice_selection = NO_VOICE
+  embeddedDrivers.value = []
   harnessCatalog.value = []
-  selectedHarnessId.value = null
-  initialHarnessId.value = null
+  selectedHarness.value = DEFAULT_HARNESS
+  initialHarness.value = null
   harnessSelectionLoaded.value = false
   pausedHarnessTasks.value = []
   activeHarnessTasks.value = []
@@ -1200,7 +1216,7 @@ const openAgentDialog = (agent: Agent | null = null) => {
   showAgentDialog.value = true
   // Existing portraits already load with the catalogue; no request blocks opening.
   void fetchManagers(generation)
-  if (agent) void loadHarnessSelection(agent, generation)
+  void loadHarnessSelection(agent, generation)
   if (agent && canManageAgent(agent)) void loadAvatarGenerationAvailability(generation)
 }
 
@@ -1253,52 +1269,46 @@ const confirmDelete = async () => {
 
 const onAgentSubmit = async () => {
   if (!canSaveAgent.value || harnessChangePending.value || agentForm.title_id === null) return
-  const harnessChanged = isAgentEdit.value
+  const generation = agentDialogGeneration
+  const session = sessionGeneration()
+  const inDialog = () => session === sessionGeneration() && isCurrentAgentDialog(generation)
+  const agentId = agentForm.id
+  const chosenHarness = selectedHarness.value
+  const choosesEmbedded = chosenHarness === DEFAULT_HARNESS
+    || embeddedDrivers.value.some(driver => driver.name === chosenHarness)
+  const harnessChanged = agentId !== null
     && harnessSelectionLoaded.value
-    && selectedHarnessId.value !== initialHarnessId.value
-  if (harnessChanged && initialHarnessId.value !== null) {
-    const confirmed = await confirmHarnessReplacement()
-    if (!confirmed) return
-  }
-  if (harnessChanged && agentForm.id !== null && privilegeStore.hasPrivilege(privileges.TASK_EDIT)) {
-    harnessChangePending.value = true
-    try {
-      await loadPausedHarnessTasks(agentForm.id)
-    } catch {
-      $q.notify({
-        type: 'negative',
-        message: t('agent.harness.pausedTasksCheckError'),
-      })
-      harnessChangePending.value = false
-      return
+    && chosenHarness !== initialHarnessValue.value
+  harnessChangePending.value = harnessChanged
+  try {
+    if (harnessChanged && initialHarness.value?.containerized) {
+      if (!await confirmHarnessReplacement() || !inDialog()) return
     }
-    if (pausedHarnessTasks.value.length > 0 || activeHarnessTaskCount.value > 0) {
-      harnessChangePending.value = false
-      const confirmed = await confirmPausedHarnessTasksTermination()
-      if (!confirmed || activeHarnessTaskCount.value > 0) return
-      harnessChangePending.value = true
+    if (harnessChanged && privilegeStore.hasPrivilege(privileges.TASK_EDIT)) {
       try {
-        await terminatePausedHarnessTasks(agentForm.id)
+        const { data: blockers } = await harnessService.taskBlockers(agentId)
+        if (!inDialog()) return
+        updateHarnessTaskBlockers(blockers)
       } catch {
-        $q.notify({
-          type: 'negative',
-          message: t('agent.harness.pausedTasksTerminateError'),
-        })
-        harnessChangePending.value = false
+        if (inDialog()) $q.notify({ type: 'negative', message: t('agent.harness.pausedTasksCheckError') })
         return
       }
       if (pausedHarnessTasks.value.length > 0 || activeHarnessTaskCount.value > 0) {
-        $q.notify({
-          type: 'warning',
-          message: t('agent.harness.activeTasksStillBlock'),
-          multiLine: true,
-        })
-        harnessChangePending.value = false
-        return
+        if (!await confirmPausedHarnessTasksTermination() || !inDialog() || activeHarnessTaskCount.value > 0) return
+        try {
+          const { data: blockers } = await harnessService.terminatePausedTasks(agentId)
+          if (!inDialog()) return
+          updateHarnessTaskBlockers(blockers)
+        } catch {
+          if (inDialog()) $q.notify({ type: 'negative', message: t('agent.harness.pausedTasksTerminateError') })
+          return
+        }
+        if (pausedHarnessTasks.value.length > 0 || activeHarnessTaskCount.value > 0) {
+          $q.notify({ type: 'warning', message: t('agent.harness.activeTasksStillBlock'), multiLine: true })
+          return
+        }
       }
     }
-  }
-  try {
     const data = {
       user_id: agentForm.user_id,
       title_id: agentForm.title_id,
@@ -1310,36 +1320,39 @@ const onAgentSubmit = async () => {
       voice: agentForm.voice_selection === NO_VOICE ? null : agentForm.voice_selection,
     }
 
-    if (isAgentEdit.value && agentForm.id !== null) {
-      const updated = await agentStore.updateAgent(agentForm.id, data)
+    if (agentId !== null) {
+      const updated = await agentStore.updateAgent(agentId, data)
+      if (session !== sessionGeneration()) return
       applyPreviewAgent(updated)
+      let nextMessage = 'agent.notify.agentUpdated'
       if (harnessChanged) {
-        selectedHarnessId.value === null
-          ? await harnessService.selectInternal(agentForm.id)
-          : await harnessService.install(agentForm.id, selectedHarnessId.value)
+        const { data: savedHarness } = choosesEmbedded
+          ? await harnessService.selectEmbedded(agentId, chosenHarness)
+          : await harnessService.install(agentId, chosenHarness)
+        if (session !== sessionGeneration()) return
+        if (inDialog()) initialHarness.value = savedHarness
+        if (savedHarness.containerized) nextMessage = 'agent.harness.preferenceSaved'
         // The status endpoint owns lifecycle/action projection; do not reconstruct it
         // from the selection response (which has no runtime observation).
-        markHarnessSelectionPending(agentForm.id)
+        markHarnessSelectionPending(agentId)
         await refreshVisibleAgents()
-        const savedAgent = agents.value.find(agent => agent.id === agentForm.id)
+        const savedAgent = agents.value.find(agent => agent.id === agentId)
         if (savedAgent) await fetchHarnessStatus(savedAgent, true)
-        initialHarnessId.value = selectedHarnessId.value
       }
-      $q.notify({
-        type: 'positive',
-        message: harnessChanged
-          ? t('agent.harness.preferenceSaved')
-          : t('agent.notify.agentUpdated'),
-      })
+      if (!inDialog()) return
+      $q.notify({ type: 'positive', message: t(nextMessage) })
     } else {
       await agentStore.createAgent({
         ...data,
         code: agentForm.code.trim(),
+        agent_driver: chosenHarness,
       })
+      if (!inDialog()) return
       $q.notify({ type: 'positive', message: t('agent.notify.agentCreated') })
     }
     showAgentDialog.value = false
   } catch (error) {
+    if (!inDialog()) return
     const validationDetail = isAxiosError<{ detail?: unknown }>(error) && error.response?.status === 400
       ? error.response.data?.detail
       : null
@@ -1360,7 +1373,7 @@ const onAgentSubmit = async () => {
       multiLine: true,
     })
   } finally {
-    harnessChangePending.value = false
+    if (inDialog()) harnessChangePending.value = false
   }
 }
 
@@ -1514,6 +1527,7 @@ watch(showAgentDialog, open => {
     agentDialogGeneration++
     managersLoading.value = false
     harnessSelectionLoading.value = false
+    harnessChangePending.value = false
     loadingNativeVoices.value = false
   }
 }, { flush: 'sync' })

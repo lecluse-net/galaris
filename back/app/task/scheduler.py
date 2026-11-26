@@ -1012,7 +1012,8 @@ def _finalize_claim_outcome(task: Task, attempt: TaskAttempt | None) -> None:
                 "pause_reasons": task_service.pause_reasons(task),
             }
             partial_result = task.get_execution_result()
-            if partial_result is not None and not partial_result.success:
+            if (partial_result is not None and not partial_result.success
+                    and partial_result.disposition != "waiting_for_children"):
                 attempt.error = (
                     partial_result.result.strip()
                     or _task_message(task, "interrupted_after_children")
