@@ -868,7 +868,8 @@ Useful distinctions:
   Activate the connection and delegate personal, team or all scope as needed.
   Only all scope exposes incidents without an agent and global pattern diagnostics.
 - **Administer → Laboratory** (`/lab`) groups task analysis and mechanism evaluations,
-  filtered by permissions. See the [Lab guide](lab-ai.md).
+  filtered by permissions. The menu appears when the active role grants access to at
+  least one entry. See the [Lab guide](lab-ai.md).
 - The account menu opens your profile (`/authorize/profile`) and **My API Tokens**
   (`/user/tokens`). It also changes language, theme and active role.
   Managing personal tokens and agents' MCP tokens requires an authenticated web

@@ -80,11 +80,13 @@
         {{ authorizeStore.roleLabel }}
       </div>
     </div>
-    <q-btn flat
+    <q-btn
       v-if="!avatarUrl || avatarLoadFailed"
       fab
-      color="primary"
-      icon="account_circle"
+      unelevated
+      class="user-avatar-fallback"
+      icon="person"
+      text-color="white"
       :aria-label="$t('user.myAccount')"
     />
     <div v-else class="avatar-container">
@@ -286,6 +288,10 @@ body.body--dark .user-menu-divider {
   opacity: 0.9;
   display: flex;
   align-items: center;
+}
+
+.user-avatar-fallback {
+  background: linear-gradient(145deg, var(--solaire-blue-accent), var(--solaire-blue-dark));
 }
 
 .avatar-container {

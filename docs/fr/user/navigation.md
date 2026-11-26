@@ -942,7 +942,8 @@ Quelques distinctions utiles :
   Activez la connexion et déléguez le périmètre personnel, équipe ou tous selon le besoin.
   Seul « tous » donne accès aux incidents sans agent et aux diagnostics globaux des motifs.
 - **Administrer → Laboratoire** (`/lab`) regroupe l’analyse de tâches et les évaluations
-  par mécanisme, filtrées selon les droits. Voir le [guide du Lab](lab-ai.md).
+  par mécanisme. Le menu apparaît si le rôle actif donne accès à au moins une de ses
+  entrées. Voir le [guide du Lab](lab-ai.md).
 - Le menu du compte ouvre le profil (`/authorize/profile`) et **Mes Tokens API**
   (`/user/tokens`). Il sert aussi à changer la langue, le thème et le rôle actif.
   La gestion des jetons personnels et des jetons MCP des agents exige une session

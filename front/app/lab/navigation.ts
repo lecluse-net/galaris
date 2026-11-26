@@ -23,6 +23,7 @@ const navigation: NavigationTree = {
         order: 20,
         to: '/lab',
         privileges: allLabPrivileges,
+        requiresVisibleChildren: true,
         children: labChildren,
       },
     },

@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 
-import { mergeNavigationTrees } from './tree.ts'
+import { filterNavigationTree, mergeNavigationTrees } from './tree.ts'
 
 function harnessNavigation(children = undefined) {
   return {
@@ -41,4 +41,27 @@ test('successive navigation merges do not retain provisional Harness entries', (
   assert.equal(preferencesHarnesses.children, undefined)
   assert.deepEqual(Object.keys(renderedHarnesses), ['harness_d8f1'])
   assert.equal(renderedHarnesses.harness_d8f1.to, '/harnesses/d8f1')
+})
+
+test('a group that requires visible children disappears when its last child becomes unavailable', () => {
+  const tree = {
+    lab: {
+      to: '/lab',
+      requiresVisibleChildren: true,
+      children: {
+        planner: { to: '/lab/planner', privileges: ['PLANNER_EVALUATION_ACCESS'] },
+        tasks: { to: '/lab/ai-evaluations', visible: false },
+      },
+    },
+    home: { to: '/', children: { extra: { visible: false } } },
+  }
+  const allowed = new Set(['PLANNER_EVALUATION_ACCESS'])
+  const isVisible = node => node.visible !== false &&
+    (!node.privileges || node.privileges.some(privilege => allowed.has(privilege)))
+
+  assert.deepEqual(Object.keys(filterNavigationTree(tree, isVisible).lab.children), ['planner'])
+  allowed.clear()
+  const filtered = filterNavigationTree(tree, isVisible)
+  assert.equal(filtered.lab, undefined)
+  assert.deepEqual(filtered.home, { to: '/' })
 })

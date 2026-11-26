@@ -9,7 +9,7 @@
 
 import { computed, ref } from 'vue'
 import type { NavigationTree, NavigationNode, NavigationNodeWithPath, NavigationModule } from '../types'
-import { mergeNavigationTrees } from '../tree'
+import { filterNavigationTree, mergeNavigationTrees } from '../tree'
 import { modules as activeModules } from '../../../modules'
 import { usePrivilegeStore } from '@/core/authorize/facade'
 
@@ -72,42 +72,6 @@ export function useNavigation() {
   }
 
   /**
-   * Filter a navigation tree to nodes visible to the user.
-   */
-  function filterTreeByPrivileges(tree: NavigationTree): NavigationTree {
-    const filtered: NavigationTree = {}
-
-    for (const [key, node] of Object.entries(tree)) {
-      // Check required privileges.
-      if (!hasRequiredPrivileges(node)) {
-        continue // Skip the node and all its descendants.
-      }
-
-      // Check the custom visibility predicate.
-      if (!isVisible(node)) {
-        continue
-      }
-
-      // Clone the node.
-      const filteredNode: NavigationNode = { ...node }
-
-      // Filter descendants recursively.
-      if (node.children) {
-        const filteredChildren = filterTreeByPrivileges(node.children)
-        if (Object.keys(filteredChildren).length > 0) {
-          filteredNode.children = filteredChildren
-        } else {
-          delete filteredNode.children
-        }
-      }
-
-      filtered[key] = filteredNode
-    }
-
-    return filtered
-  }
-
-  /**
    * Return navigation trees merged and filtered by privileges.
    */
   const allTrees = computed<NavigationTree>(() => {
@@ -123,7 +87,7 @@ export function useNavigation() {
     }
 
     // Filter by privileges.
-    return filterTreeByPrivileges(merged)
+    return filterNavigationTree(merged, isVisible)
   })
 
   /**

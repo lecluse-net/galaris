@@ -1,5 +1,22 @@
 import { test, expect, mount, setPrivileges, jsonRoute } from './fixtures.mjs'
 
+test('the Laboratory menu follows access to its entries', async ({ page }) => {
+  await page.route('**/api/auth/users?*', route => route.fulfill({ headers: { 'x-total-count': '0' }, json: [] }))
+  await mount(page, 'core/user/pages/users.vue', {
+    route: '/user/users', shell: true, privileges: ['READ_USER'],
+  })
+  const laboratory = page.getByRole('link', { name: 'Laboratory', exact: true })
+  await expect(laboratory).toHaveCount(0)
+
+  await setPrivileges(page, ['READ_USER', 'PLANNER_EVALUATION_ACCESS'])
+  await expect(laboratory).toBeVisible()
+  await expect(page.locator('a[href="/lab/planner"]')).toHaveCount(1)
+  await expect(page.locator('a[href="/lab/processes"]')).toHaveCount(0)
+
+  await setPrivileges(page, ['READ_USER'])
+  await expect(laboratory).toHaveCount(0)
+})
+
 test('Services deep links select their permitted tab after delayed authorization and follow navigation', async ({ page }) => {
   for (const path of ['mail/approvers', 'services', 'services/capabilities', 'file-share/bridges', 'messenger/bridges']) await jsonRoute(page, `**/api/${path}`, [])
   await jsonRoute(page, '**/api/connections/overview?*', [])

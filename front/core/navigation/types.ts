@@ -52,6 +52,9 @@ export interface NavigationNode {
   /** Child menu nodes. */
   children?: NavigationTree
 
+  /** Show this node only while at least one child is visible. */
+  requiresVisibleChildren?: boolean
+
   /** Condition d'affichage */
   visible?: boolean | VisibilityFn
 
