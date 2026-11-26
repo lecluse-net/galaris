@@ -6,7 +6,7 @@
     <Teleport v-for="target in documentLinkIcons" :key="target.key" :to="target.element"><WorkingDocumentIcon :document-id="target.documentId" title="" size="1em" readonly /></Teleport>
     <Teleport v-for="target in embeds" :key="target.key" :to="target.element"><component :is="target.display === 'card' ? DocumentCard : DocumentEmbed" :uri="target.uri" :display="target.display" :title="target.title" :agent-id="resourceAgentId" :register-actions="registerReferenceActions && target.registerActions"
       v-bind="target.display === 'embed' ? { reference: target.card, resize: resizeReference && ((size: DocumentEmbedSize) => resizeReference?.(target.index, target.uri, size)) } : {}" /></Teleport>
-    <ResourceDetailDialog v-if="detail" :target="detail" @close="detail = null" />
+    <ResourceDetailDialog v-if="detail" :target="detail" @close="closeDetail" />
     <PdfPreview v-model="pdfPreview" />
   </div>
 </template>
@@ -35,12 +35,13 @@ import { webLinkCardImage, prependWebLinkImage } from '../webLinkPreview'
 import { renderMath } from '../mathRendering'
 import { renderSvgFigures } from '../editorialSvg'
 import { renderChartFigures } from '../editorialChartDisplay'
-const { content, profile = 'rich-text', resolveImage, resolveResourceImage, resourceAgentId = null, registerReferenceActions, resizeReference } = defineProps<{
+const { content, profile = 'rich-text', resolveImage, resolveResourceImage, resourceAgentId = null, registerReferenceActions, resizeReference, openDocumentInDialog = false } = defineProps<{
   content: string
   profile?: ContentProfile
   resolveImage?: (documentId: string, attachmentId: string) => Promise<Blob>
   resolveResourceImage?: ResourceImageResolver
   resourceAgentId?: number | null
+  openDocumentInDialog?: boolean
   registerReferenceActions?: (card: HTMLElement, actions: readonly DocumentReferenceAction[]) => void
   resizeReference?: (index: number, uri: string, size: DocumentEmbedSize) => void
 }>()
@@ -48,6 +49,13 @@ const rendered = ref('')
 const navigateDocument = useDocumentNavigation()
 const embeds = shallowRef<Array<ResourceEmbedTarget & { index: number; registerActions: RegisterDocumentReferenceActions }>>([]), detail = shallowRef<ResourceDetailTarget | null>(null)
 let selectedDocumentReference: Element | undefined
+let documentDialogLink: HTMLElement | null = null
+function closeDetail(): void {
+  detail.value = null
+  const link = documentDialogLink
+  documentDialogLink = null
+  if (link) void nextTick(() => { if (!detail.value && link.isConnected) link.focus() })
+}
 function openReference(event: MouseEvent): void {
   if (!(event.target instanceof Element) || event.target.closest('.q-btn, input, select, textarea, [data-document-player]')) return
   const embeddedReader = event.target.closest('[data-resource-mode="embed"] > .galaris-resource-embed')
@@ -64,9 +72,16 @@ function openReference(event: MouseEvent): void {
     selectedDocumentReference.classList.add('galaris-reference-selected')
     return
   }
-  if (navigateDocument(uri)) { event.preventDefault(); event.stopPropagation(); return }
   const target = richLinkTarget(uri, link.textContent ?? '')
-  if (target) { event.preventDefault(); event.stopPropagation(); detail.value = target }
+  if (!(openDocumentInDialog && target?.kind === 'document') && navigateDocument(uri)) {
+    event.preventDefault(); event.stopPropagation(); return
+  }
+  if (target) {
+    event.preventDefault()
+    event.stopPropagation()
+    documentDialogLink = openDocumentInDialog && target.kind === 'document' && link instanceof HTMLElement ? link : null
+    detail.value = target
+  }
   else if (profile === 'document' && !event.target.closest('a')) {
     const href = richLinkHref(uri)
     if (href) { event.preventDefault(); window.open(href, '_blank', 'noopener,noreferrer') }
@@ -76,8 +91,9 @@ function suppressDocumentContextMenu(event: MouseEvent): void {
   if (profile === 'document') event.stopPropagation()
 }
 function openUri(uri: string): void {
-  if (navigateDocument(uri)) return
-  detail.value = richLinkTarget(uri)
+  const target = richLinkTarget(uri)
+  if (!(openDocumentInDialog && target?.kind === 'document') && navigateDocument(uri)) return
+  detail.value = target
   if (!detail.value) {
     const href = richLinkHref(uri)
     if (href) window.open(href, '_blank', 'noopener,noreferrer')

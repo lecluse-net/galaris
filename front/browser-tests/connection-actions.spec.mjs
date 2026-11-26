@@ -1,4 +1,36 @@
-import { test, expect, mount } from './fixtures.mjs'
+import { test, expect, mount, jsonRoute } from './fixtures.mjs'
+import { document as documentFixture } from './data.mjs'
+
+test('an authorization opens its named item and keeps the request open on return', async ({ page }) => {
+  const id = '00000000-0000-4000-8000-000000000102'
+  const document = { ...documentFixture, id, title: 'Quarterly report', media_type: 'text/html',
+    content_profile: 'document', payload: { text: '<p>Report for review</p>' } }
+  const request = { id: 'synthetic-request', agent_id: 7, approver_user_id: 1, status: 'pending',
+    title: 'Change access to a document', capability_name: 'document_share', preview: id,
+    expires_at: '2099-01-01T00:00:00Z', can_answer: true,
+    presentation: { title: 'Change access to a document', fields: [
+      { label: 'Document', value: document.title, resource_uri: `document://${id}` },
+      { label: 'Destination', value: 'Item unavailable' },
+    ] } }
+  await jsonRoute(page, '**/api/services/action-authorizations?*', { items: [request], total: 1 })
+  await jsonRoute(page, `**/api/services/action-authorizations/${request.id}`, request)
+  await jsonRoute(page, new RegExp(`/api/documents/${id}(?:\\?.*)?$`), { item: document, agent_id: 7 })
+  await jsonRoute(page, `**/api/documents/${id}/attachments*`, [])
+  await jsonRoute(page, '**/api/documents/keywords?*', [])
+  await mount(page, 'app/connection/components/ActionAuthorizations.vue', {
+    privileges: ['PERMISSION_DECIDE', 'DOCUMENT_ACCESS'],
+  })
+  await page.getByRole('button', { name: 'Review request' }).click()
+  const approval = page.getByRole('dialog').filter({ hasText: 'Authorization for one action' })
+  await expect(approval).toContainText('Item unavailable')
+  await expect(approval.getByRole('button', { name: 'Item unavailable' })).toHaveCount(0)
+  await approval.getByRole('button', { name: document.title }).press('Enter')
+  const item = page.getByRole('dialog').filter({ hasText: 'Report for review' })
+  await expect(item).toBeVisible()
+  await page.keyboard.press('Escape')
+  await expect(item).toBeHidden()
+  await expect(approval.getByRole('button', { name: document.title })).toBeFocused()
+})
 
 test('Saved connection tests recover after failure and discard another account’s late result', async ({ page }) => {
   let release, started = false, attempts = 0

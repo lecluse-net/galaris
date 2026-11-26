@@ -273,6 +273,10 @@ The parent waits for child results before resuming consolidation; tasks with mat
 labels remain distinguishable by their references. An authorization answered from the
 permissions page also displays its decision in Chat.
 
+In Chat and in the authorization request details, recognized items appear by name.
+When the name is interactive, click it to open the item in a dialog, subject to your
+read permissions.
+
 ## The Three Forms of Request
 
 ### Discuss

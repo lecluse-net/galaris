@@ -6,7 +6,7 @@
       <small>#{{ choice.reference }}</small>
     </header>
     <strong v-else>{{ choice.title }}</strong>
-    <RichText v-if="choice.body_html" :content="choice.body_html" />
+    <RichText v-if="choice.body_html" :content="choice.body_html" :open-document-in-dialog="choice.is_authorization" />
     <SafeMessageContent v-else-if="choice.body" :content="choice.body" />
     <div class="interaction-options">
       <q-btn color="primary"

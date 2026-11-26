@@ -315,6 +315,10 @@ Le parent attend les résultats enfants avant de reprendre la consolidation ; de
 de même nom restent distinguées par leurs références. Une autorisation traitée depuis
 la page des permissions affiche aussi la décision dans Chat.
 
+Dans Chat et dans le détail d’une demande d’autorisation, les éléments reconnus
+apparaissent sous leur libellé. Cliquez sur le libellé lorsqu’il est interactif pour
+ouvrir la fiche dans une modale, sous réserve de vos droits de consultation.
+
 ## Les trois formes de demande
 
 ### Discuter

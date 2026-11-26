@@ -1,4 +1,5 @@
 import { test, expect, mount, jsonRoute } from './fixtures.mjs'
+import { document as documentFixture } from './data.mjs'
 
 const component = 'app/chat/components/InteractionChoice.vue'
 const choice = {
@@ -53,12 +54,16 @@ test('the Chat menu updates the question and unread totals independently', async
 })
 
 test('a rich approval body keeps its editorial structure and response controls', async ({ page }, testInfo) => {
+  const documentId = '00000000-0000-4000-8000-000000000101'
+  const document = { ...documentFixture, id: documentId, title: 'Dossier de relecture', media_type: 'text/html',
+    content_profile: 'document', payload: { text: '<p>Contenu du dossier synthétique</p>' } }
   const room = { id: 'room-1', label: 'Conversation synthétique', agent_id: 7, agent_name: 'Agent synthétique',
     agent_active: false, writable: true, members: [], unread_count: 0, conversation_type: 'text' }
   const approvalChoice = { ...choice, title: 'Demande d’autorisation', is_authorization: true,
     body_html: '<h3>Créer un agent</h3><table class="galaris-table-gray galaris-table-minimal"><tbody>'
       + '<tr><th>Prénom</th><td>Camille</td></tr><tr><th>Intitulé du poste</th><td>Relecture &lt;2026&gt;</td></tr>'
       + '<tr><th>Code de l’agent</th><td>relecture-synthetique</td></tr><tr><th>Harnais</th><td>internal</td></tr>'
+      + `<tr><th>Document</th><td><a href="document://${documentId}">${document.title}</a></td></tr>`
       + '</tbody></table><p><strong>Fiche de poste</strong></p><h2>Plan du projet</h2><ul><li>Relire le bilan</li></ul>'
       + '<p><strong>Personnalité</strong></p><p>Privilégie les exemples courts et précis.</p>'
       + '<blockquote><p>Cette décision concerne uniquement l’action décrite ici.</p></blockquote>',
@@ -73,6 +78,7 @@ test('a rich approval body keeps its editorial structure and response controls',
     ['rooms?*', { items: [room], total: 1 }],
     ['rooms/room-1', room],
     ['rooms/room-1/messages?*', { items: [message], total: 1 }],
+    ['rooms/room-1/documents?*', { items: [], total: 0 }],
     ['rooms/room-1/activity?*', { items: [], total: 0 }],
     ['rooms/room-1/speech/status*', { available_agent_ids: [] }],
     ['rooms/room-1/read', {}],
@@ -81,8 +87,11 @@ test('a rich approval body keeps its editorial structure and response controls',
     ['emojis/frequent', { items: [] }],
     ['agents/7/avatar', {}],
   ]) await jsonRoute(page, '**/api/chat/' + path, json)
+  await jsonRoute(page, new RegExp(`/api/documents/${documentId}(?:\\?.*)?$`), { item: document, agent_id: 7 })
+  await jsonRoute(page, `**/api/documents/${documentId}/attachments*`, [])
+  await jsonRoute(page, '**/api/documents/keywords?*', [])
   await mount(page, 'app/chat/pages/index.vue', {
-    route: '/chat?room=room-1', privileges: ['CHAT_SEND'], locale: 'fr', shell: true,
+    route: '/chat?room=room-1', privileges: ['CHAT_SEND', 'DOCUMENT_ACCESS'], locale: 'fr', shell: true,
   })
   const approval = page.getByRole('region', { name: approvalChoice.title })
   for (const [width, dark] of [[1440, false], [1440, true], [390, true]]) {
@@ -95,6 +104,13 @@ test('a rich approval body keeps its editorial structure and response controls',
     await expect(approval.getByRole('button', { name: 'Autoriser cette action' })).toBeEnabled()
     await approval.screenshot({ path: testInfo.outputPath(`rich-approval-${width}-${dark ? 'dark' : 'light'}.png`), animations: 'disabled' })
   }
+  await approval.getByRole('link', { name: document.title }).press('Enter')
+  const detail = page.getByRole('dialog')
+  await expect(detail.getByText('Contenu du dossier synthétique')).toBeVisible()
+  await page.keyboard.press('Escape')
+  await expect(detail).toBeHidden()
+  await expect(approval.getByRole('link', { name: document.title })).toBeFocused()
+  await expect(approval.getByRole('button', { name: 'Autoriser cette action' })).toBeEnabled()
 })
 
 for (const [locale, expected] of [
