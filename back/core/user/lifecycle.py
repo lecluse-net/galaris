@@ -8,6 +8,20 @@ from loguru import logger
 UserAccessObserver = Callable[[int | None], Awaitable[None]]
 _observers: dict[str, UserAccessObserver] = {}
 _projections: dict[str, Callable[[int, bool], Awaitable[None]]] = {}
+_admin_settings: dict[str, Callable[[int, dict[str, object]], Awaitable[None]]] = {}
+
+
+def register_admin_user_settings(name: str, writer: Callable[[int, dict[str, object]], Awaitable[None]]) -> None:
+    _admin_settings[name] = writer
+
+
+async def apply_admin_user_settings(user_id: int, sections: dict[str, dict[str, object]]) -> None:
+    """Apply submitted module settings before the account transaction commits."""
+    for name, values in sections.items():
+        writer = _admin_settings.get(name)
+        if writer is None:
+            raise ValueError(f"Unknown user settings section: {name}")
+        await writer(user_id, values)
 
 
 def register_user_activation_projection(name: str, projection: Callable[[int, bool], Awaitable[None]]) -> None:

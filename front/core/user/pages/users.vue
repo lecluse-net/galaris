@@ -94,6 +94,7 @@
     <!-- Dialog Create/Edit -->
     <q-dialog v-model="showDialog">
       <UserAdminForm
+        :key="dialogVersion"
         :user="selectedUser"
         :loading="submitting"
         @submit="handleSubmit"
@@ -110,9 +111,10 @@ import { navigationIcon } from '@/core/navigation'
 import { ref, computed, onMounted, watch } from 'vue'
 import { useQuasar, QTableColumn, type QTableProps } from 'quasar'
 import { useI18n } from 'vue-i18n'
+import { isAxiosError } from 'axios'
 import { PageHeader } from '@/core/util'
 import { privileges, usePrivilegeStore } from '@/core/authorize'
-import { authService, User } from '../services/authService'
+import { authService, type User, type UserAdminSubmission } from '../services/authService'
 import UserAdminForm from '../components/UserAdminForm.vue'
 import { userTabs } from '../userTabs'
 
@@ -135,6 +137,7 @@ const pagination = ref({ page: 1, rowsPerPage: 50, rowsNumber: 0, sortBy: 'id', 
 let requestVersion = 0
 
 const showDialog = ref(false)
+const dialogVersion = ref(0)
 const selectedUser = ref<User | null>(null)
 
 const columns = computed<QTableColumn[]>(() => [
@@ -181,35 +184,35 @@ const onRequest: NonNullable<QTableProps['onRequest']> = (request) => {
 const onRowClick: NonNullable<QTableProps['onRowClick']> = (_event, user: User) => openEditDialog(user)
 
 function openCreateDialog() {
+  dialogVersion.value++
   selectedUser.value = null
   showDialog.value = true
 }
 
 function openEditDialog(user: User) {
   if (!canUpdate.value) return
+  dialogVersion.value++
   selectedUser.value = { ...user } // copy to avoid reactive mutation in table
   showDialog.value = true
 }
 
-async function handleSubmit(formData: any) {
+async function handleSubmit(submission: UserAdminSubmission) {
+  if (submitting.value) return
+  const version = dialogVersion.value
   submitting.value = true
   try {
-    if (selectedUser.value) {
-      // Update
-      await authService.updateUserAdmin(selectedUser.value.id, formData)
+    if ('update' in submission) {
+      await authService.updateUserAdmin(submission.userId, submission.update)
       $q.notify({ type: 'positive', message: t('usersAdmin.updated') })
     } else {
-      // Create
-      await authService.createUser(formData)
+      await authService.createUser(submission.create)
       $q.notify({ type: 'positive', message: t('usersAdmin.created') })
     }
-    showDialog.value = false
+    if (version === dialogVersion.value) showDialog.value = false
     await fetchUsers()
-  } catch (err: any) {
-     $q.notify({
-      type: 'negative',
-      message: err.response?.data?.detail || t('common.anError')
-    })
+  } catch (error) {
+    const detail = isAxiosError<{ detail?: string }>(error) ? error.response?.data?.detail : undefined
+    $q.notify({ type: 'negative', message: typeof detail === 'string' ? detail : t('common.anError') })
   } finally {
     submitting.value = false
   }

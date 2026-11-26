@@ -9,6 +9,8 @@ from core.i18n import tr
 from core.user import notify_user_access_changed, user_service
 from .context import role_id_ctx
 from .admin_guard import AdministratorConflictError, preserve_administrator, preserve_admin_role
+from . import assignment_service
+from .logic import check_privilege
 from .models import Privilege, Role, Assignment, PrivilegeList, RolePrivilege
 from .schemas import (
     Privilege as PrivilegeSchema,
@@ -350,6 +352,8 @@ async def create_assignment(
     
     new_assignment = Assignment(**assignment.model_dump())
     db.add(new_assignment)
+    if assignment.is_default:
+        await assignment_service.set_default_assignment(new_assignment)
     await db.commit()
     await db.refresh(new_assignment)
     await notify_user_access_changed(new_assignment.user_id)
@@ -426,38 +430,23 @@ async def set_default_assignment(
              detail=await _detail("not_authenticated"),
          )
 
-    # Get assignment and check ownership
+    # Profile changes remain available to the owner. Administrators can use
+    # the same preference operation for any account they manage.
     result = await db.execute(select(Assignment).where(Assignment.id == id))
     target_assignment = result.scalar_one_or_none()
     
     if not target_assignment:
         raise HTTPException(status_code=404, detail=await _detail("assignment_not_found"))
     
-    if target_assignment.user_id != current_user.id:
+    if target_assignment.user_id != current_user.id and not await check_privilege(
+        current_user, Privileges.MANAGE_ASSIGNMENT, db,
+    ):
         raise HTTPException(status_code=403, detail=await _detail("own_assignments_only"))
     
-    # Reset all user assignments default
-    await db.execute(
-        select(Assignment)
-        .where(Assignment.user_id == current_user.id)
-        .execution_options(synchronize_session=False)
-    )
-    # The above is just a select, we need to update. 
-    # Better approach:
-    # 1. Update all user assignments to is_default = False
-    # 2. Update target to is_default = True
-    
-    # We can iterate or do bulk update but iterating is safe for session sync usually or separate statements.
-    
-    # Get all assignments for user
-    user_assignments_result = await db.execute(
-        select(Assignment).where(Assignment.user_id == current_user.id)
-    )
-    user_assignments = user_assignments_result.scalars().all()
-    
-    for assignment in user_assignments:
-        assignment.is_default = (assignment.id == id)
-        
+    try:
+        await assignment_service.set_default_assignment(target_assignment)
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
     await db.commit()
     await db.refresh(target_assignment)
     return target_assignment

@@ -10,7 +10,7 @@ Usage:
 
 from contextvars import ContextVar
 from contextlib import contextmanager
-from collections.abc import Generator
+from collections.abc import Generator, Sequence
 from sqlalchemy import select, func, delete as sqlalchemy_delete, text
 from sqlalchemy.orm import load_only
 from sqlalchemy.exc import IntegrityError
@@ -25,7 +25,7 @@ from core.database import get_db, lock_resource_sharing
 from core.i18n import render_prompt, tr
 from core.params import runtime_settings
 from .models import User
-from .lifecycle import project_user_activation
+from .lifecycle import apply_admin_user_settings, project_user_activation
 from .schemas import UserCreate, UserRegistration, UserUpdate
 
 
@@ -294,7 +294,13 @@ async def register_public_user(user_data: UserRegistration) -> User:
     return new_user
 
 
-async def create(user_data: UserCreate) -> User:
+async def create(
+    user_data: UserCreate, *,
+    role_ids: Sequence[int] = (),
+    default_role_id: int | None = None,
+    team_ids: Sequence[int] = (),
+    settings: dict[str, dict[str, object]] | None = None,
+) -> User:
     """Create a user through the authenticated administration API."""
     db = get_db()
 
@@ -318,11 +324,26 @@ async def create(user_data: UserCreate) -> User:
     )
 
     await _insert_user(new_user)
+    if role_ids:
+        from core.authorize import assign_initial_roles
+
+        await assign_initial_roles(new_user.id, role_ids, default_role_id)
+    if team_ids:
+        from core.team import set_human_membership
+
+        for team_id in dict.fromkeys(team_ids):
+            await set_human_membership(team_id, new_user.id, True)
+    if settings:
+        await apply_admin_user_settings(new_user.id, settings)
     await db.commit()
     await db.refresh(new_user)
 
     from .lifecycle import notify_user_access_changed
     await notify_user_access_changed(new_user.id)
+    if team_ids:
+        from core.team import notify_team_access_changed
+
+        await notify_team_access_changed()
     return new_user
 
 
@@ -336,7 +357,7 @@ async def _insert_user(user: User) -> None:
         await project_user_activation(user.id, True)
 
 
-async def update(user_id: int, user_update: UserUpdate) -> Optional[User]:
+async def update(user_id: int, user_update: UserUpdate, *, settings: dict[str, dict[str, object]] | None = None) -> Optional[User]:
     """Update an existing user."""
     db = get_db()
     # Password hashing can take hundreds of milliseconds. Keep it outside
@@ -393,6 +414,9 @@ async def update(user_id: int, user_update: UserUpdate) -> Optional[User]:
     if activation_changed:
         await db.flush()
         await project_user_activation(user.id, user.is_active)
+
+    if settings:
+        await apply_admin_user_settings(user.id, settings)
 
     if revoke_persistent_sessions:
         from .refresh_session_service import revoke_all_user_sessions

@@ -28,6 +28,7 @@ from .privilege_service import PrivilegeService
 from .update_admin_role import update_admin_role
 from .logic import check_privilege, privilege_clause, check_assigned_privilege
 from .admin_guard import AdministratorConflictError, preserve_administrator
+from .assignment_service import assign_initial_roles
 
 # Providers
 from .guard_provider import GuardProvider, GuardConfig, global_authorization_guard
@@ -46,6 +47,7 @@ except ImportError:
 __all__ = [
     "AdministratorConflictError",
     "preserve_administrator",
+    "assign_initial_roles",
     "role_id_ctx",
     "assignment_id_ctx",
     "request_privilege_cache",

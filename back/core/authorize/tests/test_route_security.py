@@ -73,6 +73,8 @@ def test_public_route_allowlist_is_exact() -> None:
         ("core.user.router", "read_user_avatar"),
         # Static ticket bootstrap exposes no repository data; POST requires a live scoped ticket.
         ("app.code.gateway", "launch_page"),
+        # The active signed plugin serves static browser code. Document access is checked separately.
+        ("app.plugin.router", "executable_asset"),
         # OAuth client metadata is intentionally public and contains no account secrets.
         ("app.connection.router", "oauth_client_metadata"),
         ("app.connection.router", "oauth_local_client_metadata"),

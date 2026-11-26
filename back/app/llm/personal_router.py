@@ -6,7 +6,7 @@ from pydantic import BaseModel, Field
 
 from core.authorize import Privileges, authorize
 from core.i18n import tr
-from core.user import get_current_user_id, get_user_record, require_web_session
+from core.user import get_current_user_id, get_user_record, register_admin_user_settings, require_web_session
 
 from . import personal_service, transcription_service
 from .personal_service import PersonalOptions, PersonalPreferences, PersonalSpeechError
@@ -56,6 +56,16 @@ async def put_preferences(values: PersonalPreferences) -> PersonalPreferences:
 async def get_options() -> PersonalOptions:
     _user_id()
     return await personal_service.selection_options()
+
+
+async def _write_admin_preferences(user_id: int, payload: dict[str, object]) -> None:
+    try:
+        await personal_service.write_preferences(user_id, PersonalPreferences.model_validate(payload))
+    except PersonalSpeechError as exc:
+        raise ValueError(await tr(f"personal_speech.{exc}")) from exc
+
+
+register_admin_user_settings("models", _write_admin_preferences)
 
 
 async def _require_user(user_id: int) -> None:

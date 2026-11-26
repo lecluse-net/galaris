@@ -1,5 +1,6 @@
 from uuid import uuid4
 
+import jwt
 import pytest
 from sqlalchemy import select
 
@@ -13,6 +14,74 @@ async def test_administrative_creation_keeps_language(db):
     user = await user_service.create(UserCreate(email="language@example.com", password="password-123", language="zh"))
     await db.refresh(user)
     assert user.language == "zh"
+
+
+@pytest.mark.asyncio
+async def test_admin_creates_account_with_roles_and_teams_and_shares_the_profile_default(client):
+    from core.authorize import Privilege
+    from core.database import get_db_session
+    from core.team import TeamModel
+
+    async def login(credentials):
+        client.cookies.clear()
+        response = await client.post("/api/auth/login-json", json=credentials)
+        assert response.status_code == 200, response.text
+        token = response.json()["access_token"]
+        return {"Authorization": f"Bearer {token}"}, jwt.decode(token, options={"verify_signature": False})
+
+    password = "synthetic-user-password"
+    admin_credentials = {"email": "membership-admin@example.com", "password": password}
+    assert (await client.post("/api/auth/register", json=admin_credentials)).status_code == 201
+    admin, _ = await login(admin_credentials)
+    async with get_db_session() as db:
+        privileges = list(await db.scalars(select(Privilege).where(Privilege.code.in_(["CREATE_USER", "TEAM_ACCESS"]))))
+        creator_role = Role(code="synthetic-account-creator", privileges=privileges)
+        first_role, second_role = Role(code="synthetic-reader"), Role(code="synthetic-editor")
+        first_team, second_team = TeamModel(name="Research"), TeamModel(name="Support")
+        db.add_all([creator_role, first_role, second_role, first_team, second_team])
+        await db.flush()
+        creator_role_id = creator_role.id
+        role_ids = [first_role.id, second_role.id]
+        team_ids = [first_team.id, second_team.id]
+
+    users = "/api/auth/users"
+    creator_credentials = {"email": "membership-creator@example.com", "password": password}
+    assert (await client.post(users, headers=admin, json={
+        **creator_credentials, "role_ids": [creator_role_id],
+    })).status_code == 201
+    creator, _ = await login(creator_credentials)
+    credentials = {"email": "membership-user@example.com", "password": password}
+    role_data = {"role_ids": role_ids, "default_role_id": role_ids[1]}
+    assert (await client.post(users, headers=creator, json={**credentials, **role_data})).status_code == 403
+    assert (await client.post(users, headers=creator, json={**credentials, "team_ids": team_ids})).status_code == 403
+
+    # A missing team after a valid one must roll back the account and earlier memberships.
+    invalid = await client.post(users, headers=admin, json={**credentials, **role_data, "team_ids": [team_ids[0], 999999]})
+    assert invalid.status_code == 404, invalid.text
+    created = await client.post(users, headers=admin, json={**credentials, **role_data, "team_ids": team_ids})
+    assert created.status_code == 201, created.text
+    user_id = created.json()["id"]
+    teams = await client.get("/api/teams", headers=admin, params={"user_id": user_id})
+    assert teams.status_code == 200, teams.text
+    assert {team["id"] for team in teams.json()} == set(team_ids)
+    assignments_url = f"/api/authorize/users/{user_id}/assignments"
+    assignments = {entry["role_id"]: entry for entry in (await client.get(assignments_url, headers=admin)).json()}
+    assert set(assignments) == set(role_ids)
+    assert [role for role, item in assignments.items() if item["is_default"]] == [role_ids[1]]
+
+    def default_url(role_id):
+        return f"/api/authorize/assignments/{assignments[role_id]['id']}/default"
+
+    assert (await client.put(default_url(role_ids[0]), headers=creator)).status_code == 403
+    changed = await client.put(default_url(role_ids[0]), headers=admin)
+    assert changed.status_code == 200, changed.text
+    owner, claims = await login(credentials)
+    assert claims["role_id"] == role_ids[0]
+    profile = await client.get(assignments_url, headers=owner)
+    assert [entry["role_id"] for entry in profile.json() if entry["is_default"]] == [role_ids[0]]
+    assert (await client.put(default_url(role_ids[1]), headers=owner)).status_code == 200
+    profile = await client.get(assignments_url, headers=owner)
+    assert [entry["role_id"] for entry in profile.json() if entry["is_default"]] == [role_ids[1]]
 
 
 @pytest.mark.asyncio

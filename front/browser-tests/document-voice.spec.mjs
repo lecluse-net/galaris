@@ -213,23 +213,31 @@ test('the user form saves native model and voice choices for the selected user',
   })
   let saved
   await page.route('**/api/llm/users/42/preferences', route => {
-    if (route.request().method() === 'PUT') saved = route.request().postDataJSON()
+    expect(route.request().method()).toBe('GET')
     return route.fulfill({ json: saved ?? initial })
   })
-  await mount(page, 'core/user/components/UserAdminForm.vue', {
+  const editUser = () => mount(page, 'core/user/components/UserAdminForm.vue', {
     props: { user: { id: 42, email: 'other@example.test', display_name: 'Other user', is_active: true } },
     privileges: ['UPDATE_USER'],
   })
-  await page.getByRole('tab', { name: 'Models', exact: true }).click()
+  await editUser()
+  const name = page.getByLabel('Display name', { exact: true })
+  await name.fill('Updated display name')
   await page.getByLabel('LLM profile', { exact: true }).click()
   await page.getByRole('option', { name: 'Current profile — Personal profile', exact: true }).click()
   await page.getByLabel('Voice / TTS', { exact: true }).click()
   await page.getByRole('option', { name: /Alloy/ }).click()
-  await page.getByRole('button', { name: 'Save', exact: true }).click()
-  await expect.poll(() => saved).toEqual({ profile_id: null, voice_llm_id: 11, voice_mode: 'realtime', voice_code: 'voice:alloy' })
+  await expect(name).toHaveValue('Updated display name')
+  expect(await page.evaluate(() => window.testApp.events)).toEqual([])
+  await page.getByRole('button', { name: 'Edit', exact: true }).click()
+  await expect.poll(() => page.evaluate(() => window.testApp.events[0]?.value)).toMatchObject({
+    userId: 42, update: { display_name: 'Updated display name', settings: { models: {
+      profile_id: null, voice_llm_id: 11, voice_mode: 'realtime', voice_code: 'voice:alloy',
+    } } },
+  })
+  saved = await page.evaluate(() => window.testApp.events[0].value.update.settings.models)
   // Reopening the real form must reflect the persisted selection.
-  await page.getByRole('tab', { name: /Edit user/i }).click()
-  await page.getByRole('tab', { name: 'Models', exact: true }).click()
+  await editUser()
   await expect(page.getByLabel('Voice / TTS', { exact: true })).toHaveValue('Alloy')
 })
 

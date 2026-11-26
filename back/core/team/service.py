@@ -53,8 +53,11 @@ async def require_team(team_id: int) -> Team:
     return team
 
 
-async def list_teams() -> list[TeamInfo]:
-    teams = (await get_db().scalars(select(Team).order_by(Team.order, Team.name, Team.id))).all()
+async def list_teams(*, user_id: int | None = None) -> list[TeamInfo]:
+    statement = select(Team).order_by(Team.order, Team.name, Team.id)
+    if user_id is not None:
+        statement = statement.join(TeamUser, TeamUser.team_id == Team.id).where(TeamUser.user_id == user_id)
+    teams = (await get_db().scalars(statement)).all()
     return await _team_summaries(teams)
 
 

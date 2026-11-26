@@ -35,6 +35,15 @@ export interface UserRegistration extends UserCredentials {
     display_name?: string
 }
 
+export interface UserAccessDraft {
+    role_ids: number[]
+    default_role_id: number | null
+    team_ids: number[]
+}
+
+type UserAdminSettings = { settings?: Record<string, object> }
+export type UserAdminCreate = UserRegistration & { is_active?: boolean } & Partial<UserAccessDraft> & UserAdminSettings
+
 export interface UserUpdate {
     email?: string
     display_name?: string
@@ -44,6 +53,10 @@ export interface UserUpdate {
     document_open_mode?: DocumentOpenMode
     document_library_mode?: DocumentLibraryMode
 }
+
+export type UserAdminSubmission =
+    | { create: UserAdminCreate }
+    | { userId: number; update: UserUpdate & UserAdminSettings }
 
 export interface TokenResponse {
     access_token: string
@@ -224,7 +237,7 @@ export const authService = {
         return response.data
     },
 
-    async createUser(data: UserRegistration & { is_active?: boolean }): Promise<User> {
+    async createUser(data: UserAdminCreate): Promise<User> {
         const response: AxiosResponse<User> = await api.post('/auth/users', data)
         return response.data
     },

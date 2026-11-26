@@ -207,6 +207,26 @@ async def test_http_preferences_and_audio_use_the_authenticated_user_without_doc
     assert (await client.put(target_url, json=payload, headers=headers[0])).status_code == 403
     assert (await client.put(target_url, json=payload, headers=admin_headers)).status_code == 200
     assert (await client.get(target_url, headers=admin_headers)).json() == payload
+    credentials = {"email": f"draft-{uuid4()}@example.com", "password": "strongpassword123"}
+    invalid = {**payload, "profile_id": 2147483647}
+    account = {"display_name": "Original", **credentials}
+    assert (await client.post("/api/auth/users", headers=admin_headers,
+            json={**account, "settings": {"models": invalid}})).status_code == 400
+    created = await client.post("/api/auth/users", headers=admin_headers,
+        json={**account, "settings": {"models": payload}})
+    assert created.status_code == 201
+    identity = created.json()["id"]
+    account_url = f"/api/auth/users/{identity}"
+    models_url = f"/api/llm/users/{identity}/preferences"
+    assert (await client.get(models_url, headers=admin_headers)).json() == payload
+    bad_update = {"display_name": "Changed", "settings": {"models": invalid}}
+    assert (await client.put(account_url, headers=admin_headers, json=bad_update)).status_code == 400
+    assert (await client.get(account_url, headers=admin_headers)).json()["display_name"] == "Original"
+    cleared = {**payload, "profile_id": None}
+    good_update = {"display_name": "Changed", "settings": {"models": cleared}}
+    assert (await client.put(account_url, headers=headers[0], json=good_update)).status_code == 403
+    assert (await client.put(account_url, headers=admin_headers, json=good_update)).status_code == 200
+    assert (await client.get(models_url, headers=admin_headers)).json() == cleared
     assert (await client.get("/api/llm/me/preferences", headers=headers[1])).json() == payload
     assert (
         await client.put(

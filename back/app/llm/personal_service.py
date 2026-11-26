@@ -48,6 +48,12 @@ async def preferences(user_id: int) -> PersonalPreferences:
 
 
 async def save_preferences(user_id: int, values: PersonalPreferences) -> PersonalPreferences:
+    await write_preferences(user_id, values)
+    await get_db().commit()
+    return await preferences(user_id)
+
+
+async def write_preferences(user_id: int, values: PersonalPreferences) -> None:
     if (
         values.profile_id is not None
         and await profile_service.get_profile(values.profile_id) is None
@@ -69,8 +75,6 @@ async def save_preferences(user_id: int, values: PersonalPreferences) -> Persona
             set_=values.model_dump(),
         )
     )
-    await get_db().commit()
-    return await preferences(user_id)
 
 
 class SelectionOption(BaseModel):

@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Annotated, Literal
 
-from pydantic import AfterValidator, BaseModel, ConfigDict, EmailStr, Field
+from pydantic import AfterValidator, BaseModel, ConfigDict, EmailStr, Field, PositiveInt, model_validator
 
 
 def _validate_bcrypt_password(value: str) -> str:
@@ -24,6 +24,19 @@ class UserBase(BaseModel):
 class UserCreate(UserBase):
     password: PasswordValue
     is_active: bool = True
+
+
+class UserAdminCreate(UserCreate):
+    settings: dict[str, dict[str, object]] = Field(default_factory=dict[str, dict[str, object]])
+    role_ids: list[PositiveInt] = Field(default_factory=list[int])
+    default_role_id: PositiveInt | None = None
+    team_ids: list[PositiveInt] = Field(default_factory=list[int])
+
+    @model_validator(mode="after")
+    def validate_default_role(self) -> "UserAdminCreate":
+        if self.default_role_id is not None and self.default_role_id not in self.role_ids:
+            raise ValueError("The default role must be one of the assigned roles")
+        return self
 
 
 class UserRegistration(UserBase):
@@ -50,6 +63,10 @@ class UserUpdate(BaseModel):
     language: Literal["en", "fr", "zh"] | None = None
     document_open_mode: Literal["split", "dialog"] | None = None
     document_library_mode: Literal["folders", "topics", "agents"] | None = None
+
+class UserAdminUpdate(UserUpdate):
+    settings: dict[str, dict[str, object]] = Field(default_factory=dict[str, dict[str, object]])
+
 
 class User(UserBase):
     id: int

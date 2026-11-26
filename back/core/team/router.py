@@ -10,8 +10,8 @@ router = APIRouter(prefix="/teams", tags=["teams"])
 
 @router.get("", response_model=list[TeamInfo])
 @authorize(privileges="TEAM_ACCESS")
-async def list_teams() -> list[TeamInfo]:
-    return await service.list_teams()
+async def list_teams(user_id: int | None = Query(default=None, gt=0)) -> list[TeamInfo]:
+    return await service.list_teams(user_id=user_id)
 
 
 @router.get("/humans", response_model=list[HumanInfo])

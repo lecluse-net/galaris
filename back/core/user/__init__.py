@@ -9,6 +9,7 @@ from .lifecycle import (
     notify_user_access_changed,
     register_user_access_observer,
     register_user_activation_projection,
+    register_admin_user_settings,
     unregister_user_access_observer,
 )
 from .schemas import UserCreate, UserUpdate, User, Token
@@ -49,6 +50,7 @@ __all__ = [
     "notify_user_access_changed",
     "register_user_access_observer",
     "register_user_activation_projection",
+    "register_admin_user_settings",
     "unregister_user_access_observer",
     "User",
     "UserModel",

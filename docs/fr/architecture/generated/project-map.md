@@ -11,7 +11,7 @@ tests restent l’autorité sur le comportement.
 
 - 80 modules backend déclarés ;
 - 41 modules frontend déclarés ;
-- 656 arêtes de dépendance backend ;
+- 657 arêtes de dépendance backend ;
 - 231 arêtes de dépendance frontend ;
 - 310 arêtes entre domaines `app`/`bridge` ;
 - 30 paires de domaines directement bidirectionnelles ;
@@ -766,11 +766,11 @@ tests restent l’autorité sur le comportement.
 | `core.api` | `core.rate_limit` | `back/core/api.py` |
 | `core.api` | `core.user` | `back/core/api.py` |
 | `core.api` | `core.util` | `back/core/api.py` |
-| `core.authorize` | `core.database` | `back/core/authorize/admin_guard.py`, `back/core/authorize/guard_provider.py`, `back/core/authorize/model_scanner.py`, `back/core/authorize/models.py`, `back/core/authorize/router.py`, `back/core/authorize/update_admin_role.py` |
+| `core.authorize` | `core.database` | `back/core/authorize/admin_guard.py`, `back/core/authorize/assignment_service.py`, `back/core/authorize/guard_provider.py`, `back/core/authorize/model_scanner.py`, `back/core/authorize/models.py`, `back/core/authorize/router.py`, `back/core/authorize/update_admin_role.py` |
 | `core.authorize` | `core.dbadmin` | `back/core/authorize/dbadmin.py`, `back/core/authorize/default_lists.py`, `back/core/authorize/domain_projection.py`, `back/core/authorize/functional_projection.py`, `back/core/authorize/update_admin_role.py` |
-| `core.authorize` | `core.i18n` | `back/core/authorize/admin_guard.py`, `back/core/authorize/guard_provider.py`, `back/core/authorize/router.py` |
+| `core.authorize` | `core.i18n` | `back/core/authorize/admin_guard.py`, `back/core/authorize/assignment_service.py`, `back/core/authorize/guard_provider.py`, `back/core/authorize/router.py` |
 | `core.authorize` | `core.params` | `back/core/authorize/functional_projection.py`, `back/core/authorize/privilege_service.py` |
-| `core.authorize` | `core.user` | `back/core/authorize/admin_guard.py`, `back/core/authorize/assertions.py`, `back/core/authorize/authorize_service.py`, `back/core/authorize/guard_provider.py`, `back/core/authorize/logic.py`, `back/core/authorize/models.py`, `back/core/authorize/router.py`, `back/core/authorize/schemas.py` |
+| `core.authorize` | `core.user` | `back/core/authorize/admin_guard.py`, `back/core/authorize/assertions.py`, `back/core/authorize/assignment_service.py`, `back/core/authorize/authorize_service.py`, `back/core/authorize/guard_provider.py`, `back/core/authorize/logic.py`, `back/core/authorize/models.py`, `back/core/authorize/router.py`, `back/core/authorize/schemas.py` |
 | `core.database` | `core.user` | `back/core/database/history.py` |
 | `core.database` | `core.util` | `back/core/database/vector.py` |
 | `core.dbadmin` | `core.database` | `back/core/dbadmin/_internal/atlas.py`, `back/core/dbadmin/_internal/target.py`, `back/core/dbadmin/actions.py`, `back/core/dbadmin/journal.py`, `back/core/dbadmin/models.py`, `back/core/dbadmin/orchestrator.py`, `back/core/dbadmin/snapshot.py` |
@@ -812,6 +812,7 @@ tests restent l’autorité sur le comportement.
 | `core.user` | `core.params` | `back/core/user/user_service.py` |
 | `core.user` | `core.rate_limit` | `back/core/user/router.py` |
 | `core.user` | `core.secrets` | `back/core/user/authContextMiddleware.py`, `back/core/user/auth_service.py`, `back/core/user/mfa_service.py`, `back/core/user/refresh_session_service.py`, `back/core/user/router.py` |
+| `core.user` | `core.team` | `back/core/user/user_service.py` |
 | `core.user` | `core.util` | `back/core/user/mfa_service.py`, `back/core/user/models.py`, `back/core/user/token_service.py` |
 
 ## Dépendances frontend inter-modules
@@ -1039,14 +1040,14 @@ tests restent l’autorité sur le comportement.
 | `core/team` | `core/api` | `front/core/team/components/TeamEditor.vue`, `front/core/team/services/teamService.ts` |
 | `core/team` | `core/authorize` | `front/core/team/components/TeamEditor.vue`, `front/core/team/components/TeamManager.vue`, `front/core/team/components/TeamMembersDialog.vue` |
 | `core/team` | `core/navigation` | `front/core/team/navigation.ts` |
-| `core/team` | `core/user` | `front/core/team/components/TeamEditor.vue`, `front/core/team/components/TeamHumanSummary.vue` |
+| `core/team` | `core/user` | `front/core/team/components/TeamEditor.vue`, `front/core/team/components/TeamHumanSummary.vue`, `front/core/team/userTeams.ts` |
 | `core/team` | `core/util` | `front/core/team/components/TeamEditor.vue`, `front/core/team/components/TeamManager.vue`, `front/core/team/components/TeamMembersDialog.vue`, `front/core/team/pages/index.vue` |
 | `core/user` | `core/api` | `front/core/user/services/authService.ts`, `front/core/user/services/helpService.ts`, `front/core/user/services/tokenService.ts`, `front/core/user/services/userService.ts`, `front/core/user/stores/authStore.ts`, `front/core/user/stores/helpStore.ts` |
-| `core/user` | `core/authorize` | `front/core/user/components/UserAdminForm.vue`, `front/core/user/components/UserMenu.vue`, `front/core/user/pages/users.vue` |
+| `core/user` | `core/authorize` | `front/core/user/components/UserAdminAccess.vue`, `front/core/user/components/UserAdminForm.vue`, `front/core/user/components/UserMenu.vue`, `front/core/user/pages/users.vue` |
 | `core/user` | `core/i18n` | `front/core/user/stores/authStore.ts`, `front/core/user/stores/tokenStore.ts` |
 | `core/user` | `core/navigation` | `front/core/user/navigation.ts`, `front/core/user/pages/tokens.vue`, `front/core/user/pages/users.vue` |
 | `core/user` | `core/settings` | `front/core/user/pages/login.vue`, `front/core/user/pages/register.vue` |
-| `core/user` | `core/util` | `front/core/user/components/AccountDeletionCard.vue`, `front/core/user/components/UserAvatar.vue`, `front/core/user/components/UserMenu.vue`, `front/core/user/contextHelp.ts`, `front/core/user/index.ts`, `front/core/user/pages/tokens.vue`, `front/core/user/pages/users.vue`, `front/core/user/stores/tokenStore.ts` |
+| `core/user` | `core/util` | `front/core/user/components/AccountDeletionCard.vue`, `front/core/user/components/UserAdminAccess.vue`, `front/core/user/components/UserAdminForm.vue`, `front/core/user/components/UserAvatar.vue`, `front/core/user/components/UserMenu.vue`, `front/core/user/contextHelp.ts`, `front/core/user/index.ts`, `front/core/user/pages/tokens.vue`, `front/core/user/pages/users.vue`, `front/core/user/stores/tokenStore.ts` |
 | `core/util` | `core/api` | `front/core/util/components/ActionContextMenu.vue`, `front/core/util/components/RenameFileButton.vue`, `front/core/util/components/ResourceAttachments.vue`, `front/core/util/sessionResources.ts`, `front/core/util/sessionStore.ts` |
 | `core/websocket` | `core/api` | `front/core/websocket.ts` |
 
@@ -1317,60 +1318,60 @@ Aucune composante cyclique détectée.
 | GET | `/api/health/live` | `core.api` | `liveness_check` | non | `back/core/api.py:275` |
 | GET | `/api/health/ready` | `core.api` | `readiness_check` | non | `back/core/api.py:281` |
 | GET | `/api/openapi.json` | `core.api` | `get_public_openapi_endpoint` | non | `back/core/api.py:233` |
-| GET | `/auth/avatars/{avatar_key}` | `core.user` | `read_user_avatar` | non | `back/core/user/router.py:411` |
-| POST | `/auth/keep-alive` | `core.user` | `keep_alive` | oui | `back/core/user/router.py:384` |
-| POST | `/auth/login` | `core.user` | `login` | non | `back/core/user/router.py:209` |
-| POST | `/auth/login-json` | `core.user` | `login_json` | non | `back/core/user/router.py:233` |
-| POST | `/auth/logout` | `core.user` | `logout` | non | `back/core/user/router.py:326` |
-| DELETE | `/auth/me` | `core.user` | `delete_user_me` | oui | `back/core/user/router.py:477` |
-| GET | `/auth/me` | `core.user` | `read_users_me` | oui | `back/core/user/router.py:403` |
-| PUT | `/auth/me` | `core.user` | `update_user_me` | oui | `back/core/user/router.py:521` |
-| DELETE | `/auth/me/avatar` | `core.user` | `delete_user_avatar` | oui | `back/core/user/router.py:465` |
-| POST | `/auth/me/avatar` | `core.user` | `upload_user_avatar` | oui | `back/core/user/router.py:428` |
-| GET | `/auth/me/help-dismissals` | `core.user` | `list_help_dismissals` | oui | `back/core/user/router.py:497` |
-| PUT | `/auth/me/help-dismissals/{help_key}` | `core.user` | `dismiss_help` | oui | `back/core/user/router.py:510` |
-| GET | `/auth/me/tokens` | `core.user` | `list_my_tokens` | oui | `back/core/user/router.py:621` |
-| POST | `/auth/me/tokens` | `core.user` | `create_my_token` | oui | `back/core/user/router.py:637` |
-| DELETE | `/auth/me/tokens/{token_id}` | `core.user` | `delete_my_token` | oui | `back/core/user/router.py:680` |
-| PUT | `/auth/me/tokens/{token_id}` | `core.user` | `update_my_token` | oui | `back/core/user/router.py:658` |
-| POST | `/auth/mfa/confirm` | `core.user` | `confirm_mfa` | oui | `back/core/user/router.py:287` |
-| POST | `/auth/mfa/disable` | `core.user` | `disable_mfa` | oui | `back/core/user/router.py:300` |
-| POST | `/auth/mfa/recovery-codes` | `core.user` | `regenerate_mfa_recovery_codes` | oui | `back/core/user/router.py:313` |
-| POST | `/auth/mfa/setup` | `core.user` | `setup_mfa` | oui | `back/core/user/router.py:275` |
-| GET | `/auth/mfa/status` | `core.user` | `read_mfa_status` | oui | `back/core/user/router.py:262` |
-| POST | `/auth/refresh` | `core.user` | `refresh_session` | non | `back/core/user/router.py:344` |
-| POST | `/auth/register` | `core.user` | `register` | non | `back/core/user/router.py:134` |
-| GET | `/auth/registration-status` | `core.user` | `registration_status` | non | `back/core/user/router.py:122` |
-| GET | `/auth/users` | `core.user` | `list_users` | oui | `back/core/user/router.py:551` |
-| POST | `/auth/users` | `core.user` | `create_user_endpoint` | oui | `back/core/user/router.py:568` |
-| DELETE | `/auth/users/{user_id}` | `core.user` | `delete_user_endpoint` | oui | `back/core/user/router.py:605` |
-| GET | `/auth/users/{user_id}` | `core.user` | `read_user` | oui | `back/core/user/router.py:579` |
-| PUT | `/auth/users/{user_id}` | `core.user` | `update_user_endpoint` | oui | `back/core/user/router.py:588` |
-| GET | `/authorize/assignment-user-options` | `core.authorize` | `assignment_user_options` | oui | `back/core/authorize/router.py:139` |
-| GET | `/authorize/assignments` | `core.authorize` | `list_assignments` | oui | `back/core/authorize/router.py:285` |
-| POST | `/authorize/assignments` | `core.authorize` | `create_assignment` | oui | `back/core/authorize/router.py:337` |
-| DELETE | `/authorize/assignments/{id}` | `core.authorize` | `delete_assignment` | oui | `back/core/authorize/router.py:361` |
-| PUT | `/authorize/assignments/{id}/default` | `core.authorize` | `set_default_assignment` | oui | `back/core/authorize/router.py:418` |
-| GET | `/authorize/my-privileges` | `core.authorize` | `get_my_privileges` | oui | `back/core/authorize/router.py:68` |
-| GET | `/authorize/privilege-lists` | `core.authorize` | `list_privilege_lists` | oui | `back/core/authorize/router.py:470` |
-| POST | `/authorize/privilege-lists` | `core.authorize` | `create_privilege_list` | oui | `back/core/authorize/router.py:481` |
-| DELETE | `/authorize/privilege-lists/{id}` | `core.authorize` | `delete_privilege_list` | oui | `back/core/authorize/router.py:529` |
-| PUT | `/authorize/privilege-lists/{id}` | `core.authorize` | `update_privilege_list` | oui | `back/core/authorize/router.py:506` |
-| DELETE | `/authorize/privilege-lists/{id}/privileges` | `core.authorize` | `remove_privileges_from_list` | oui | `back/core/authorize/router.py:581` |
-| POST | `/authorize/privilege-lists/{id}/privileges` | `core.authorize` | `add_privileges_to_list` | oui | `back/core/authorize/router.py:550` |
-| GET | `/authorize/privileges` | `core.authorize` | `list_privileges` | oui | `back/core/authorize/router.py:61` |
-| POST | `/authorize/privileges` | `core.authorize` | `create_privilege` | oui | `back/core/authorize/router.py:91` |
-| DELETE | `/authorize/privileges/{id}` | `core.authorize` | `delete_privilege` | oui | `back/core/authorize/router.py:109` |
-| GET | `/authorize/role-options` | `core.authorize` | `assignment_role_options` | oui | `back/core/authorize/router.py:133` |
-| GET | `/authorize/roles` | `core.authorize` | `list_roles` | oui | `back/core/authorize/router.py:147` |
-| POST | `/authorize/roles` | `core.authorize` | `create_role` | oui | `back/core/authorize/router.py:166` |
-| DELETE | `/authorize/roles/{id}` | `core.authorize` | `delete_role` | oui | `back/core/authorize/router.py:207` |
-| GET | `/authorize/roles/{id}` | `core.authorize` | `get_role` | oui | `back/core/authorize/router.py:154` |
-| PUT | `/authorize/roles/{id}` | `core.authorize` | `update_role` | oui | `back/core/authorize/router.py:184` |
-| DELETE | `/authorize/roles/{role_id}/privileges` | `core.authorize` | `remove_privileges_from_role` | oui | `back/core/authorize/router.py:258` |
-| POST | `/authorize/roles/{role_id}/privileges` | `core.authorize` | `add_privileges_to_role` | oui | `back/core/authorize/router.py:227` |
-| POST | `/authorize/switch-role` | `core.authorize` | `switch_role` | oui | `back/core/authorize/router.py:382` |
-| GET | `/authorize/users/{user_id}/assignments` | `core.authorize` | `get_user_assignments` | oui | `back/core/authorize/router.py:323` |
+| GET | `/auth/avatars/{avatar_key}` | `core.user` | `read_user_avatar` | non | `back/core/user/router.py:412` |
+| POST | `/auth/keep-alive` | `core.user` | `keep_alive` | oui | `back/core/user/router.py:385` |
+| POST | `/auth/login` | `core.user` | `login` | non | `back/core/user/router.py:210` |
+| POST | `/auth/login-json` | `core.user` | `login_json` | non | `back/core/user/router.py:234` |
+| POST | `/auth/logout` | `core.user` | `logout` | non | `back/core/user/router.py:327` |
+| DELETE | `/auth/me` | `core.user` | `delete_user_me` | oui | `back/core/user/router.py:478` |
+| GET | `/auth/me` | `core.user` | `read_users_me` | oui | `back/core/user/router.py:404` |
+| PUT | `/auth/me` | `core.user` | `update_user_me` | oui | `back/core/user/router.py:522` |
+| DELETE | `/auth/me/avatar` | `core.user` | `delete_user_avatar` | oui | `back/core/user/router.py:466` |
+| POST | `/auth/me/avatar` | `core.user` | `upload_user_avatar` | oui | `back/core/user/router.py:429` |
+| GET | `/auth/me/help-dismissals` | `core.user` | `list_help_dismissals` | oui | `back/core/user/router.py:498` |
+| PUT | `/auth/me/help-dismissals/{help_key}` | `core.user` | `dismiss_help` | oui | `back/core/user/router.py:511` |
+| GET | `/auth/me/tokens` | `core.user` | `list_my_tokens` | oui | `back/core/user/router.py:640` |
+| POST | `/auth/me/tokens` | `core.user` | `create_my_token` | oui | `back/core/user/router.py:656` |
+| DELETE | `/auth/me/tokens/{token_id}` | `core.user` | `delete_my_token` | oui | `back/core/user/router.py:699` |
+| PUT | `/auth/me/tokens/{token_id}` | `core.user` | `update_my_token` | oui | `back/core/user/router.py:677` |
+| POST | `/auth/mfa/confirm` | `core.user` | `confirm_mfa` | oui | `back/core/user/router.py:288` |
+| POST | `/auth/mfa/disable` | `core.user` | `disable_mfa` | oui | `back/core/user/router.py:301` |
+| POST | `/auth/mfa/recovery-codes` | `core.user` | `regenerate_mfa_recovery_codes` | oui | `back/core/user/router.py:314` |
+| POST | `/auth/mfa/setup` | `core.user` | `setup_mfa` | oui | `back/core/user/router.py:276` |
+| GET | `/auth/mfa/status` | `core.user` | `read_mfa_status` | oui | `back/core/user/router.py:263` |
+| POST | `/auth/refresh` | `core.user` | `refresh_session` | non | `back/core/user/router.py:345` |
+| POST | `/auth/register` | `core.user` | `register` | non | `back/core/user/router.py:135` |
+| GET | `/auth/registration-status` | `core.user` | `registration_status` | non | `back/core/user/router.py:123` |
+| GET | `/auth/users` | `core.user` | `list_users` | oui | `back/core/user/router.py:552` |
+| POST | `/auth/users` | `core.user` | `create_user_endpoint` | oui | `back/core/user/router.py:569` |
+| DELETE | `/auth/users/{user_id}` | `core.user` | `delete_user_endpoint` | oui | `back/core/user/router.py:624` |
+| GET | `/auth/users/{user_id}` | `core.user` | `read_user` | oui | `back/core/user/router.py:598` |
+| PUT | `/auth/users/{user_id}` | `core.user` | `update_user_endpoint` | oui | `back/core/user/router.py:607` |
+| GET | `/authorize/assignment-user-options` | `core.authorize` | `assignment_user_options` | oui | `back/core/authorize/router.py:141` |
+| GET | `/authorize/assignments` | `core.authorize` | `list_assignments` | oui | `back/core/authorize/router.py:287` |
+| POST | `/authorize/assignments` | `core.authorize` | `create_assignment` | oui | `back/core/authorize/router.py:339` |
+| DELETE | `/authorize/assignments/{id}` | `core.authorize` | `delete_assignment` | oui | `back/core/authorize/router.py:365` |
+| PUT | `/authorize/assignments/{id}/default` | `core.authorize` | `set_default_assignment` | oui | `back/core/authorize/router.py:422` |
+| GET | `/authorize/my-privileges` | `core.authorize` | `get_my_privileges` | oui | `back/core/authorize/router.py:70` |
+| GET | `/authorize/privilege-lists` | `core.authorize` | `list_privilege_lists` | oui | `back/core/authorize/router.py:459` |
+| POST | `/authorize/privilege-lists` | `core.authorize` | `create_privilege_list` | oui | `back/core/authorize/router.py:470` |
+| DELETE | `/authorize/privilege-lists/{id}` | `core.authorize` | `delete_privilege_list` | oui | `back/core/authorize/router.py:518` |
+| PUT | `/authorize/privilege-lists/{id}` | `core.authorize` | `update_privilege_list` | oui | `back/core/authorize/router.py:495` |
+| DELETE | `/authorize/privilege-lists/{id}/privileges` | `core.authorize` | `remove_privileges_from_list` | oui | `back/core/authorize/router.py:570` |
+| POST | `/authorize/privilege-lists/{id}/privileges` | `core.authorize` | `add_privileges_to_list` | oui | `back/core/authorize/router.py:539` |
+| GET | `/authorize/privileges` | `core.authorize` | `list_privileges` | oui | `back/core/authorize/router.py:63` |
+| POST | `/authorize/privileges` | `core.authorize` | `create_privilege` | oui | `back/core/authorize/router.py:93` |
+| DELETE | `/authorize/privileges/{id}` | `core.authorize` | `delete_privilege` | oui | `back/core/authorize/router.py:111` |
+| GET | `/authorize/role-options` | `core.authorize` | `assignment_role_options` | oui | `back/core/authorize/router.py:135` |
+| GET | `/authorize/roles` | `core.authorize` | `list_roles` | oui | `back/core/authorize/router.py:149` |
+| POST | `/authorize/roles` | `core.authorize` | `create_role` | oui | `back/core/authorize/router.py:168` |
+| DELETE | `/authorize/roles/{id}` | `core.authorize` | `delete_role` | oui | `back/core/authorize/router.py:209` |
+| GET | `/authorize/roles/{id}` | `core.authorize` | `get_role` | oui | `back/core/authorize/router.py:156` |
+| PUT | `/authorize/roles/{id}` | `core.authorize` | `update_role` | oui | `back/core/authorize/router.py:186` |
+| DELETE | `/authorize/roles/{role_id}/privileges` | `core.authorize` | `remove_privileges_from_role` | oui | `back/core/authorize/router.py:260` |
+| POST | `/authorize/roles/{role_id}/privileges` | `core.authorize` | `add_privileges_to_role` | oui | `back/core/authorize/router.py:229` |
+| POST | `/authorize/switch-role` | `core.authorize` | `switch_role` | oui | `back/core/authorize/router.py:386` |
+| GET | `/authorize/users/{user_id}/assignments` | `core.authorize` | `get_user_assignments` | oui | `back/core/authorize/router.py:325` |
 | GET | `/browser/content` | `app.file_share` | `content` | oui | `back/app/file_share/browser_router.py:132` |
 | GET | `/browser/entries` | `app.file_share` | `entries` | oui | `back/app/file_share/browser_router.py:93` |
 | DELETE | `/browser/entry` | `app.file_share` | `delete_entry` | oui | `back/app/file_share/browser_router.py:67` |
@@ -1881,8 +1882,8 @@ Aucune composante cyclique détectée.
 | GET | `/llm/me/options` | `app.llm` | `get_options` | oui | `back/app/llm/personal_router.py:56` |
 | GET | `/llm/me/preferences` | `app.llm` | `get_preferences` | oui | `back/app/llm/personal_router.py:41` |
 | PUT | `/llm/me/preferences` | `app.llm` | `put_preferences` | oui | `back/app/llm/personal_router.py:47` |
-| POST | `/llm/me/speech` | `app.llm` | `speech` | oui | `back/app/llm/personal_router.py:122` |
-| POST | `/llm/me/transcription` | `app.llm` | `transcribe` | oui | `back/app/llm/personal_router.py:85` |
+| POST | `/llm/me/speech` | `app.llm` | `speech` | oui | `back/app/llm/personal_router.py:132` |
+| POST | `/llm/me/transcription` | `app.llm` | `transcribe` | oui | `back/app/llm/personal_router.py:95` |
 | POST | `/llm/openai/chat/completions` | `app.llm` | `llm_completion` | non | `back/app/llm/call_router.py:208` |
 | POST | `/llm/openai/inferences` | `app.llm` | `create_inference` | non | `back/app/llm/call_router.py:121` |
 | GET | `/llm/openai/inferences/{inference_id}` | `app.llm` | `get_inference` | non | `back/app/llm/call_router.py:145` |
@@ -1892,8 +1893,8 @@ Aucune composante cyclique détectée.
 | POST | `/llm/openai/responses` | `app.llm` | `llm_responses` | non | `back/app/llm/call_router.py:353` |
 | POST | `/llm/openai/responses/compact` | `app.llm` | `llm_responses` | non | `back/app/llm/call_router.py:353` |
 | GET | `/llm/openai/runs/{agent_run_id}/usage` | `app.llm` | `llm_run_usage` | non | `back/app/llm/call_router.py:459` |
-| GET | `/llm/users/{user_id}/preferences` | `app.llm` | `get_user_preferences` | oui | `back/app/llm/personal_router.py:68` |
-| PUT | `/llm/users/{user_id}/preferences` | `app.llm` | `put_user_preferences` | oui | `back/app/llm/personal_router.py:75` |
+| GET | `/llm/users/{user_id}/preferences` | `app.llm` | `get_user_preferences` | oui | `back/app/llm/personal_router.py:78` |
+| PUT | `/llm/users/{user_id}/preferences` | `app.llm` | `put_user_preferences` | oui | `back/app/llm/personal_router.py:85` |
 | GET | `/mail/approvers` | `bridge.mail` | `list_mail_approvers` | oui | `back/bridge/mail/router.py:172` |
 | GET | `/mail/browser/message` | `bridge.mail` | `read_browser_message` | oui | `back/bridge/mail/router.py:39` |
 | GET | `/mail/connections/{connection_id}/mailboxes` | `bridge.mail` | `list_connection_mailboxes` | oui | `back/bridge/mail/router.py:271` |

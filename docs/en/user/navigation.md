@@ -7,6 +7,12 @@ independently of memories. **Roles & authorizations** tabs follow their own priv
 privileges, roles and assignments can be viewed or administered separately. An unauthorized
 tab does not load its catalogues.
 
+In **Users**, role assignments and teams appear below the account fields according to your
+privileges. For a new account, add assignments and teams, then click **Create** to save them
+with the account. For an existing account, additions, removals, and changes to the **Default**
+role take effect immediately. The role is activated at the next sign-in and also appears
+in **My profile**.
+
 Providers, Available models and Models in use have their own rights. Preferences settings
 can also be delegated by function. The [privilege guide](../admin/privileges.md) lists rights
 and scopes; changing roles can therefore change the available tabs and actions.

@@ -6553,6 +6553,7 @@
       {
         "files": [
           "back/core/authorize/admin_guard.py",
+          "back/core/authorize/assignment_service.py",
           "back/core/authorize/guard_provider.py",
           "back/core/authorize/model_scanner.py",
           "back/core/authorize/models.py",
@@ -6576,6 +6577,7 @@
       {
         "files": [
           "back/core/authorize/admin_guard.py",
+          "back/core/authorize/assignment_service.py",
           "back/core/authorize/guard_provider.py",
           "back/core/authorize/router.py"
         ],
@@ -6594,6 +6596,7 @@
         "files": [
           "back/core/authorize/admin_guard.py",
           "back/core/authorize/assertions.py",
+          "back/core/authorize/assignment_service.py",
           "back/core/authorize/authorize_service.py",
           "back/core/authorize/guard_provider.py",
           "back/core/authorize/logic.py",
@@ -6943,6 +6946,13 @@
         ],
         "source": "core.user",
         "target": "core.secrets"
+      },
+      {
+        "files": [
+          "back/core/user/user_service.py"
+        ],
+        "source": "core.user",
+        "target": "core.team"
       },
       {
         "files": [
@@ -15599,7 +15609,7 @@
         "declared_path": "/auth/avatars/{avatar_key}",
         "file": "back/core/user/router.py",
         "handler": "read_user_avatar",
-        "line": 411,
+        "line": 412,
         "method": "GET",
         "module": "core.user"
       },
@@ -15608,7 +15618,7 @@
         "declared_path": "/auth/keep-alive",
         "file": "back/core/user/router.py",
         "handler": "keep_alive",
-        "line": 384,
+        "line": 385,
         "method": "POST",
         "module": "core.user"
       },
@@ -15617,7 +15627,7 @@
         "declared_path": "/auth/login",
         "file": "back/core/user/router.py",
         "handler": "login",
-        "line": 209,
+        "line": 210,
         "method": "POST",
         "module": "core.user"
       },
@@ -15626,7 +15636,7 @@
         "declared_path": "/auth/login-json",
         "file": "back/core/user/router.py",
         "handler": "login_json",
-        "line": 233,
+        "line": 234,
         "method": "POST",
         "module": "core.user"
       },
@@ -15635,7 +15645,7 @@
         "declared_path": "/auth/logout",
         "file": "back/core/user/router.py",
         "handler": "logout",
-        "line": 326,
+        "line": 327,
         "method": "POST",
         "module": "core.user"
       },
@@ -15644,7 +15654,7 @@
         "declared_path": "/auth/me",
         "file": "back/core/user/router.py",
         "handler": "delete_user_me",
-        "line": 477,
+        "line": 478,
         "method": "DELETE",
         "module": "core.user"
       },
@@ -15653,7 +15663,7 @@
         "declared_path": "/auth/me",
         "file": "back/core/user/router.py",
         "handler": "read_users_me",
-        "line": 403,
+        "line": 404,
         "method": "GET",
         "module": "core.user"
       },
@@ -15662,7 +15672,7 @@
         "declared_path": "/auth/me",
         "file": "back/core/user/router.py",
         "handler": "update_user_me",
-        "line": 521,
+        "line": 522,
         "method": "PUT",
         "module": "core.user"
       },
@@ -15671,7 +15681,7 @@
         "declared_path": "/auth/me/avatar",
         "file": "back/core/user/router.py",
         "handler": "delete_user_avatar",
-        "line": 465,
+        "line": 466,
         "method": "DELETE",
         "module": "core.user"
       },
@@ -15680,7 +15690,7 @@
         "declared_path": "/auth/me/avatar",
         "file": "back/core/user/router.py",
         "handler": "upload_user_avatar",
-        "line": 428,
+        "line": 429,
         "method": "POST",
         "module": "core.user"
       },
@@ -15689,7 +15699,7 @@
         "declared_path": "/auth/me/help-dismissals",
         "file": "back/core/user/router.py",
         "handler": "list_help_dismissals",
-        "line": 497,
+        "line": 498,
         "method": "GET",
         "module": "core.user"
       },
@@ -15698,7 +15708,7 @@
         "declared_path": "/auth/me/help-dismissals/{help_key}",
         "file": "back/core/user/router.py",
         "handler": "dismiss_help",
-        "line": 510,
+        "line": 511,
         "method": "PUT",
         "module": "core.user"
       },
@@ -15707,7 +15717,7 @@
         "declared_path": "/auth/me/tokens",
         "file": "back/core/user/router.py",
         "handler": "list_my_tokens",
-        "line": 621,
+        "line": 640,
         "method": "GET",
         "module": "core.user"
       },
@@ -15716,7 +15726,7 @@
         "declared_path": "/auth/me/tokens",
         "file": "back/core/user/router.py",
         "handler": "create_my_token",
-        "line": 637,
+        "line": 656,
         "method": "POST",
         "module": "core.user"
       },
@@ -15725,7 +15735,7 @@
         "declared_path": "/auth/me/tokens/{token_id}",
         "file": "back/core/user/router.py",
         "handler": "delete_my_token",
-        "line": 680,
+        "line": 699,
         "method": "DELETE",
         "module": "core.user"
       },
@@ -15734,7 +15744,7 @@
         "declared_path": "/auth/me/tokens/{token_id}",
         "file": "back/core/user/router.py",
         "handler": "update_my_token",
-        "line": 658,
+        "line": 677,
         "method": "PUT",
         "module": "core.user"
       },
@@ -15743,7 +15753,7 @@
         "declared_path": "/auth/mfa/confirm",
         "file": "back/core/user/router.py",
         "handler": "confirm_mfa",
-        "line": 287,
+        "line": 288,
         "method": "POST",
         "module": "core.user"
       },
@@ -15752,7 +15762,7 @@
         "declared_path": "/auth/mfa/disable",
         "file": "back/core/user/router.py",
         "handler": "disable_mfa",
-        "line": 300,
+        "line": 301,
         "method": "POST",
         "module": "core.user"
       },
@@ -15761,7 +15771,7 @@
         "declared_path": "/auth/mfa/recovery-codes",
         "file": "back/core/user/router.py",
         "handler": "regenerate_mfa_recovery_codes",
-        "line": 313,
+        "line": 314,
         "method": "POST",
         "module": "core.user"
       },
@@ -15770,7 +15780,7 @@
         "declared_path": "/auth/mfa/setup",
         "file": "back/core/user/router.py",
         "handler": "setup_mfa",
-        "line": 275,
+        "line": 276,
         "method": "POST",
         "module": "core.user"
       },
@@ -15779,7 +15789,7 @@
         "declared_path": "/auth/mfa/status",
         "file": "back/core/user/router.py",
         "handler": "read_mfa_status",
-        "line": 262,
+        "line": 263,
         "method": "GET",
         "module": "core.user"
       },
@@ -15788,7 +15798,7 @@
         "declared_path": "/auth/refresh",
         "file": "back/core/user/router.py",
         "handler": "refresh_session",
-        "line": 344,
+        "line": 345,
         "method": "POST",
         "module": "core.user"
       },
@@ -15797,7 +15807,7 @@
         "declared_path": "/auth/register",
         "file": "back/core/user/router.py",
         "handler": "register",
-        "line": 134,
+        "line": 135,
         "method": "POST",
         "module": "core.user"
       },
@@ -15806,7 +15816,7 @@
         "declared_path": "/auth/registration-status",
         "file": "back/core/user/router.py",
         "handler": "registration_status",
-        "line": 122,
+        "line": 123,
         "method": "GET",
         "module": "core.user"
       },
@@ -15815,7 +15825,7 @@
         "declared_path": "/auth/users",
         "file": "back/core/user/router.py",
         "handler": "list_users",
-        "line": 551,
+        "line": 552,
         "method": "GET",
         "module": "core.user"
       },
@@ -15824,7 +15834,7 @@
         "declared_path": "/auth/users",
         "file": "back/core/user/router.py",
         "handler": "create_user_endpoint",
-        "line": 568,
+        "line": 569,
         "method": "POST",
         "module": "core.user"
       },
@@ -15833,7 +15843,7 @@
         "declared_path": "/auth/users/{user_id}",
         "file": "back/core/user/router.py",
         "handler": "delete_user_endpoint",
-        "line": 605,
+        "line": 624,
         "method": "DELETE",
         "module": "core.user"
       },
@@ -15842,7 +15852,7 @@
         "declared_path": "/auth/users/{user_id}",
         "file": "back/core/user/router.py",
         "handler": "read_user",
-        "line": 579,
+        "line": 598,
         "method": "GET",
         "module": "core.user"
       },
@@ -15851,7 +15861,7 @@
         "declared_path": "/auth/users/{user_id}",
         "file": "back/core/user/router.py",
         "handler": "update_user_endpoint",
-        "line": 588,
+        "line": 607,
         "method": "PUT",
         "module": "core.user"
       },
@@ -15860,7 +15870,7 @@
         "declared_path": "/authorize/assignment-user-options",
         "file": "back/core/authorize/router.py",
         "handler": "assignment_user_options",
-        "line": 139,
+        "line": 141,
         "method": "GET",
         "module": "core.authorize"
       },
@@ -15869,7 +15879,7 @@
         "declared_path": "/authorize/assignments",
         "file": "back/core/authorize/router.py",
         "handler": "list_assignments",
-        "line": 285,
+        "line": 287,
         "method": "GET",
         "module": "core.authorize"
       },
@@ -15878,7 +15888,7 @@
         "declared_path": "/authorize/assignments",
         "file": "back/core/authorize/router.py",
         "handler": "create_assignment",
-        "line": 337,
+        "line": 339,
         "method": "POST",
         "module": "core.authorize"
       },
@@ -15887,7 +15897,7 @@
         "declared_path": "/authorize/assignments/{id}",
         "file": "back/core/authorize/router.py",
         "handler": "delete_assignment",
-        "line": 361,
+        "line": 365,
         "method": "DELETE",
         "module": "core.authorize"
       },
@@ -15896,7 +15906,7 @@
         "declared_path": "/authorize/assignments/{id}/default",
         "file": "back/core/authorize/router.py",
         "handler": "set_default_assignment",
-        "line": 418,
+        "line": 422,
         "method": "PUT",
         "module": "core.authorize"
       },
@@ -15905,7 +15915,7 @@
         "declared_path": "/authorize/my-privileges",
         "file": "back/core/authorize/router.py",
         "handler": "get_my_privileges",
-        "line": 68,
+        "line": 70,
         "method": "GET",
         "module": "core.authorize"
       },
@@ -15914,7 +15924,7 @@
         "declared_path": "/authorize/privilege-lists",
         "file": "back/core/authorize/router.py",
         "handler": "list_privilege_lists",
-        "line": 470,
+        "line": 459,
         "method": "GET",
         "module": "core.authorize"
       },
@@ -15923,7 +15933,7 @@
         "declared_path": "/authorize/privilege-lists",
         "file": "back/core/authorize/router.py",
         "handler": "create_privilege_list",
-        "line": 481,
+        "line": 470,
         "method": "POST",
         "module": "core.authorize"
       },
@@ -15932,7 +15942,7 @@
         "declared_path": "/authorize/privilege-lists/{id}",
         "file": "back/core/authorize/router.py",
         "handler": "delete_privilege_list",
-        "line": 529,
+        "line": 518,
         "method": "DELETE",
         "module": "core.authorize"
       },
@@ -15941,7 +15951,7 @@
         "declared_path": "/authorize/privilege-lists/{id}",
         "file": "back/core/authorize/router.py",
         "handler": "update_privilege_list",
-        "line": 506,
+        "line": 495,
         "method": "PUT",
         "module": "core.authorize"
       },
@@ -15950,7 +15960,7 @@
         "declared_path": "/authorize/privilege-lists/{id}/privileges",
         "file": "back/core/authorize/router.py",
         "handler": "remove_privileges_from_list",
-        "line": 581,
+        "line": 570,
         "method": "DELETE",
         "module": "core.authorize"
       },
@@ -15959,7 +15969,7 @@
         "declared_path": "/authorize/privilege-lists/{id}/privileges",
         "file": "back/core/authorize/router.py",
         "handler": "add_privileges_to_list",
-        "line": 550,
+        "line": 539,
         "method": "POST",
         "module": "core.authorize"
       },
@@ -15968,7 +15978,7 @@
         "declared_path": "/authorize/privileges",
         "file": "back/core/authorize/router.py",
         "handler": "list_privileges",
-        "line": 61,
+        "line": 63,
         "method": "GET",
         "module": "core.authorize"
       },
@@ -15977,7 +15987,7 @@
         "declared_path": "/authorize/privileges",
         "file": "back/core/authorize/router.py",
         "handler": "create_privilege",
-        "line": 91,
+        "line": 93,
         "method": "POST",
         "module": "core.authorize"
       },
@@ -15986,7 +15996,7 @@
         "declared_path": "/authorize/privileges/{id}",
         "file": "back/core/authorize/router.py",
         "handler": "delete_privilege",
-        "line": 109,
+        "line": 111,
         "method": "DELETE",
         "module": "core.authorize"
       },
@@ -15995,7 +16005,7 @@
         "declared_path": "/authorize/role-options",
         "file": "back/core/authorize/router.py",
         "handler": "assignment_role_options",
-        "line": 133,
+        "line": 135,
         "method": "GET",
         "module": "core.authorize"
       },
@@ -16004,7 +16014,7 @@
         "declared_path": "/authorize/roles",
         "file": "back/core/authorize/router.py",
         "handler": "list_roles",
-        "line": 147,
+        "line": 149,
         "method": "GET",
         "module": "core.authorize"
       },
@@ -16013,7 +16023,7 @@
         "declared_path": "/authorize/roles",
         "file": "back/core/authorize/router.py",
         "handler": "create_role",
-        "line": 166,
+        "line": 168,
         "method": "POST",
         "module": "core.authorize"
       },
@@ -16022,7 +16032,7 @@
         "declared_path": "/authorize/roles/{id}",
         "file": "back/core/authorize/router.py",
         "handler": "delete_role",
-        "line": 207,
+        "line": 209,
         "method": "DELETE",
         "module": "core.authorize"
       },
@@ -16031,7 +16041,7 @@
         "declared_path": "/authorize/roles/{id}",
         "file": "back/core/authorize/router.py",
         "handler": "get_role",
-        "line": 154,
+        "line": 156,
         "method": "GET",
         "module": "core.authorize"
       },
@@ -16040,7 +16050,7 @@
         "declared_path": "/authorize/roles/{id}",
         "file": "back/core/authorize/router.py",
         "handler": "update_role",
-        "line": 184,
+        "line": 186,
         "method": "PUT",
         "module": "core.authorize"
       },
@@ -16049,7 +16059,7 @@
         "declared_path": "/authorize/roles/{role_id}/privileges",
         "file": "back/core/authorize/router.py",
         "handler": "remove_privileges_from_role",
-        "line": 258,
+        "line": 260,
         "method": "DELETE",
         "module": "core.authorize"
       },
@@ -16058,7 +16068,7 @@
         "declared_path": "/authorize/roles/{role_id}/privileges",
         "file": "back/core/authorize/router.py",
         "handler": "add_privileges_to_role",
-        "line": 227,
+        "line": 229,
         "method": "POST",
         "module": "core.authorize"
       },
@@ -16067,7 +16077,7 @@
         "declared_path": "/authorize/switch-role",
         "file": "back/core/authorize/router.py",
         "handler": "switch_role",
-        "line": 382,
+        "line": 386,
         "method": "POST",
         "module": "core.authorize"
       },
@@ -16076,7 +16086,7 @@
         "declared_path": "/authorize/users/{user_id}/assignments",
         "file": "back/core/authorize/router.py",
         "handler": "get_user_assignments",
-        "line": 323,
+        "line": 325,
         "method": "GET",
         "module": "core.authorize"
       },
@@ -20675,7 +20685,7 @@
         "declared_path": "/llm/me/speech",
         "file": "back/app/llm/personal_router.py",
         "handler": "speech",
-        "line": 122,
+        "line": 132,
         "method": "POST",
         "module": "app.llm"
       },
@@ -20684,7 +20694,7 @@
         "declared_path": "/llm/me/transcription",
         "file": "back/app/llm/personal_router.py",
         "handler": "transcribe",
-        "line": 85,
+        "line": 95,
         "method": "POST",
         "module": "app.llm"
       },
@@ -20774,7 +20784,7 @@
         "declared_path": "/llm/users/{user_id}/preferences",
         "file": "back/app/llm/personal_router.py",
         "handler": "get_user_preferences",
-        "line": 68,
+        "line": 78,
         "method": "GET",
         "module": "app.llm"
       },
@@ -20783,7 +20793,7 @@
         "declared_path": "/llm/users/{user_id}/preferences",
         "file": "back/app/llm/personal_router.py",
         "handler": "put_user_preferences",
-        "line": 75,
+        "line": 85,
         "method": "PUT",
         "module": "app.llm"
       },
@@ -25122,7 +25132,8 @@
       {
         "files": [
           "front/core/team/components/TeamEditor.vue",
-          "front/core/team/components/TeamHumanSummary.vue"
+          "front/core/team/components/TeamHumanSummary.vue",
+          "front/core/team/userTeams.ts"
         ],
         "source": "core/team",
         "target": "core/user"
@@ -25151,6 +25162,7 @@
       },
       {
         "files": [
+          "front/core/user/components/UserAdminAccess.vue",
           "front/core/user/components/UserAdminForm.vue",
           "front/core/user/components/UserMenu.vue",
           "front/core/user/pages/users.vue"
@@ -25186,6 +25198,8 @@
       {
         "files": [
           "front/core/user/components/AccountDeletionCard.vue",
+          "front/core/user/components/UserAdminAccess.vue",
+          "front/core/user/components/UserAdminForm.vue",
           "front/core/user/components/UserAvatar.vue",
           "front/core/user/components/UserMenu.vue",
           "front/core/user/contextHelp.ts",

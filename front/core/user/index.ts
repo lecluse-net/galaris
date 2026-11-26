@@ -11,5 +11,6 @@ export type { DocumentOpenMode, DocumentLibraryMode } from './services/authServi
 export { default as UserAvatar } from './components/UserAvatar.vue'
 export { default as UserSelect } from './components/UserSelect.vue'
 export type { UserTabContribution } from './userTabs'
+export type { UserTeams } from './userTeamAccess'
 export type { TokenActionContribution } from './tokenActions'
 export { default as UserMenu } from './components/UserMenu.vue'

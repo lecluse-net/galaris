@@ -7,6 +7,12 @@ Le **Tableau de bord** utilise `DASHBOARD_ACCESS`. Les **Contacts** utilisent
 autorisations** suivent leurs droits propres : privilèges, rôles et affectations peuvent être
 consultés ou administrés séparément. Un onglet non autorisé ne charge pas ses catalogues.
 
+Dans **Utilisateurs**, les affectations de rôle et les équipes apparaissent sous les champs
+du compte selon vos droits. Pour un nouveau compte, ajoutez les affectations et les équipes,
+puis cliquez sur **Créer** pour tout enregistrer ensemble. Pour un compte existant, les ajouts,
+les retraits et le choix du rôle **Par défaut** sont appliqués immédiatement. Ce rôle est
+activé à la prochaine connexion et apparaît aussi dans **Mon profil**.
+
 Les onglets Fournisseurs, Modèles disponibles et Modèles utilisés suivent leurs droits
 propres. Les réglages de Préférences se délèguent aussi par fonction. Le
 [guide des privilèges](../admin/privileges.md) détaille les droits et les périmètres ;

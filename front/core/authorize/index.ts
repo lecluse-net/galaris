@@ -7,6 +7,7 @@ import { defineAsyncView } from '@/core/util/facade'
 
 // Services
 export { authorizeService } from './services/authorize.service'
+export type { AssignmentWithRole, Role } from './services/authorize.service'
 export { privilegeService } from './services/privilege.service'
 export { localizedAuthorizeLabel } from './presentation'
 

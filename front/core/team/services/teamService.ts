@@ -8,7 +8,9 @@ export const teamService = {
   async humanSelection(signal?: AbortSignal): Promise<HumanSelection[]> {
     return (await api.get<HumanSelection[]>('/teams/human-selection', { signal })).data
   },
-  async list(): Promise<Team[]> { return (await api.get<Team[]>('/teams')).data },
+  async list(userId?: number): Promise<Team[]> {
+    return (await api.get<Team[]>('/teams', { params: { user_id: userId } })).data
+  },
   async save(data: TeamWrite, id?: number): Promise<Team> {
     return (id ? await api.put<Team>(`/teams/${id}`, data) : await api.post<Team>('/teams', data)).data
   },

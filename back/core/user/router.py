@@ -14,7 +14,8 @@ from core.database import get_db
 from core.i18n import render_prompt, tr
 from core.rate_limit import rate_limit
 from .schemas import (
-    UserCreate,
+    UserAdminCreate,
+    UserAdminUpdate,
     UserLogin,
     UserRegistration,
     RegistrationStatus,
@@ -29,7 +30,7 @@ from .schemas import (
 )
 from .schemas import UserTokenCreate, UserTokenUpdate, UserTokenResponse, UserTokenCreateResponse
 from core.authorize import authorize, independent_auth, public
-from core.authorize import AdministratorConflictError, Privileges
+from core.authorize import AdministratorConflictError, Privileges, check_privilege
 from core.authorize.context import role_id_ctx
 from . import user_service
 from . import help_service
@@ -565,11 +566,29 @@ async def list_users(
     dependencies=[Depends(require_web_session)],
 )
 @authorize(privileges=Privileges.CREATE_USER)
-async def create_user_endpoint(user: UserCreate):
+async def create_user_endpoint(user: UserAdminCreate) -> UserModel:
+    actor = await user_service.get_current_user()
+    required_privileges: list[str] = []
+    if user.settings:
+        required_privileges.append(Privileges.UPDATE_USER)
+    if user.role_ids:
+        required_privileges.append(Privileges.MANAGE_ASSIGNMENT)
+    if user.team_ids:
+        required_privileges.extend([Privileges.TEAM_ACCESS, Privileges.TEAM_MEMBERS_EDIT])
+    for privilege in required_privileges:
+        if not await check_privilege(actor, privilege, get_db()):
+            raise HTTPException(status_code=403, detail=render_prompt(
+                await tr("authorize_api.errors.missing_privilege"), privileges=[privilege],
+            ))
     try:
-        return await user_service.create(user)
+        return await user_service.create(
+            user, role_ids=user.role_ids, default_role_id=user.default_role_id, team_ids=user.team_ids,
+            settings=user.settings,
+        )
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e)) from e
 
 
 @router.get("/users/{user_id}", response_model=UserSchema)
@@ -585,9 +604,9 @@ async def read_user(user_id: int):
 
 @router.put("/users/{user_id}", response_model=UserSchema, dependencies=[Depends(require_web_session)])
 @authorize(privileges=Privileges.UPDATE_USER)
-async def update_user_endpoint(user_id: int, user_update: UserUpdate):
+async def update_user_endpoint(user_id: int, user_update: UserAdminUpdate):
     try:
-        user = await user_service.update(user_id, user_update)
+        user = await user_service.update(user_id, user_update, settings=user_update.settings)
         if not user:
             raise HTTPException(status_code=404, detail=await tr("user_api.errors.user_not_found"))
         return user
