@@ -61,6 +61,7 @@ DEFAULT_PRIVILEGE_LISTS = (
         "LLM_MODEL_EDIT", "LLM_PROFILE_ACCESS", "LLM_PROFILE_EDIT", "LLM_PROVIDER_ACCESS",
         "LLM_PROVIDER_EDIT", "PARAMS_ACCESS", "PARAMS_EDIT",
     )),
+    DefaultPrivilegeList("plugins", "Plugins", ("PLUGIN_ACCESS", "PLUGIN_EDIT")),
     DefaultPrivilegeList("agentsTeams", "Agents & équipes", (
         "AGENT_ACCESS", "AGENT_EDIT", "AGENT_MANAGE_ALL", "LLM_API_ACCESS", "MCP_API_ACCESS",
         "TEAM_ACCESS", "TEAM_EDIT", "TEAM_MEMBERS_EDIT",
@@ -140,11 +141,10 @@ async def initialize_default_lists(
                 category.display_name = default.display_name
         category.translation_key = default.display_name
         await session.flush()
-        # Existing custom organization takes priority over initial assignments.
-        await session.execute(
-            update(Privilege)
-            .where(Privilege.code.in_(default.privilege_codes), Privilege.privilege_list_id.is_(None))
-            .values(privilege_list_id=category.id)
-        )
+        assignments = update(Privilege).where(Privilege.code.in_(default.privilege_codes))
+        # The Plugins rollout moves its two privileges once, with the category receipt.
+        if default.code != "plugins":
+            assignments = assignments.where(Privilege.privilege_list_id.is_(None))
+        await session.execute(assignments.values(privilege_list_id=category.id))
         receipt.initialized_at = datetime.now(timezone.utc)
     await session.flush()

@@ -8,7 +8,7 @@ from sqlalchemy import delete, select, update
 
 from core.authorize.dbadmin import datasets
 from core.authorize.default_lists import DEFAULT_PRIVILEGE_LISTS
-from core.authorize.models import Assignment, Privilege, PrivilegeList, PrivilegeListDefault, Role
+from core.authorize.models import Assignment, Privilege, PrivilegeList, PrivilegeListDefault, Role, RolePrivilege
 from core.database import get_db_session
 from core.dbadmin import DbAdminDatasetResult, reconcile_dataset
 
@@ -50,6 +50,8 @@ async def test_installation_assigns_defaults_and_repeated_sync_preserves_admin_c
     assert (await reconcile_dataset(db, dataset)).inserted == len(DEFAULT_PRIVILEGE_LISTS)
     categories = {item.display_name: item for item in await db.scalars(select(PrivilegeList))}
     assignments = dict((await db.execute(select(Privilege.code, Privilege.privilege_list_id))).all())
+    unassigned = sorted(code for code, category_id in assignments.items() if category_id is None)
+    assert unassigned == []
     for default in DEFAULT_PRIVILEGE_LISTS:
         category = categories[default.display_name]
         assert category.translation_key == default.display_name
@@ -67,6 +69,53 @@ async def test_installation_assigns_defaults_and_repeated_sync_preserves_admin_c
     assert await db.scalar(select(Privilege.privilege_list_id).where(Privilege.code == "TASK_ACCESS")) == category.id
     assert await db.scalar(select(Privilege.privilege_list_id).where(Privilege.code == "GOAL_ACCESS")) is None
     assert {item.code: item.initialized_at for item in await db.scalars(select(PrivilegeListDefault))} == receipts
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("existing_plugins_category", [False, True])
+async def test_upgrade_groups_only_plugin_privileges_once(db, existing_plugins_category):
+    plugins_key = "authorize.privilegeLists.defaults.plugins"
+    await db.execute(delete(PrivilegeList).where(PrivilegeList.display_name == plugins_key))
+    await db.execute(delete(PrivilegeListDefault).where(PrivilegeListDefault.code == "plugins"))
+    administration_id = await db.scalar(
+        select(PrivilegeList.id).where(PrivilegeList.display_name == "authorize.privilegeLists.defaults.administration")
+    )
+    assert administration_id is not None
+    custom = PrivilegeList(display_name="Synthetic custom category")
+    existing = PrivilegeList(display_name="Plugins") if existing_plugins_category else None
+    db.add(custom)
+    if existing is not None:
+        db.add(existing)
+    await db.flush()
+    await db.execute(update(Privilege).where(Privilege.code == "PLUGIN_ACCESS").values(privilege_list_id=administration_id))
+    await db.execute(update(Privilege).where(Privilege.code == "PLUGIN_EDIT").values(privilege_list_id=custom.id))
+    if existing is not None:
+        await db.execute(update(Privilege).where(Privilege.code == "TASK_ACCESS").values(privilege_list_id=existing.id))
+    assignments_query = select(Privilege.code, Privilege.privilege_list_id)
+    grants_query = select(RolePrivilege.role_id, RolePrivilege.privilege_id)
+    before = dict((await db.execute(assignments_query)).all())
+    grants_before = set((await db.execute(grants_query)).all())
+
+    dataset = default_dataset()
+    assert (await reconcile_dataset(db, dataset)).inserted == 1
+    plugins = await db.scalar(select(PrivilegeList).where(PrivilegeList.translation_key == plugins_key))
+    assert plugins is not None
+    if existing is not None:
+        assert plugins.id == existing.id
+    assert dict((await db.execute(assignments_query)).all()) == {
+        **before,
+        "PLUGIN_ACCESS": plugins.id,
+        "PLUGIN_EDIT": plugins.id,
+    }
+    assert set((await db.execute(grants_query)).all()) == grants_before
+
+    await db.execute(update(Privilege).where(Privilege.code == "PLUGIN_ACCESS").values(privilege_list_id=custom.id))
+    await db.execute(delete(PrivilegeList).where(PrivilegeList.id == plugins.id))
+    assert await reconcile_dataset(db, dataset) == DbAdminDatasetResult()
+    assert await db.scalar(select(PrivilegeList.id).where(PrivilegeList.translation_key == plugins_key)) is None
+    assignments = dict((await db.execute(assignments_query)).all())
+    assert assignments["PLUGIN_ACCESS"] == custom.id
+    assert assignments["PLUGIN_EDIT"] is None
 
 
 @pytest.mark.asyncio

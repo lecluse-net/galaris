@@ -10,9 +10,14 @@ dataset, with one durable receipt per category in `privilege_list_defaults`. Cat
 creation, initial assignment and receipt completion share the dataset transaction.
 Receipts do not depend on category rows: administrator deletions, renames and privilege
 moves survive later synchronizations. Initialization adopts the existing initial
-category names and only assigns previously unassigned privileges. Only privileges
+category names and normally assigns only previously unassigned privileges. Only privileges
 declared by active modules are assigned; other codes in the default organization are
 ignored until their module is available at initialization.
+
+When the Plugins category is introduced, its first initialization moves
+`PLUGIN_ACCESS` and `PLUGIN_EDIT` from any existing category. DbAdmin creates the
+translated category or adopts an existing category named Plugins. The same durable
+receipt leaves subsequent edits, moves and deletions under administrator control.
 
 Software labels store an i18n key in `display_name` and a read-only `translation_key`
 provenance field. A rename clears that field; custom labels, even those matching an

@@ -2,8 +2,21 @@ import { test, expect } from '@playwright/test'
 import { collectPageErrors } from '../page-errors.mjs'
 
 for (const [language, width, labels] of [
-  ['fr', 390, { tab: 'Privilèges', category: 'Agents & équipes', edit: 'Modifier', save: 'Enregistrer', new: 'Nouvelle Liste', create: 'Créer' }],
-  ['en', 1440, { tab: 'Privileges', category: 'Agents & teams', edit: 'Edit', save: 'Save', new: 'New List', create: 'Create' }],
+  ['fr', 390, {
+    tab: 'Privilèges', plugins: 'Extensions', category: 'Agents & équipes',
+    privilege: 'Consulter les agents et les fonctions',
+    edit: 'Modifier', save: 'Enregistrer', new: 'Nouvelle Liste', create: 'Créer',
+  }],
+  ['en', 1440, {
+    tab: 'Privileges', plugins: 'Plugins', category: 'Agents & teams',
+    privilege: 'View agents and job titles',
+    edit: 'Edit', save: 'Save', new: 'New List', create: 'Create',
+  }],
+  ['zh', 1440, {
+    tab: '权限', plugins: '插件', category: '智能体与团队',
+    privilege: '查看智能体和职务',
+    edit: '编辑', save: '保存', new: '新建列表', create: '创建',
+  }],
 ]) test(`installed privilege categories retain translations and custom labels in ${language} at ${width}px`, async ({ page, request }, testInfo) => {
   await page.setViewportSize({ width, height: 1000 })
   const checked = async response => {
@@ -17,7 +30,9 @@ for (const [language, width, labels] of [
   const headers = { Authorization: `Bearer ${session.access_token}` }
   await checked(await request.put('/api/auth/me', { headers, data: { language } }))
   const categories = await checked(await request.get('/api/authorize/privilege-lists', { headers }))
-  expect(categories.filter(item => item.translation_key)).toHaveLength(14)
+  expect(categories.filter(item => item.translation_key)).toHaveLength(15)
+  const plugins = categories.find(item => item.translation_key === 'authorize.privilegeLists.defaults.plugins')
+  expect(plugins?.privileges.map(privilege => privilege.code).sort()).toEqual(['PLUGIN_ACCESS', 'PLUGIN_EDIT'])
   expect(categories.some(item => item.display_name === 'Chat')).toBe(false)
   const key = 'authorize.privilegeLists.defaults.agentsTeams'
   const installed = categories.find(item => item.translation_key === key)
@@ -34,8 +49,10 @@ for (const [language, width, labels] of [
     await backdrop.click({ position: { x: width - 10, y: 200 } })
   })
   await page.getByRole('tab', { name: labels.tab, exact: true }).click()
+  await expect(page.locator('.privilege-list-name').and(page.getByText(labels.plugins, { exact: true }))).toBeVisible()
   const card = page.locator('.privilege-list-card').filter({ has: page.getByText(labels.category, { exact: true }) })
   await expect(card).toBeVisible()
+  await expect(card.getByText(labels.privilege, { exact: true })).toBeVisible()
   await card.getByRole('button', { name: labels.edit, exact: true }).click()
   const dialog = page.getByRole('dialog')
   await expect(dialog.getByRole('textbox')).toHaveValue(labels.category)
