@@ -923,9 +923,15 @@ async def test_archived_chat_rooms_are_hidden_by_default_and_can_be_restored(
 
 
 @pytest.mark.asyncio
-async def test_unread_chat_rooms_count_only_internal_conversations_including_archives(
+async def test_archived_chat_rooms_do_not_contribute_unread_or_pending_question_indicators(
     db: AsyncSession, monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    from app.messenger import chat_pending_question_summary, interactions
+    from app.messenger.models import Interaction
+    from core.params import runtime_settings
+
+    monkeypatch.setattr(runtime_settings, "MESSENGER_ENABLED_CHANNELS", '["internal","nextcloud_talk"]')
+    monkeypatch.setitem(interactions._choice_handlers, "archive-indicator-test", AsyncMock())
     agent, owner, other = await _scope(db)
     internal = await create_internal_room(actor_user_id=owner.id, agent_id=agent.id)
     assert internal is not None
@@ -978,10 +984,25 @@ async def test_unread_chat_rooms_count_only_internal_conversations_including_arc
         if name == "read":
             memberships[name].read_through_position = message.journal_position
     await db.flush()
+    provider_counts = AsyncMock(return_value={
+        str(rooms["external"].id): 99,
+        str(rooms["archived"].id): 42,
+    })
     monkeypatch.setattr(native_facade, "get_messenger", AsyncMock(return_value=SimpleNamespace(
         supports=lambda capability: capability == Capability.UNREAD,
-        unread_counts=AsyncMock(return_value={str(rooms["external"].id): 99}), close=AsyncMock(),
+        unread_counts=provider_counts, close=AsyncMock(),
     )))
+    archived_expiry = datetime.now(timezone.utc) + timedelta(hours=1)
+    active_expiry = archived_expiry + timedelta(hours=1)
+    db.add_all([
+        Interaction(
+            reference=uuid4().hex[:12], kind="archive-indicator-test", agent_id=agent.id,
+            connection_id=connection.id, service_id=external_tool.id, room_id=rooms[name].external_id,
+            user_id=identity.external_id, title="Synthetic question", prompt_message_id=str(messages[name].id),
+            expires_at=expiry,
+        )
+        for name, expiry in [("archived", archived_expiry), ("external", active_expiry)]
+    ])
 
     archived_internal = await create_internal_room(actor_user_id=owner.id, agent_id=agent.id)
     assert archived_internal is not None
@@ -998,29 +1019,39 @@ async def test_unread_chat_rooms_count_only_internal_conversations_including_arc
     # External unread messages never contribute to the internal Chat menu.
     ordinary = await native_facade.list_chat_rooms(owner.id, include_external=False)
     assert [item.id for item in ordinary.items] == [internal.id]
-    assert await native_facade.count_chat_unread(owner.id) == 2
+    assert await chat_pending_question_summary(owner.id) == (1, active_expiry)
+    assert await native_facade.count_chat_unread(owner.id) == 1
+    all_rooms = await native_facade.list_chat_rooms(owner.id, include_external=True, include_archived=True)
+    by_id = {item.id: item for item in all_rooms.items}
+    assert by_id[rooms["external"].id].unread_count == 99
+    assert by_id[rooms["external"].id].pending_question_until == active_expiry
+    for room_id in (archived_internal.id, rooms["archived"].id):
+        assert by_id[room_id].unread_count == 0
+        assert by_id[room_id].pending_question_until is None
+    assert str(rooms["archived"].id) not in provider_counts.await_args.args[0]
     unread = await native_facade.list_chat_rooms(
         owner.id, include_external=True, include_archived=True, unread_only=True,
     )
-    assert {item.id for item in unread.items} == {internal.id, archived_internal.id}
-    assert sum(item.unread_count for item in unread.items) == 2
+    assert [(item.id, item.unread_count) for item in unread.items] == [(internal.id, 1)]
     second_page = await native_facade.list_chat_rooms(
         owner.id, include_external=True, include_archived=True, unread_only=True, page=2, page_size=1,
     )
-    assert second_page.total == 2
-    assert len(second_page.items) == 1
+    assert second_page.total == 1
+    assert not second_page.items
 
     assert await native_facade.mark_chat_room_read(owner.id, internal.id, messages["internal"].id)
     remaining = await native_facade.list_chat_rooms(
         owner.id, include_external=True, include_archived=True, unread_only=True,
     )
-    assert {item.id for item in remaining.items} == {archived_internal.id}
-    assert await native_facade.count_chat_unread(owner.id) == 1
-    assert await native_facade.mark_chat_room_read(owner.id, archived_internal.id, archived_message.id)
+    assert not remaining.items
     assert await native_facade.count_chat_unread(owner.id) == 0
-    assert (await native_facade.list_chat_rooms(
-        owner.id, include_external=True, include_archived=True, unread_only=True,
-    )).total == 0
+
+    restored = await native_facade.set_chat_room_archived(owner.id, rooms["archived"].id, False)
+    assert restored is not None and restored.unread_count == 1
+    assert restored.pending_question_until == archived_expiry
+    assert await chat_pending_question_summary(owner.id) == (2, archived_expiry)
+    assert await native_facade.set_chat_room_archived(owner.id, archived_internal.id, False) is not None
+    assert await native_facade.count_chat_unread(owner.id) == 1
 
 
 @pytest.mark.asyncio

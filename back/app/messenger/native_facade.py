@@ -920,6 +920,7 @@ async def _room_list_projection(
         .join(Message, Message.messenger_room_id == RoomUser.room_id)
         .where(
             RoomUser.room_id.in_(room_ids), Message.counts_as_unread.is_(True),
+            RoomUser.archived.is_(False),
             Message.journal_position > func.coalesce(RoomUser.read_through_position, 0),
             or_(Message.sender_messenger_user_id.is_(None), Message.sender_messenger_user_id != RoomUser.user_id),
         ).group_by(RoomUser.room_id, RoomUser.user_id)
@@ -1041,7 +1042,7 @@ async def _room_dto(
 
 
 async def count_chat_unread(user_id: int) -> int:
-    """Return the unread total for internal text Chat rooms only."""
+    """Return the unread total for unarchived internal text Chat rooms."""
 
     return int(
         await get_db().scalar(
@@ -1054,6 +1055,7 @@ async def count_chat_unread(user_id: int) -> int:
             .join(Service, Service.id == Connection.service_id)
             .where(
                 MessengerUser.galaris_user_id == user_id,
+                RoomUser.archived.is_(False),
                 Room.conversation_type == "text",
                 Service.code == CHAT_TOOL_CODE,
                 Message.counts_as_unread.is_(True),
@@ -1193,7 +1195,7 @@ async def list_chat_rooms(
         )
     if not include_external:
         base = base.where(Service.code == CHAT_TOOL_CODE)
-    if not include_archived:
+    if not include_archived or unread_only:
         base = base.where(RoomUser.archived.is_(False))
     if unread_only:
         base = base.where(
@@ -1246,7 +1248,7 @@ async def list_chat_rooms(
                 projection=projection, transport_active=transport_active,
             )
         )
-        if connection.active and tool.code != CHAT_TOOL_CODE:
+        if not membership.archived and connection.active and tool.code != CHAT_TOOL_CODE:
             provider_rooms_by_connection.setdefault(connection.id, []).append(room.id)
 
     provider_unread_counts: dict[str, int] = {}
@@ -1300,7 +1302,7 @@ async def list_chat_rooms(
                         provider_unread_counts.get(str(item.id), 0),
                     )
                 }
-            )
+            ) if not item.archived else item
             for item in items
         ]
     return NativeMessengerRoomPage(

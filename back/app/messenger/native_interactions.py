@@ -34,6 +34,7 @@ def _pending_questions() -> Select[tuple[UUID, UUID, str, datetime | None]]:
         .join(Interaction, Interaction.connection_id == Connection.id)
         .join(Message, Message.messenger_room_id == Room.id)
         .where(
+            RoomUser.archived.is_(False),
             Connection.active.is_(True),
             Room.deleted_at.is_(None),
             MessengerUser.is_ai.is_(False),

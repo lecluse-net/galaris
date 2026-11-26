@@ -666,7 +666,7 @@ watch([() => store.enabled, homeVisible, () => store.rooms, roomSearch,
   homeRooms.value = []
   void service.rooms(homeRoomsPage.value, homeRoomsPageSize.value, roomSearch.value,
     store.viewerAgentId, homeUnreadOnly.value ? false : store.includeExternalRooms,
-    homeUnreadOnly.value || store.includeArchivedRooms, null, null, homeUnreadOnly.value).then(result => {
+    !homeUnreadOnly.value && store.includeArchivedRooms, null, null, homeUnreadOnly.value).then(result => {
     if (cancelled) return
     homeRoomsTotal.value = result.total
     if (result.total <= 50) homeRoomsPageSize.value = 50
@@ -765,7 +765,19 @@ async function onMessageScroll(info:MessageScrollInfo){const atBottom=info.verti
 async function openCreate(agentId?:number){if(!canCreateRoom.value)return;await report(async()=>{const result=agentId === undefined ? await service.recipients() : {agents:homeAgents.value};if(!canCreateRoom.value)return;recipients.value=result;initialAgentId.value=result.agents.some(agent=>agent.agent_id===agentId)?agentId??null:null;createDialog.value=true})}
 async function createRoom(agentId:number,label:string,topicId:string|null,showLastMessage:boolean){creatingRoom.value=true;try{await report(async()=>{const room=await service.createRoom(agentId,label,topicId,showLastMessage);createDialog.value=false;await store.loadRooms();await selectRoom(room)})}finally{creatingRoom.value=false}}
 async function saveRoomPreferences(label:string,showLastMessage:boolean,topicId:string|null){savingRoomPreferences.value=true;try{await store.updateRoomPreferences(label,showLastMessage);if(canEditConversationTopic.value&&topicId!==store.selectedRoom?.topic_id)await store.updateRoomTopic(topicId);preferencesDialog.value=false}catch(error){reportError(error)}finally{savingRoomPreferences.value=false}}
-async function setRoomArchived(archived:boolean){archivingRoom.value=true;try{await store.setRoomArchived(archived);preferencesDialog.value=false;$q.notify({type:'positive',message:t(archived?'chat.roomPreferences.archived':'chat.roomPreferences.unarchived')})}catch(error){reportError(error)}finally{archivingRoom.value=false}}
+async function setRoomArchived(archived: boolean): Promise<void> {
+  archivingRoom.value = true
+  try {
+    await store.setRoomArchived(archived)
+    void inboxStore.refreshSummary().catch(() => undefined)
+    preferencesDialog.value = false
+    $q.notify({ type: 'positive', message: t(archived ? 'chat.roomPreferences.archived' : 'chat.roomPreferences.unarchived') })
+  } catch (error) {
+    reportError(error)
+  } finally {
+    archivingRoom.value = false
+  }
+}
 async function toggleMute(){if(!store.selectedRoom)return;await report(async()=>{await service.setMuted(store.selectedRoom!.id,!store.selectedRoom!.muted);await store.refreshSelected()})}
 async function toggleDeviceNotifications():Promise<void>{try{if(inboxStore.subscribed){await inboxStore.disablePush();$q.notify({type:'positive',message:t('chat.notifications.disabled')});return}const enabled=await inboxStore.enablePush();if(enabled)$q.notify({type:'positive',message:t('chat.notifications.enabled')});else if(inboxStore.permission==='denied')$q.notify({type:'warning',message:t('chat.notifications.denied')})}catch(error){reportError(error)}}
 watch(() => store.rooms.length > 0, value => { conversationsExpanded.value = value || roomFiltersVisible.value }, { immediate: true })

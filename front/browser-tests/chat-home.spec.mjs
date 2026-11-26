@@ -116,38 +116,41 @@ test('chat home keeps search and filters visible without creation privileges', a
   await expect.poll(() => requests.at(-1)?.search).toBe('Project')
 })
 
-test('home finds unread internal conversations and excludes external messaging', async ({ page }, testInfo) => {
+test('home finds unread internal conversations and excludes archives and external messaging', async ({ page }, testInfo) => {
   await page.setViewportSize({ width: 390, height: 900 })
   const rooms = [
     { ...room, unread_count: 1 },
     { ...room, id: 'external-unread', label: 'Synthetic external discussion', source: 'nextcloud_talk', unread_count: 1 },
-    { ...room, id: 'archived-unread', label: 'Synthetic archived discussion', archived: true, unread_count: 3 },
+    { ...room, id: 'archived', label: 'Synthetic archived discussion', archived: true, unread_count: 0 },
   ]
   const { requests } = await home(page, { rooms })
-  await page.evaluate(() => window.testApp.patchStore('app/chat/stores/inbox.ts', 'useChatInboxStore', { unreadCount: 4 }))
+  await page.evaluate(() => window.testApp.patchStore('app/chat/stores/inbox.ts', 'useChatInboxStore', { unreadCount: 1 }))
   await expect(page.getByText('Synthetic external discussion', { exact: true })).toHaveCount(0)
   await expect(page.getByText('Synthetic archived discussion', { exact: true })).toHaveCount(0)
   await page.getByRole('checkbox', { name: 'Also show external messaging conversations' }).click()
   await expect(page.getByText('Synthetic external discussion', { exact: true })).toBeVisible()
+  await page.getByRole('checkbox', { name: 'Show archived conversations' }).click()
+  const archived = page.getByRole('button', { name: /Synthetic archived discussion/ })
+  await expect(archived).toBeVisible()
+  await expect(archived.getByLabel(/unread message|reply needed/i)).toHaveCount(0)
   await page.getByRole('textbox', { name: 'Search conversations…' }).fill('Project')
   const unread = page.getByRole('button', { name: /Unread conversations/ })
-  await expect(unread).toContainText('4')
+  await expect(unread).toContainText('1')
   await unread.click()
   await expect(page.getByRole('textbox', { name: 'Search conversations…' })).toHaveValue('')
-  await expect(page.locator('.room-item--card')).toHaveCount(2)
   await expect(page.getByText('Synthetic external discussion', { exact: true })).toHaveCount(0)
   await expect(page.getByRole('button', { name: /Project outline Alice/ }).getByLabel('One unread message')).toBeVisible()
-  await expect(page.getByRole('button', { name: /Synthetic archived discussion/ }).getByLabel('3 unread messages')).toBeVisible()
+  await expect(archived).toHaveCount(0)
   await expect.poll(() => requests.at(-1)?.unread_only).toBe('true')
-  expect(requests.at(-1)).toMatchObject({ include_external: 'false', include_archived: 'true', page: '1' })
+  expect(requests.at(-1)).toMatchObject({ include_external: 'false', include_archived: 'false', page: '1' })
   await page.screenshot({ path: testInfo.outputPath('unread-conversations-mobile.png'), fullPage: true })
   rooms[0].unread_count = 0
   await page.evaluate(() => window.testApp.emitSocket('chat.personal_message', { data: {} }))
-  await expect(page.locator('.room-item--card')).toHaveCount(1)
+  await expect(page.getByText('No conversations to display.')).toBeVisible()
   await unread.click()
   await expect(page.getByText('Project outline', { exact: true })).toBeVisible()
   await expect(page.getByText('Synthetic external discussion', { exact: true })).toBeVisible()
-  await expect(page.getByText('Synthetic archived discussion', { exact: true })).toHaveCount(0)
+  await expect(archived).toBeVisible()
 })
 
 for (const count of [50, 51, 1000]) {
