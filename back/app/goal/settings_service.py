@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import os
+from asyncio import Lock
 from datetime import date, datetime, time, timedelta, timezone
 from typing import cast
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
@@ -26,6 +27,9 @@ from .schemas import (
 
 class GoalSettingsUnavailableError(RuntimeError):
     """Raised when deployment reference data has not yet been synchronized."""
+
+
+_settings_lock = Lock()
 
 
 def schedule_timezone() -> tuple[str, ZoneInfo]:
@@ -172,7 +176,7 @@ def next_schedule_at(
 
     if not_before.tzinfo is None or not_before.utcoffset() is None:
         raise ValueError("Goal scheduling requires a timezone-aware datetime")
-    if config.globally_paused:
+    if config.is_paused(self_learning=isinstance(source, Goal) and source.is_weekly_retrospective):
         return None
     try:
         individual = GoalScheduleConfig.model_validate(
@@ -219,11 +223,13 @@ def next_schedule_at(
 def projected_next_cycle_at(goal: Goal, config: GoalSettingsConfig) -> datetime | None:
     """Keep durable eligibility intact while announcing an executable scheduled time."""
 
+    if config.is_paused(self_learning=goal.is_weekly_retrospective):
+        return None
     if goal.manual_run_requested_at is not None:
         return goal.manual_run_requested_at
     if goal.next_cycle_at is None:
         return None
-    if not config.globally_paused and not config.schedule_enabled and not goal.schedule_enabled:
+    if not config.schedule_enabled and not goal.schedule_enabled:
         return goal.next_cycle_at
     return next_schedule_at(
         goal, config, not_before=max(goal.next_cycle_at, datetime.now(timezone.utc))
@@ -257,10 +263,20 @@ async def is_processing_allowed(*, now: datetime | None = None) -> bool:
 
 
 async def update_settings(data: GoalSettingsUpdate) -> GoalSettingsRead:
+    async with _settings_lock:
+        return await _update_settings(data)
+
+
+async def _update_settings(data: GoalSettingsUpdate) -> GoalSettingsRead:
     current = await get_config()
+    patch = data.model_dump(mode="json", exclude_unset=True)
+    if data.globally_paused is not None:
+        # The original API control still applies to both types of Goal.
+        patch.setdefault("goals_paused", data.globally_paused)
+        patch.setdefault("self_learning_paused", data.globally_paused)
     merged = {
         **current.model_dump(mode="json"),
-        **data.model_dump(mode="json", exclude_unset=True),
+        **patch,
     }
     config = GoalSettingsConfig.model_validate(merged)
     saved = await params_service.set(
@@ -291,8 +307,9 @@ async def update_settings(data: GoalSettingsUpdate) -> GoalSettingsRead:
     from .schemas import GoalRuntimeRead
     await websocket.emit("goal_runtime", "update", GoalRuntimeRead.model_validate(result.model_dump()).model_dump(mode="json"), None)
     logger.info(
-        "Goal runtime settings updated: paused={}, schedule_enabled={}, windows={}",
-        config.globally_paused,
+        "Goal runtime settings updated: goals_paused={}, self_learning_paused={}, schedule_enabled={}, windows={}",
+        config.goals_paused,
+        config.self_learning_paused,
         config.schedule_enabled,
         len(config.schedule),
     )

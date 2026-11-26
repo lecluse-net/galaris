@@ -1,6 +1,6 @@
 """Real Goal admission, MCP authorization and personal package persistence."""
 
-from datetime import timedelta
+from datetime import datetime, timedelta
 from uuid import uuid4
 from unittest.mock import AsyncMock
 
@@ -10,16 +10,18 @@ from sqlalchemy import select
 from app.agent import agent_service
 from app.agent.contracts import AIMessage, ExecutionResult
 from app.agent.schemas import AgentCreate
-from app.goal import calendar, goal_service, retrospective, runner
+from app.goal import calendar, goal_service, retrospective, runner, settings_service
 from app.goal.models import Goal, GoalCycle, GoalStatus, GoalVerdict
-from app.goal.schemas import GoalCommand, GoalUpdate
-from app.goal.tests.test_calendar import START, clock
+from app.goal.schemas import GoalCommand, GoalSettingsUpdate, GoalUpdate
+from app.goal.tests.factories import make_goal
+from app.goal.tests.test_calendar import START, clock, create_goal
 from app.goal.tests.test_goal_runner import _new_agent
 from app.services.mcp_loader import execute_native_mcp_tool, list_enabled_native_mcp_definitions
 from app.services.mandatory_services import sync_integrated_service_connections
 from app.skill import Skill, SkillLearningEvidence, storage
 from app.task import Task
 from app.task.models import TaskStatus
+from core.i18n import t
 
 
 async def _weekly(db, agent_id):
@@ -52,15 +54,39 @@ async def test_creation_and_reconciliation_keep_one_protected_pausable_goal(db):
     assert paused.status == GoalStatus.PAUSED
     with pytest.raises(goal_service.GoalConflictError, match="Resume"):
         await goal_service.run_now(goal.id, GoalCommand(expected_revision=paused.revision))
+    with pytest.raises(goal_service.GoalConflictError, match="requires a calendar recurrence"):
+        await goal_service.update(goal.id, GoalUpdate(expected_revision=paused.revision, recurrence=None))
+    updated = await goal_service.update(goal.id, GoalUpdate(
+        expected_revision=paused.revision, title=t("goal_retrospective.legacy_title", "fr"),
+        recurrence=paused.recurrence.model_copy(update={"frequency": "MONTHLY", "interval": 2}),
+    ))
+    goal.description = f"<p>{t('goal_retrospective.legacy_description', 'fr')}</p>"
+    await db.commit()
+
+    for index in range(2):
+        db.add(await make_goal(title=f"Synthetic objective {index}", description="<p>Test list.</p>",
+                               agent_id=new.id, status=GoalStatus.ACTIVE))
+    await db.flush()
+    regular = await goal_service.list_page(agent_ids={new.id}, is_weekly_retrospective=False, limit=1)
+    assert len(regular.items) == 1 and not regular.items[0].is_weekly_retrospective
+    assert regular.total == regular.summary.active == 2 and regular.summary.paused == 0
+    weekly = await goal_service.list_page(agent_ids={new.id}, is_weekly_retrospective=True, limit=1)
+    assert [item.id for item in weekly.items] == [goal.id]
+    assert weekly.total == weekly.summary.paused == 1 and weekly.summary.active == 0
+    assert (await goal_service.list_page(agent_ids={new.id})).total == 3
 
     await retrospective.reconcile_weekly_retrospectives()
     repaired = await _weekly(db, legacy.id)
     assert repaired is not None and repaired.status == GoalStatus.ACTIVE
     await retrospective.reconcile_weekly_retrospectives()
     assert (await _weekly(db, legacy.id)).id == repaired.id
-    assert (await _weekly(db, new.id)).id == paused.id
-    assert (await _weekly(db, new.id)).status == GoalStatus.PAUSED
-    resumed = await goal_service.resume(paused.id, GoalCommand(expected_revision=paused.revision))
+    renamed = await goal_service.get_read(goal.id)
+    assert renamed.id == paused.id and renamed.status == GoalStatus.PAUSED
+    assert renamed.title == t("goal_retrospective.title", "fr")
+    assert renamed.description == f"<p>{t('goal_retrospective.description', 'fr')}</p>"
+    assert renamed.tracking_document_id == paused.tracking_document_id
+    assert renamed.recurrence == updated.recurrence
+    resumed = await goal_service.resume(renamed.id, GoalCommand(expected_revision=renamed.revision))
     assert resumed.status == GoalStatus.ACTIVE
 
 
@@ -117,6 +143,12 @@ async def test_scheduled_review_applies_verified_personal_learning_and_continues
     summary = await call("goal_retrospective_evidence")
     recent_uri = f"galaris://task/{recent}"
     assert summary["sources"] == [{"task_uri": recent_uri, "status": "SUCCESS"}]
+    original_start = summary["period_start"]
+    current = await goal_service.get_read(goal.id)
+    await goal_service.update(goal.id, GoalUpdate(expected_revision=current.revision,
+        recurrence=current.recurrence.model_copy(update={"frequency": "DAILY", "interval": 2})))
+    summary = await call("goal_retrospective_evidence")
+    assert summary["period_start"] == original_start
     for hidden in (foreign, old, review.id):
         with pytest.raises(PermissionError, match="outside"):
             await retrospective.evidence(owner.id, review.id, f"galaris://task/{hidden}")
@@ -141,7 +173,7 @@ async def test_scheduled_review_applies_verified_personal_learning_and_continues
     assert proof.source_ref == recent_uri
     assert "Run the fixture check." in storage.read_text(code, "SKILL.md", owner_agent_id=owner.id)
 
-    tracking = "<p>The fixture check succeeded. Verify reuse next week.</p>"
+    tracking = "<p>The fixture check succeeded. Verify reuse in the next cycle.</p>"
     recorded = await call("goal_retrospective_record", expected_revision=summary["goal_revision"], tracking_content=tracking)
     assert await call("goal_retrospective_record", expected_revision=summary["goal_revision"], tracking_content=tracking) == recorded
     assert (await goal_service.get_read(goal.id)).tracking_content == tracking
@@ -165,5 +197,30 @@ async def test_scheduled_review_applies_verified_personal_learning_and_continues
     await db.commit()
     next_summary = await retrospective.evidence(owner.id, next_review.id, None)
     assert next_summary["period_end"] == next_passage.isoformat()
+    assert datetime.fromisoformat(str(next_summary["period_start"])) == anchor
     assert next_summary["sources"] == []
     assert (await goal_service.get_read(goal.id)).tracking_content == tracking
+
+
+@pytest.mark.asyncio
+async def test_pausing_each_goal_group_blocks_its_queued_manual_cycle_only(db, clock):
+    owner = await _new_agent(db)
+    self_learning_id = await retrospective.ensure_weekly_retrospective(owner.id, now=clock.now)
+    await db.commit()
+    learning = await goal_service.get_read(self_learning_id)
+    regular = await create_goal(db)
+
+    await settings_service.update_settings(GoalSettingsUpdate(self_learning_paused=True))
+    queued_learning = await goal_service.run_now(learning.id, GoalCommand(expected_revision=learning.revision))
+    queued_regular = await goal_service.run_now(regular.id, GoalCommand(expected_revision=regular.revision))
+    assert queued_learning.next_cycle_at is None and queued_regular.next_cycle_at is not None
+    assert await runner.start_due_cycle(manual_only=True)
+    assert not await runner.start_due_cycle(manual_only=True)
+    assert set(await db.scalars(select(GoalCycle.goal_id))) == {regular.id}
+
+    paused = await settings_service.update_settings(GoalSettingsUpdate(goals_paused=True))
+    assert paused.globally_paused and not await runner.start_due_cycle(manual_only=True)
+    settings = await settings_service.update_settings(GoalSettingsUpdate(self_learning_paused=False))
+    assert settings.goals_paused and not settings.globally_paused
+    assert await runner.start_due_cycle(manual_only=True)
+    assert set(await db.scalars(select(GoalCycle.goal_id))) == {regular.id, learning.id}

@@ -1,18 +1,20 @@
-# 0302 — Weekly agent retrospective
+# 0302 — Recurring agent self-learning
 
 Date: 2026-11-19
 Status: Accepted
 
-Each Agent owns a system-assigned Goal with a fixed weekly recurrence in the usual Goal agenda.
+Each Agent owns a system-assigned self-learning Goal with a fixed-date recurrence in the usual Goal agenda.
+The default cadence is once a week. Authorized users can change the frequency and interval.
 The Goal, private tracking document and initial schedule segment commit with Agent creation.
 Goal's bounded scheduler reconciliation assigns the same default to Agents that lack it. An
 owner lock and a partial unique index prevent duplicate assignment and preserve an existing pause.
-Goal rejects deletion, completion, transfer and changes to the weekly cadence. Authorized users
-can pause, resume or edit the schedule through the standard Goal controls. Each admitted Task
+Goal rejects deletion, completion and transfer. Authorized users can pause, resume or edit the
+schedule through the standard Goal controls. The Goals and Self-learning tabs independently
+pause admission for their group. Each admitted Task
 finishes with deterministic continuation and a normal cycle history.
 
 The retrospective reads up to twelve terminal Tasks owned by the executing agent and selected
-from the week ending at the passage. Only the exact running retrospective Task can use the
+from one interval of the recurrence in force at the passage. Only the exact running self-learning Task can use the
 evidence, learning and tracking functions. The server checks the source Task and evidence again
 at application time. Skill writes use the canonical personal package, its live management scope
 and optimistic revision. Recorded source identities and fingerprints preserve idempotence.

@@ -450,9 +450,10 @@ restent des tâches ordinaires : aucune suppression, annulation ni attente de le
 n'est déclenchée par ce nettoyage. Leurs contenus, états et coûts sont conservés.
 Voir la [décision 0296](../../../project/decisions/0296-decision-only-goal-monitoring.md).
 
-L'objectif système de rétrospective conserve une récurrence hebdomadaire. Une tâche terminée
-produit un verdict `CONTINUE` sous verrou, sans jugement par modèle. La pause suspend les prochains
-passages et le provisionnement conserve l'identité et la pause de l'objectif existant.
+L’objectif système d’auto-apprentissage utilise une récurrence à dates fixes, hebdomadaire par
+défaut. Une tâche terminée produit un verdict `CONTINUE` sous verrou, sans jugement par modèle.
+Le cycle examine une période correspondant à la cadence en vigueur à son passage. Le
+provisionnement conserve l’identité et la pause de l’objectif existant.
 
 Chaque Goal choisit exactement un mode de déclenchement automatique : délai après travail,
 récurrence à dates fixes ou cycle d’un objectif parent. La récurrence conserve des segments
@@ -477,12 +478,13 @@ Un planning hebdomadaire global borne
 les nouveaux cycles et relances de tous les Goals. Chaque Goal peut ajouter une restriction
 hebdomadaire individuelle, sans jamais réactiver un créneau fermé globalement. Une demande de
 cycle manuel est persistée jusqu'à la création de sa tâche et contourne les restrictions horaires
-globale et individuelle, mais jamais la pause globale explicite.
+globale et individuelle. Une pause de groupe bloque les nouveaux cycles dans l’onglet
+**Objectifs** ou **Auto-apprentissage**, y compris les demandes manuelles.
 L'échéance persistée conserve le délai minimal après la fin du travail. Les lectures
 annoncent le premier instant compatible avec les deux plages, dans le fuseau de l'application,
 sans déplacer cette échéance ni consommer le cycle en attente. Une fermeture, une modification
-du planning ou un redémarrage ne supprime donc pas son éligibilité. Sans intersection des plages,
-ou pendant la pause globale, aucun prochain instant automatique n'est annoncé.
+du planning ou un redémarrage ne supprime donc pas son éligibilité. La prochaine échéance
+automatique requiert une intersection des plages et un groupe actif.
 Si « Lancer un cycle maintenant » doit d’abord reprendre une évaluation en erreur, la
 demande manuelle reste en attente : `CONTINUE` permet de créer une nouvelle tâche sans attendre
 le planning, tandis que `STOP` annule cette demande. « Réessayer le suivi » reprend seulement

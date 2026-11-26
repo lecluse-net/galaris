@@ -315,12 +315,15 @@ When a cycle depends on an unmade human choice, the Agent can ask the referrer a
 for the reply. An already recorded decision should be read from its source; a fact needed
 to make the choice should be checked before asking. Waiting does not mean the Goal is achieved.
 
-In **Goals**, the list shows the responsible Agent’s avatar and name.
+The **Goals** tab lists regular Goals and shows the responsible agent’s avatar and name.
 In **Cycles**, each cycle shows the applied decision, monitoring state and recorded evidence.
 No review-opening action is offered.
-Each agent receives a **Weekly retrospective** Goal. In **Goals**, you can pause it, resume it or
-move its weekly slot. Its tracking shows lessons from recent work, access gaps and changes
+Each agent receives a **Self-learning** Goal. The **Self-learning** tab uses the same layout
+and filters. In **Edit**, choose a cadence in days, weeks, months or years. Cycles run once a
+week by default. Tracking shows lessons from work during that period, access gaps and changes
 applied to the agent's [personal skills](skills.md).
+**Pause all** suspends new cycles in the current tab, including manual runs. Running cycles
+can finish, and individual pauses remain in effect.
 
 **Fixed dates in the agenda** supports recurrence in a chosen timezone. The **Goals** layer
 in the [Agenda](calendar.md) shows future passages, then the exact cycle
@@ -330,7 +333,7 @@ Opening details does not load the full history: the **Cycles** tab retrieves its
 opened. Live updates preserve the selection and previously displayed information. If loading
 fails, an error message and **Retry** let you recover. A concurrent edit does not replace your
 draft: saving reports the revision conflict to prevent overwriting a newer version.
-With Goal editing privileges, **Manage my categories** lets you create, rename and delete
+With Goal editing privileges, the **Categories** tab lets you create, rename and delete
 personal categories. Choose an optional category when creating or editing a Goal, then use
 the **Category** filter to find classified Goals or **Uncategorized**. Each Goal has at most
 one category. The list groups Goals under category headings, always in alphabetical order,

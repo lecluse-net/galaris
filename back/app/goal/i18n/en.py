@@ -2,8 +2,10 @@
 
 default: dict[str, object] = {
     "goal_retrospective": {
-        "title": "Weekly retrospective",
-        "description": "Review recent work and improve your personal skills from observable evidence every week.",
+        "title": "Self-learning",
+        "description": "Review recent work and improve your personal skills from observable evidence.",
+        "legacy_title": "Weekly retrospective",
+        "legacy_description": "Review recent work and improve your personal skills from observable evidence every week.",
     },
     "goal_referrer": {
         "question_required": "The question for the referrer cannot be empty.",

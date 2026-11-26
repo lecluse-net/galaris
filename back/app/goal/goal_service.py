@@ -149,6 +149,7 @@ def _apply_filters(
     category_id: int | None = None,
     uncategorized: bool = False,
     category_column: ColumnElement[int] | None = None,
+    is_weekly_retrospective: bool | None = None,
 ) -> Select[Any]:
     classification = category_column if category_column is not None else Goal.category_id
     visible_categories = select(GoalCategory.id).where(
@@ -171,6 +172,8 @@ def _apply_filters(
         )
     if status is not None:
         query = query.where(Goal.status == status)
+    if is_weekly_retrospective is not None:
+        query = query.where(Goal.is_weekly_retrospective.is_(is_weekly_retrospective))
     terms = [term.strip() for term in (search or "").split() if term.strip()]
     if terms:
         referrer_agent = aliased(Agent)
@@ -510,6 +513,7 @@ async def list_page(
     agent_ids: Collection[int] | None = None,
     category_id: int | None = None,
     uncategorized: bool = False,
+    is_weekly_retrospective: bool | None = None,
     sort_by: Literal["agent", "title"] | None = None,
     descending: bool = False,
 ) -> GoalPage:
@@ -527,6 +531,7 @@ async def list_page(
         category_id=category_id,
         uncategorized=uncategorized,
         category_column=hierarchy.c.effective_category_id,
+        is_weekly_retrospective=is_weekly_retrospective,
     )
     # Personal categories remain the primary order, before pagination and in either
     # direction of the secondary sort. Hidden categories behave like no category.
@@ -565,6 +570,7 @@ async def list_page(
                     category_id=category_id,
                     uncategorized=uncategorized,
                     category_column=hierarchy.c.effective_category_id,
+                    is_weekly_retrospective=is_weekly_retrospective,
                 )
             )
         ).all()
@@ -1000,14 +1006,12 @@ async def update(
     _assert_revision(goal, data)
     if goal.is_weekly_retrospective:
         if {"description", "referrer", "referrer_max_reminders", "parent_goal_id"} & data.model_fields_set:
-            raise GoalConflictError("The weekly retrospective's assignment and purpose are managed by Galaris.")
+            raise GoalConflictError("The self-learning Goal's assignment and purpose are managed by Galaris.")
         if data.agent_id is not None and data.agent_id != goal.agent_id:
-            raise GoalConflictError("The weekly retrospective stays assigned to its agent.")
+            raise GoalConflictError("The self-learning Goal stays assigned to its agent.")
         if ("cycle_delay_seconds" in data.model_fields_set and data.cycle_delay_seconds is not None
-                or "recurrence" in data.model_fields_set and (
-                    data.recurrence is None or data.recurrence.frequency != "WEEKLY" or data.recurrence.interval != 1
-                )):
-            raise GoalConflictError("The weekly retrospective must recur once a week.")
+                or "recurrence" in data.model_fields_set and data.recurrence is None):
+            raise GoalConflictError("The self-learning Goal requires a calendar recurrence.")
     if "category_id" in data.model_fields_set and goal.category is not None:
         if goal.category.created_by != get_current_user_id():
             raise GoalConflictError("This Goal's category belongs to another user.")
@@ -1264,7 +1268,7 @@ async def complete(goal_id: UUID, command: GoalCommand) -> GoalRead | None:
         return None
     _assert_revision(goal, command)
     if goal.is_weekly_retrospective:
-        raise GoalConflictError("The weekly retrospective can be paused instead of completed.")
+        raise GoalConflictError("The self-learning Goal can be paused instead of completed.")
     last_cycle = await _last_cycle(goal.id)
     if (
         last_cycle is not None
@@ -1314,7 +1318,7 @@ async def run_now(
     if goal.status == GoalStatus.COMPLETED:
         raise GoalConflictError("A completed Goal cannot start another cycle.")
     if goal.is_weekly_retrospective and goal.status == GoalStatus.PAUSED:
-        raise GoalConflictError("Resume the weekly retrospective before starting a cycle.")
+        raise GoalConflictError("Resume the self-learning Goal before starting a cycle.")
     await assert_referrer_available(goal)
     last_cycle = await _last_cycle(goal.id)
     if last_cycle is not None and last_cycle.verdict is None:
@@ -1342,7 +1346,7 @@ async def delete(goal_id: UUID) -> bool:
     if goal is None:
         return False
     if goal.is_weekly_retrospective:
-        raise GoalConflictError("The weekly retrospective is required. Pause it to suspend future cycles.")
+        raise GoalConflictError("The self-learning Goal is required. Pause it to suspend future cycles.")
     open_cycle = await get_db().scalar(
         select(GoalCycle.id)
         .where(

@@ -70,6 +70,7 @@ export function createGoalState() {
   const agentFilter = ref<number | null>(null)
   const statusFilter = ref<GoalStatus | null>(null)
   const categoryFilter = ref<number | 'none' | null>(null)
+  const isWeeklyRetrospective = ref(false)
   const sortBy = ref<'agent' | 'title' | null>(null)
   const sortDescending = ref(false)
   const search = ref('')
@@ -139,6 +140,18 @@ export function createGoalState() {
     }
   }
 
+  function setWeeklyRetrospective(value: boolean): void {
+    if (isWeeklyRetrospective.value === value) return
+    requests.list++
+    isWeeklyRetrospective.value = value
+    goals.value = []
+    total.value = 0
+    summary.value = { ...EMPTY_SUMMARY }
+    page.value = 0
+    loading.value = false
+    error.value = null
+  }
+
   async function fetchGoals(targetPage?: number): Promise<void> {
     const current = beginRequest('list')
     if (targetPage !== undefined) page.value = targetPage
@@ -152,6 +165,7 @@ export function createGoalState() {
         status: statusFilter.value,
         search: search.value,
         categoryId: categoryFilter.value,
+        isWeeklyRetrospective: isWeeklyRetrospective.value,
         sortBy: sortBy.value,
         descending: sortDescending.value,
       })
@@ -481,6 +495,7 @@ export function createGoalState() {
     search,
     fetchSettings,
     updateSettings,
+    setWeeklyRetrospective,
     fetchGoals,
     fetchTree,
     fetchGoal,

@@ -62,6 +62,18 @@ def passage_id(plan_id: UUID, at: datetime) -> UUID:
     return uuid5(plan_id, at.astimezone(timezone.utc).isoformat())
 
 
+def recurrence_period_start(config: GoalRecurrence, end: datetime) -> datetime:
+    """Go back one cadence in local time, using the last day of a shorter month."""
+    local = end.astimezone(ZoneInfo(config.timezone))
+    if config.frequency in {"DAILY", "WEEKLY"}:
+        days = config.interval * (7 if config.frequency == "WEEKLY" else 1)
+        return (local - timedelta(days=days)).astimezone(timezone.utc)
+    months = config.interval * (12 if config.frequency == "YEARLY" else 1)
+    year, month_index = divmod((local.year * 12 + local.month - 1) - months, 12)
+    month = month_index + 1
+    return local.replace(year=year, month=month, day=min(local.day, monthrange(year, month)[1])).astimezone(timezone.utc)
+
+
 async def sync_plan(goal: Goal, *, now: datetime | None = None) -> None:
     """Caller owns the Goal row lock. Preserve every elapsed schedule segment."""
     reference = now or datetime.now(timezone.utc)

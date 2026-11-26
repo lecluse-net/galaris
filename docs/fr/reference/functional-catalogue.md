@@ -2037,7 +2037,8 @@ par passages successifs.
 - Définir des fenêtres hebdomadaires de travail, avec jours et horaires ; la fenêtre d’un Goal
   restreint la fenêtre globale. Les objectifs déclenchés par un parent suivent leur mode propre.
 - Mettre le Goal en pause, le reprendre, le terminer ou demander un cycle immédiatement.
-- Appliquer une pause globale ou un calendrier commun à l’ensemble du runner de Goals.
+- Suspendre les nouveaux cycles de l’onglet **Objectifs** ou **Auto-apprentissage**, ou définir
+  une plage horaire commune aux deux groupes.
 - Modifier description, suivi et réglages avec contrôle de révision. L’affectation de l’agent
   ne peut plus être changée comme une simple préférence après le début des cycles.
   Le rattachement ou le retrait d’une projection Memory dérivée conserve la révision d’édition ;
@@ -2089,12 +2090,12 @@ les coûts. Reprendre un Goal terminé peut ouvrir de nouveaux cycles tout en co
 Le runner attend lorsque l’agent est déjà occupé et respecte les pauses et horaires applicables.
 
 La demande « Exécuter un cycle maintenant » reste persistée jusqu’à la création de sa tâche.
-Elle contourne les fenêtres horaires mais pas une pause globale explicite. Une panne du modèle
+Elle contourne les fenêtres horaires et attend si son groupe est en pause. Une panne du modèle
 de monitoring conserve le diagnostic et les coûts, enregistre `CONTINUE` et laisse le travail
 suivant admissible. La Task et le résultat du cycle précédent restent conservés.
 
 La page Objectifs peut lire la disponibilité de l’ordonnancement sans droit d’édition des réglages,
-en distinguant pause globale et période hors horaires, avec la prochaine activation lorsqu’elle
+en distinguant la pause du groupe et la période hors horaires, avec la prochaine activation lorsqu’elle
 est connue. Les changements en direct actualisent cet état. L’éditeur d’horaires conserve le
 brouillon et permet de sélectionner des jours ou heures entiers.
 
@@ -5842,7 +5843,7 @@ Les 22 fonctions exigent Services. Les définitions intégrées et les délégat
 | `goal_complete` | `goal` | Marquer l’objectif terminé et arrêter les cycles futurs. |
 | `goal_run_now` | `goal` | Demander un cycle immédiat selon les conditions d’activation et de disponibilité. |
 | `goal_ask_referrer` | `goal` | Poser une question corrélée au référent humain, attendre sa réponse et appliquer rappels/pause. |
-| `goal_retrospective_evidence` | `goal` | Pendant la rétrospective hebdomadaire, échantillonner ses propres tâches terminées et lire les observations expurgées et références de preuve. |
+| `goal_retrospective_evidence` | `goal` | Pendant l’auto-apprentissage, échantillonner ses propres tâches terminées sur une période de la cadence et lire les observations expurgées et références de preuve. |
 | `goal_retrospective_learn` | `goal` | Appliquer une amélioration étayée à une compétence personnelle pendant la rétrospective. |
 | `goal_retrospective_record` | `goal` | Enregistrer le suivi HTML de la rétrospective active avec la révision attendue. |
 | `goal_delete` | `goal` | Supprimer logiquement un Goal lorsque aucun cycle inachevé ne l’empêche. |

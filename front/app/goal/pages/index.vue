@@ -3,12 +3,27 @@
     <template v-if="!previewGoalId">
     <PageHeader help-key="goals" :help-text="$t('contextHelpPages.goals')" :icon="navigationIcon('flag_circle')" :title="t('nav.goal')" :description="t('nav.goal_desc')" />
 
+    <q-tabs
+      v-if="canViewGoalTabs"
+      v-model="pageTab"
+      class="q-mb-md text-primary"
+      active-color="primary"
+      indicator-color="primary"
+      align="left"
+      dense
+      no-caps
+    >
+      <q-tab :id="`${tabsId}-goals`" name="goals" :label="t('nav.goal')" :aria-controls="`${tabsId}-list`" />
+      <q-tab :id="`${tabsId}-retrospectives`" name="retrospectives" :label="t('goal.pageTabs.selfLearning')" :aria-controls="`${tabsId}-list`" />
+      <q-tab v-if="canEdit" :id="`${tabsId}-categories`" name="categories" :label="t('goal.pageTabs.categories')" :aria-controls="`${tabsId}-category-panel`" />
+    </q-tabs>
+
+    <section v-show="pageTab !== 'categories'" :id="`${tabsId}-list`" :role="canViewGoalTabs ? 'tabpanel' : undefined" :aria-labelledby="canViewGoalTabs && pageTab !== 'categories' ? `${tabsId}-${pageTab}` : undefined">
     <div class="goal-page-heading row items-start justify-between q-mb-lg">
       <div class="text-body2 text-grey-7">{{ t('goal.subtitle') }}</div>
       <div class="row q-gutter-sm">
-        <q-btn v-if="canEdit" outline color="primary" icon="category" :label="t('goal.categories.manage')" @click="categoryManagerOpen = true" />
         <q-btn
-          v-if="canEdit"
+          v-if="canEdit && pageTab === 'goals'"
           color="primary"
           icon="add"
           :label="t('goal.new')"
@@ -56,13 +71,13 @@
           <q-btn
             dense
             v-if="canConfigureGoals && canManageAllAgents"
-            :color="store.settings.globally_paused ? 'positive' : 'negative'"
-            :icon="store.settings.globally_paused ? 'play_circle' : 'pause_circle'"
-            :label="store.settings.globally_paused
+            :color="runtimePaused ? 'positive' : 'negative'"
+            :icon="runtimePaused ? 'play_circle' : 'pause_circle'"
+            :label="runtimePaused
               ? t('goal.runtime.resumeAll')
               : t('goal.runtime.pauseAll')"
             :loading="store.settingsSaving"
-            @click="toggleGlobalPause"
+            @click="toggleTabPause"
           />
         </div>
       </q-card-section>
@@ -75,6 +90,7 @@
       </q-card-section>
     </q-card>
 
+    <template v-if="canReadGoals">
     <q-banner
       v-if="store.trackingLlmConfigured === false"
       rounded
@@ -580,7 +596,7 @@
       <template #no-data>
         <div class="full-width row flex-center text-grey-7 q-pa-xl">
           <q-icon name="flag_circle" size="32px" class="q-mr-sm" />
-          {{ t(store.error ? 'goal.loadErrors.list' : 'goal.noGoals') }}
+          {{ t(store.error ? 'goal.loadErrors.list' : pageTab === 'retrospectives' ? 'goal.noSelfLearningGoals' : 'goal.noGoals') }}
         </div>
       </template>
     </q-table>
@@ -602,7 +618,7 @@
         color="primary"
       />
     </div>
-
+    </template>
 
     <q-dialog v-model="globalScheduleDialogOpen">
       <q-card class="goal-schedule-dialog-card galaris-dialog-card">
@@ -640,7 +656,11 @@
         </q-form>
       </q-card>
     </q-dialog>
+    </section>
 
+    <section v-if="canEdit" v-show="pageTab === 'categories'" :id="`${tabsId}-category-panel`" role="tabpanel" :aria-labelledby="`${tabsId}-categories`">
+      <GoalCategoryManager v-if="categoryManagerVisited" :active="pageTab === 'categories'" @changed="categoriesChanged" />
+    </section>
     </template>
     <q-dialog
       v-model="goalDialogOpen"
@@ -902,7 +922,7 @@
                       class="goal-trigger-options"
                       @update:model-value="setGoalTriggerMode"
                     />
-                    <GoalRecurrenceEditor v-if="form.triggerMode === 'CALENDAR'" v-model="form.recurrence" :weekly="editingGoal?.is_weekly_retrospective" class="q-mt-sm" />
+                    <GoalRecurrenceEditor v-if="form.triggerMode === 'CALENDAR'" v-model="form.recurrence" class="q-mt-sm" />
                     <div v-else-if="form.triggerMode !== 'RELATIONAL'" class="q-mt-sm">
                       <div class="text-subtitle2 q-mb-xs">{{ t('goal.frequency') }}</div>
                       <div class="row q-col-gutter-sm">
@@ -1017,7 +1037,6 @@
         </q-tab-panels>
       </q-card>
     </q-dialog>
-    <GoalCategoryManager v-if="categoryManagerOpen" v-model="categoryManagerOpen" @changed="categoriesChanged" />
     <ResourceDetailDialog v-if="goalDialogOpen && selectedCycleTaskTarget && canViewTasks"
       :target="selectedCycleTaskTarget" @close="selectedCycleTaskId = null" />
   </component>
@@ -1027,7 +1046,7 @@
 import { CopyResourceReference, ResourceDetailDialog, ResourceReferenceMenu, ActionContextMenu, useResourceCopy, useResourceDetail, type ContextAction } from '@/core/util'
 import { showConfirmationDialog } from '@/core/util'
 import { navigationIcon } from '@/core/navigation'
-import { computed, defineAsyncComponent, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
+import { computed, defineAsyncComponent, onMounted, onUnmounted, reactive, ref, useId, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { QPage, useInterval, useQuasar, type QTableColumn, type QTableProps } from 'quasar'
 import { useI18n } from 'vue-i18n'
@@ -1070,6 +1089,7 @@ import type {
 type GoalCommandName = 'pause' | 'resume' | 'complete' | 'runNow'
 type GoalTriggerMode = 'TEMPORAL_DEFAULT' | 'TEMPORAL_CUSTOM' | 'RELATIONAL' | 'CALENDAR'
 type GoalDialogTab = 'overview' | 'tracking' | 'cycles' | 'edit'
+type GoalPageTab = 'goals' | 'retrospectives' | 'categories'
 const GoalCategoryManager = defineAsyncComponent(() => import('../components/GoalCategoryManager.vue'))
 
 interface GoalFormState {
@@ -1119,11 +1139,14 @@ const emit = defineEmits<{ close: [] }>()
 const store = previewGoalId ? reactive(createGoalState()) : useGoalStore()
 const { formatCost, formatDate, formatDuration } = useGoalFormatting(() => store.settings?.timezone)
 store.listActive = !previewGoalId
+store.setWeeklyRetrospective(false)
+const tabsId = useId()
+const pageTab = ref<GoalPageTab>('goals')
 const selectableAgents = ref<AgentSelectionOption[]>([])
 const categories = ref<GoalCategory[]>([])
 const categoriesLoading = ref(false)
 const categoriesError = ref(false)
-const categoryManagerOpen = ref(false)
+const categoryManagerVisited = ref(false)
 const categoryDraftOpen = ref(false)
 const categoryDraftLabel = ref('')
 const categoryDraftError = ref('')
@@ -1155,11 +1178,13 @@ async function loadCategories(): Promise<void> {
   }
 }
 async function categoriesChanged(): Promise<void> {
+  const session = sessionGeneration()
   await loadCategories()
+  if (disposed || session !== sessionGeneration() || categoriesError.value) return
   if (typeof store.categoryFilter === 'number' && !categories.value.some(category => category.id === store.categoryFilter)) store.categoryFilter = null
   if (form.categoryId !== null && !categories.value.some(category => category.id === form.categoryId)) form.categoryId = null
-  await store.fetchGoals(0)
-  if (store.currentGoal) await store.fetchGoal(store.currentGoal.id)
+  if (store.listActive) refreshGoals(0)
+  if (store.currentGoal) void store.fetchGoal(store.currentGoal.id).catch(() => undefined)
 }
 function resetCategoryDraft(): void {
   categoryDraftOpen.value = false
@@ -1198,6 +1223,7 @@ const authStore = useAuthStore()
 const canEdit = computed(() => privilegeStore.hasPrivilege(privileges.GOAL_EDIT))
 const canReadGoals = computed(() => privilegeStore.hasAnyPrivilege([privileges.GOAL_ACCESS, privileges.GOAL_EDIT]))
 const canReadGoalConfiguration = computed(() => privilegeStore.hasAnyPrivilege([privileges.GOAL_CONFIG_ACCESS, privileges.GOAL_CONFIG_EDIT]))
+const canViewGoalTabs = computed(() => canReadGoals.value || canReadGoalConfiguration.value)
 const canConfigureGoals = computed(() => privilegeStore.hasPrivilege(privileges.GOAL_CONFIG_EDIT))
 const canManageAllAgents = computed(() => (
   privilegeStore.hasPrivilege(privileges.AGENT_MANAGE_ALL)
@@ -1276,10 +1302,26 @@ watch(() => authStore.user?.id, () => {
   categoryRequest++
   categories.value = []
   form.categoryId = null
-  categoryManagerOpen.value = false
+  categoryManagerVisited.value = false
+  pageTab.value = 'goals'
   resetCategoryDraft()
   store.categoryFilter = null
   if (canReadGoals.value) void loadCategories()
+})
+
+watch(pageTab, tab => {
+  store.listActive = tab !== 'categories'
+  if (tab === 'categories') {
+    categoryManagerVisited.value = true
+    return
+  }
+  store.setWeeklyRetrospective(tab === 'retrospectives')
+  if (canReadGoals.value) refreshGoals()
+})
+watch(canEdit, editable => {
+  if (editable) return
+  if (pageTab.value === 'categories') pageTab.value = 'goals'
+  categoryManagerVisited.value = false
 })
 
 const agentOptions = computed(() => selectableAgents.value.map(agent => ({
@@ -1295,21 +1337,28 @@ const statusOptions = computed(() => (
   }))
 ))
 
+const runtimePaused = computed(() => {
+  const settings = store.settings
+  if (!settings) return false
+  const paused = pageTab.value === 'retrospectives' ? settings.self_learning_paused : settings.goals_paused
+  return paused ?? settings.globally_paused
+})
+
 const runtimeColor = computed(() => {
-  if (store.settings?.inactive_reason === 'GLOBAL_PAUSE') return 'negative'
+  if (runtimePaused.value) return 'negative'
   if (store.settings?.inactive_reason === 'OUTSIDE_SCHEDULE') return 'warning'
   return 'positive'
 })
 
 const runtimeIcon = computed(() => {
-  if (store.settings?.inactive_reason === 'GLOBAL_PAUSE') return 'pause_circle'
+  if (runtimePaused.value) return 'pause_circle'
   if (store.settings?.inactive_reason === 'OUTSIDE_SCHEDULE') return 'event_busy'
   return 'play_circle'
 })
 
 const runtimeStatusLabel = computed(() => {
-  if (store.settings?.inactive_reason === 'GLOBAL_PAUSE') {
-    return t('goal.runtime.globalPaused')
+  if (runtimePaused.value) {
+    return t('goal.runtime.paused')
   }
   if (store.settings?.inactive_reason === 'OUTSIDE_SCHEDULE') {
     return t('goal.runtime.outsideGlobalSchedule')
@@ -1320,8 +1369,8 @@ const runtimeStatusLabel = computed(() => {
 const runtimeDescription = computed(() => {
   const settings = store.settings
   if (!settings) return ''
-  if (settings.inactive_reason === 'GLOBAL_PAUSE') {
-    return t('goal.runtime.globalPausedDescription')
+  if (runtimePaused.value) {
+    return t('goal.runtime.pausedDescription')
   }
   if (settings.inactive_reason === 'OUTSIDE_SCHEDULE') {
     return t('goal.runtime.outsideGlobalScheduleDescription', {
@@ -1675,14 +1724,14 @@ async function submitForm(): Promise<void> {
     || !form.description.trim()
     || !canSaveGoalTrigger.value
   ) return
-  const weekly = Boolean(editingGoal.value?.is_weekly_retrospective)
+  const selfLearning = Boolean(editingGoal.value?.is_weekly_retrospective)
   const referrer: GoalReferrerInput | null = form.messengerReferrer && {
     type: 'MESSENGER',
     connection_id: form.messengerReferrer.connection_id,
     user_id: form.messengerReferrer.user_id,
     display_name: form.messengerReferrer.display_name,
   }
-  if (!weekly && referrer === null) return
+  if (!selfLearning && referrer === null) return
   formSaving.value = true
   const generation = formGeneration, session = sessionGeneration()
   const current = () => generation === formGeneration && session === sessionGeneration()
@@ -1704,7 +1753,7 @@ async function submitForm(): Promise<void> {
         title: form.title.trim(),
         ...(form.categoryId !== (editingGoal.value.category_id ?? null) ? { category_id: form.categoryId } : {}),
         recurrence,
-        ...(!weekly && referrer ? {
+        ...(!selfLearning && referrer ? {
           description: form.description.trim(),
           agent_id: form.agentId ?? undefined,
           referrer,
@@ -1816,16 +1865,15 @@ async function runCommand(action: GoalCommandName, goal: Goal): Promise<void> {
   }
 }
 
-async function toggleGlobalPause(): Promise<void> {
-  if (!store.settings) return
+async function toggleTabPause(): Promise<void> {
+  if (!store.settings || store.settingsSaving) return
+  const paused = !runtimePaused.value
+  const field = pageTab.value === 'retrospectives' ? 'self_learning_paused' : 'goals_paused'
   try {
-    const globallyPaused = !store.settings.globally_paused
-    await store.updateSettings({ globally_paused: globallyPaused })
+    await store.updateSettings({ [field]: paused })
     $q.notify({
       type: 'positive',
-      message: t(globallyPaused
-        ? 'goal.runtime.globalPauseEnabled'
-        : 'goal.runtime.globalPauseDisabled'),
+      message: t(paused ? 'goal.runtime.pauseEnabled' : 'goal.runtime.pauseDisabled'),
     })
   } catch (error) {
     notifyError(error)
@@ -1869,6 +1917,7 @@ const descriptionPreviews = computed<Map<string, { source: string; text: string 
 ))
 
 function refreshGoals(page?: number): void {
+  if (!store.listActive) return
   void store.fetchGoals(page).catch(() => undefined)
 }
 
@@ -2036,7 +2085,7 @@ onMounted(() => {
     }, 60_000)
     try {
       await Promise.all([
-        ...(canReadGoals.value && !previewGoalId ? [store.fetchGoals(0)] : []),
+        ...(canReadGoals.value && store.listActive ? [store.fetchGoals(0)] : []),
         ...(canReadGoals.value ? [store.fetchTree()] : []),
         ...(canReadGoals.value ? [loadCategories()] : []),
         store.fetchSettings(),

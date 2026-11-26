@@ -437,9 +437,10 @@ the answer without an immediate retry loop. Reminders from the failed cycle can 
 longer pause the Goal. The thread receives an acknowledgement and the observed outcome
 of the cycle that uses the answer when the transport is available.
 
-The system-assigned retrospective recurs weekly. A terminal Task produces a locked `CONTINUE`
-verdict without model judgement. Pausing suspends future passages, and provisioning preserves the
-identity and pause state of any existing retrospective.
+The system-assigned self-learning Goal uses a fixed-date recurrence that defaults to weekly.
+A terminal Task produces a locked `CONTINUE` verdict without model judgement. Each cycle reviews
+one interval of the cadence in force at its passage. Provisioning preserves the identity and pause
+state of any existing self-learning Goal.
 
 Each Goal chooses exactly one automatic trigger: delay after work, fixed-date recurrence
 or a parent Goal cycle. Fixed cadence retains versioned planning segments and durable
@@ -461,13 +462,13 @@ in all three modes and does not constitute another configuration mode.
 A global weekly schedule bounds
 new cycles and reruns for all Goals. Each Goal may add an individual weekly restriction,
 without ever reactivating a slot closed globally. A manual cycle request is persisted until its
-Task is created and bypasses global and individual time restrictions, but never the explicit
-global pause.
+Task is created and bypasses global and individual time restrictions. Pausing the **Goals** or
+**Self-learning** group blocks new cycles for that group, including manual requests.
 The persisted deadline retains the minimum delay after work finishes. Read projections
 announce the first instant compatible with both windows, in the application timezone,
 without moving that deadline or consuming the pending cycle. A closure, schedule change,
-or restart therefore preserves its eligibility. Without overlapping windows, or during
-a global pause, no next automatic instant is announced.
+or restart therefore preserves its eligibility. The next automatic instant requires overlapping
+windows and an unpaused group.
 If “Run a cycle now” first needs to recover a failed evaluation, the manual request remains
 pending: `CONTINUE` allows a new Task to start without waiting for the schedule, while `STOP`
 cancels the request. “Retry tracking” only retries the evaluation. Both commands preserve the

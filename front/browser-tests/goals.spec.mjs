@@ -50,14 +50,29 @@ test('a fixed Goal cadence saves with a timezone and survives reopening', async 
   await expect(dialog.getByLabel('First passage', { exact: true })).toHaveValue('2026-11-17T09:00')
 })
 
-test('a weekly retrospective can pause and resume through the existing Goal commands', async ({ page }) => {
-  const commands = await goals(page, 'ACTIVE', 'goal-a', {
-    is_weekly_retrospective: true, referrer: null, title: 'Weekly retrospective',
+test('a self-learning Goal can pause, resume and save a different recurrence', async ({ page }) => {
+  const retrospective = { ...goal,
+    is_weekly_retrospective: true, referrer: null, title: 'Self-learning',
     recurrence: { frequency: 'WEEKLY', interval: 1, timezone: 'UTC',
       start_at: '2026-11-17T09:00:00Z', max_lateness_minutes: 1440 },
+  }
+  const commands = await goals(page, 'ACTIVE', 'goal-a', retrospective)
+  const regular = { ...goal, id: 'regular', title: 'Synthetic objective' }
+  await page.route('**/api/goals?*', route => {
+    const filter = new URL(route.request().url()).searchParams.get('is_weekly_retrospective')
+    const items = filter === 'true' ? [retrospective] : filter === 'false' ? [regular] : [regular, retrospective]
+    return route.fulfill({ json: { items, total: items.length, summary: { active: items.length }, tracking_llm_configured: true } })
   })
   await mount(page, 'app/goal/pages/index.vue', { privileges: ['GOAL_EDIT'] })
-  await page.getByRole('button', { name: 'Goal details', exact: true }).first().click()
+  const goalList = page.getByRole('tabpanel', { name: 'Goals', exact: true })
+  await expect(goalList.getByText(regular.title, { exact: true })).toBeVisible()
+  await expect(goalList.getByText(retrospective.title, { exact: true })).toHaveCount(0)
+  await page.getByRole('tab', { name: 'Self-learning', exact: true }).press('Enter')
+  const retrospectives = page.getByRole('tabpanel', { name: 'Self-learning', exact: true })
+  await expect(retrospectives.getByText(retrospective.title, { exact: true })).toBeVisible()
+  await expect(retrospectives.getByText(regular.title, { exact: true })).toHaveCount(0)
+  await expect(retrospectives.getByRole('button', { name: 'New Goal', exact: true })).toHaveCount(0)
+  await retrospectives.getByRole('button', { name: 'Goal details', exact: true }).first().click()
   const dialog = page.getByRole('dialog')
   await expect(dialog.getByText('Assigned by Galaris')).toBeVisible()
   await expect(dialog.getByRole('button', { name: 'Delete', exact: true })).toHaveCount(0)
@@ -66,6 +81,57 @@ test('a weekly retrospective can pause and resume through the existing Goal comm
   await dialog.getByRole('button', { name: 'Resume', exact: true }).click()
   await expect(dialog.getByRole('button', { name: 'Pause', exact: true })).toBeVisible()
   expect(commands.map(item => item.command)).toEqual(['pause', 'resume'])
+
+  let current = { ...retrospective, revision: retrospective.revision + 2 }
+  const writes = []
+  await page.route('**/api/goals/goal-a', route => {
+    if (route.request().method() === 'PUT') {
+      const change = route.request().postDataJSON()
+      writes.push(change)
+      current = { ...current, ...change, revision: current.revision + 1 }
+    }
+    return route.fulfill({ json: current })
+  })
+  await dialog.getByRole('tab', { name: 'Edit', exact: true }).click()
+  await expect(dialog.getByText('weeks', { exact: true })).toBeVisible()
+  await expect(dialog.getByRole('spinbutton', { name: 'Every', exact: true })).toHaveValue('1')
+  await dialog.getByRole('combobox', { name: 'Period', exact: true }).click()
+  await page.getByRole('option', { name: 'months', exact: true }).click()
+  await dialog.getByRole('spinbutton', { name: 'Every', exact: true }).fill('2')
+  await dialog.getByRole('button', { name: 'Save', exact: true }).click()
+  await expect.poll(() => writes[0]?.recurrence).toMatchObject({ frequency: 'MONTHLY', interval: 2 })
+  await dialog.getByRole('tab', { name: 'Edit', exact: true }).click()
+  await expect(dialog.getByText('months', { exact: true })).toBeVisible()
+  await expect(dialog.getByRole('spinbutton', { name: 'Every', exact: true })).toHaveValue('2')
+})
+
+test('Pause all and resume apply only to the visible Goal tab', async ({ page }) => {
+  await goals(page)
+  const settings = { goals_paused: false, self_learning_paused: false, globally_paused: false,
+    schedule_enabled: false, schedule: [], timezone: 'UTC', is_active: true, inactive_reason: null, next_active_at: null }
+  const writes = []
+  await page.route('**/api/goals/settings', route => {
+    if (route.request().method() === 'PATCH') {
+      const change = route.request().postDataJSON()
+      writes.push(change)
+      Object.assign(settings, change)
+    }
+    return route.fulfill({ json: settings })
+  })
+  await mount(page, 'app/goal/pages/index.vue', { privileges: ['GOAL_CONFIG_EDIT', 'AGENT_MANAGE_ALL'] })
+  const pause = page.getByRole('button', { name: 'Pause all', exact: true })
+  const resume = page.getByRole('button', { name: 'Disable pause', exact: true })
+  await pause.click()
+  await expect(resume).toBeVisible()
+  await page.getByRole('tab', { name: 'Self-learning', exact: true }).click()
+  await expect(pause).toBeVisible()
+  await pause.click()
+  await expect(resume).toBeVisible()
+  await resume.click()
+  await expect(pause).toBeVisible()
+  await page.getByRole('tab', { name: 'Goals', exact: true }).click()
+  await expect(resume).toBeVisible()
+  expect(writes).toEqual([{ goals_paused: true }, { self_learning_paused: true }, { self_learning_paused: false }])
 })
 
 test.describe('Goal schedule timezone', () => {
@@ -244,10 +310,13 @@ for (const width of [390, 1440]) {
       filters.push(Object.fromEntries(new URL(route.request().url()).searchParams))
       return route.fulfill({ json: { items: [current], total: 1, summary: { active: 1 }, tracking_llm_configured: true } })
     })
-    await mount(page, 'app/goal/pages/index.vue', { privileges: ['GOAL_EDIT'] })
+    await mount(page, 'app/goal/pages/index.vue', { route: '/goal', shell: true, privileges: ['GOAL_EDIT'] })
+    if (width < 1024) await page.locator('.q-drawer__backdrop').click({ position: { x: width - 10, y: 200 } })
     await expect(page.getByRole('img', { name: goal.agent_name, exact: true }).first()).toBeVisible()
-    await page.getByRole('button', { name: 'Manage my categories', exact: true }).click()
-    const manager = page.getByRole('dialog')
+    const categoriesTab = page.getByRole('tab', { name: 'Categories', exact: true })
+    const goalsTab = page.getByRole('tab', { name: 'Goals', exact: true })
+    await categoriesTab.click()
+    const manager = page.getByRole('tabpanel', { name: 'Categories', exact: true })
     await expect(manager).toContainText('You have no categories yet.')
     await manager.getByRole('textbox', { name: 'New category', exact: true }).fill('Research')
     await manager.getByRole('button', { name: 'Add', exact: true }).click()
@@ -260,10 +329,10 @@ for (const width of [390, 1440]) {
     await expect.poll(() => categories[0]?.label).toBe('Research projects')
     for (const dark of [false, true]) {
       await page.evaluate(dark => window.testApp.dark(dark), dark)
-      await page.screenshot({ path: testInfo.outputPath(`category-manager-${dark ? 'dark' : 'light'}.png`) })
+      await page.screenshot({ path: testInfo.outputPath(`category-manager-${dark ? 'dark' : 'light'}.png`), animations: 'disabled' })
     }
-    await manager.getByRole('button', { name: 'Close', exact: true }).first().click()
-    await expect(manager).toHaveCount(0)
+    await goalsTab.click()
+    await expect(manager).toBeHidden()
     const view = page.locator('button').filter({ has: page.locator('.q-icon', { hasText: 'visibility' }) }).first()
     await view.click()
     const detail = page.getByRole('dialog')
@@ -284,18 +353,18 @@ for (const width of [390, 1440]) {
     await expect(page.getByRole('option', { name: 'Research projects', exact: true })).toHaveCount(0)
     for (const dark of [false, true]) {
       await page.evaluate(dark => window.testApp.dark(dark), dark)
-      await page.screenshot({ path: testInfo.outputPath(`goal-categories-${dark ? 'dark' : 'light'}.png`), fullPage: true })
+      await page.screenshot({ path: testInfo.outputPath(`goal-categories-${dark ? 'dark' : 'light'}.png`), fullPage: true, animations: 'disabled' })
     }
-    await page.getByRole('button', { name: 'Manage my categories', exact: true }).click()
+    await categoriesTab.click()
     await manager.getByRole('button', { name: 'Delete', exact: true }).click()
     const confirmation = page.getByRole('dialog').filter({ hasText: 'Delete category' })
     await expect(confirmation).toContainText('Goals will be retained')
     await confirmation.getByRole('button', { name: 'Delete', exact: true }).click()
     await expect(confirmation).toHaveCount(0)
     await expect(manager).toContainText('You have no categories yet.')
+    await goalsTab.click()
+    await expect(manager).toBeHidden()
     await expect.poll(() => filters.at(-1)?.category_id).toBeUndefined()
-    await manager.getByRole('button', { name: 'Close', exact: true }).first().click()
-    await expect(manager).toHaveCount(0)
     await page.getByRole('combobox', { name: 'Category', exact: true }).click()
     await page.getByRole('option', { name: 'Uncategorized', exact: true }).click()
     await expect.poll(() => filters.at(-1)?.uncategorized).toBe('true')

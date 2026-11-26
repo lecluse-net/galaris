@@ -369,12 +369,16 @@ référent puis attendre sa réponse. Une décision déjà enregistrée doit êt
 source ; un fait nécessaire au choix doit être vérifié avant de poser la question.
 L'attente ne signifie pas que l'objectif est atteint.
 
-Dans **Objectifs**, la liste affiche l’avatar et le nom de l’agent responsable.
+L’onglet **Objectifs** liste les objectifs ordinaires et affiche
+l’avatar et le nom de l’agent responsable.
 Le mode **À dates fixes dans l’agenda** permet une récurrence dans un fuseau choisi.
-Chaque agent reçoit automatiquement un objectif **Rétrospective hebdomadaire**. Dans
-**Objectifs**, vous pouvez le mettre en pause, le reprendre ou déplacer son créneau hebdomadaire.
-Son suivi présente les leçons tirées du travail récent, les accès manquants et les changements
+Chaque agent reçoit automatiquement un objectif **Auto-apprentissage**. L’onglet du même
+nom utilise le même affichage et les mêmes filtres. Dans **Modification**, choisissez une
+cadence en jours, semaines, mois ou ans. Par défaut, le cycle a lieu une fois par semaine.
+Son suivi présente les leçons tirées du travail sur cette période, les accès manquants et les changements
 appliqués à ses [compétences personnelles](skills.md).
+**Tout mettre en pause** suspend les nouveaux cycles de l’onglet ouvert, y compris les
+lancements manuels. Les cycles en cours peuvent se terminer et les pauses individuelles sont conservées.
 La couche **Objectifs** de l’[Agenda](calendar.md) montre les passages
 futurs puis le cycle et la Task exacts de chaque passage arrivé à échéance. Les changements
 de configuration conservent le passé et ne remplacent que la planification future.
@@ -385,7 +389,7 @@ Les mises à jour en direct conservent la sélection et les informations déjà
 affichées. Si un chargement échoue, un message et **Réessayer** permettent de le reprendre.
 Une modification concurrente ne remplace pas votre brouillon : l’enregistrement signale le
 conflit de révision pour éviter d’écraser une version plus récente.
-Avec le droit de modification des objectifs, **Gérer mes catégories** permet de créer,
+Avec le droit de modification des objectifs, l’onglet **Catégories** permet de créer,
 renommer et supprimer vos catégories personnelles. Choisissez une catégorie facultative
 dans le formulaire de création ou de modification, puis utilisez le filtre **Catégorie**
 pour retrouver les objectifs classés ou **Sans catégorie**. Chaque objectif a au plus une

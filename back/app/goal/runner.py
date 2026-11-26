@@ -403,7 +403,7 @@ async def _finish_judgement(
         reason = f"Decision model selected {action.value}." if llm_id is not None else "Monitoring is disabled; continue scheduled work."
         if goal.is_weekly_retrospective:
             action = GoalVerdict.CONTINUE
-            reason = "The weekly retrospective continues on its existing schedule."
+            reason = "The self-learning Goal continues on its existing schedule."
         if goal.status == GoalStatus.PAUSED:
             action = GoalVerdict.CONTINUE
             reason = "The Goal remains paused by its existing control state."
@@ -631,6 +631,9 @@ async def start_due_cycle(
 
     db = get_db()
     now = datetime.now(timezone.utc)
+    config = await settings_service.get_config()
+    if config.globally_paused:
+        return False
     open_cycle = exists().where(
         GoalCycle.goal_id == Goal.id,
         GoalCycle.verdict.is_(None),
@@ -657,6 +660,8 @@ async def start_due_cycle(
             pending_referrer_recovery,
         ),
     )
+    if config.goals_paused or config.self_learning_paused:
+        candidate_query = candidate_query.where(Goal.is_weekly_retrospective.is_(config.goals_paused))
     if manual_only:
         candidate_query = candidate_query.where(
             Goal.manual_run_requested_at.is_not(None)
@@ -697,6 +702,9 @@ async def start_due_cycle(
             locked_query.with_for_update(skip_locked=True)
         )
         if goal is None:
+            await db.rollback()
+            continue
+        if (await settings_service.get_config()).is_paused(self_learning=goal.is_weekly_retrospective):
             await db.rollback()
             continue
         relational_trigger = await db.scalar(

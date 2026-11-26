@@ -548,6 +548,10 @@ async def _pause_for_no_response(
 async def process_due_referrer_wait(now: datetime | None = None) -> bool:
     """Send one due reminder or auto-pause one unanswered Goal."""
 
+    from . import settings_service
+
+    if (await settings_service.get_config()).goals_paused:
+        return False
     register_referrer_interaction_handler()
     current = now or datetime.now(timezone.utc)
     wait_kind = Task.data[collab.AWAIT_KEY]["kind"].as_string()
@@ -603,8 +607,6 @@ async def process_due_referrer_wait(now: datetime | None = None) -> bool:
             _set_wait_marker(wait, marker)
             await task_service.save(wait)
             return True
-
-        from . import settings_service
 
         if not settings_service.is_goal_processing_allowed(goal, now=current):
             await get_db().rollback()

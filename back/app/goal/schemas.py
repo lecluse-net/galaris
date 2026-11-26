@@ -86,9 +86,23 @@ class GoalScheduleConfig(BaseModel):
 
 
 class GoalSettingsConfig(GoalScheduleConfig):
-    """Durable global Goal runner pause and common availability window."""
+    """Independent pauses with one shared availability window."""
 
     globally_paused: bool = False
+    goals_paused: bool = False
+    self_learning_paused: bool = False
+
+    @model_validator(mode="after")
+    def resolve_pauses(self) -> "GoalSettingsConfig":
+        if "goals_paused" not in self.model_fields_set:
+            self.goals_paused = self.globally_paused
+        if "self_learning_paused" not in self.model_fields_set:
+            self.self_learning_paused = self.globally_paused
+        self.globally_paused = self.goals_paused and self.self_learning_paused
+        return self
+
+    def is_paused(self, *, self_learning: bool = False) -> bool:
+        return self.self_learning_paused if self_learning else self.goals_paused
 
 
 class GoalSettingsUpdate(BaseModel):
@@ -97,6 +111,8 @@ class GoalSettingsUpdate(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     globally_paused: bool | None = None
+    goals_paused: bool | None = None
+    self_learning_paused: bool | None = None
     schedule_enabled: bool | None = None
     schedule: list[GoalScheduleWindow] | None = Field(default=None, max_length=50)
 
@@ -490,6 +506,8 @@ class GoalRuntimeRead(BaseModel):
     """Operational metadata needed to explain a Goal's availability."""
 
     globally_paused: bool
+    goals_paused: bool
+    self_learning_paused: bool
     schedule_enabled: bool
     timezone: str
     is_active: bool

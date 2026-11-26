@@ -38,9 +38,9 @@ La compétence guide la préparation du code et du bundle. L’espace de travail
 du run déterminent si l’agent peut construire et qualifier l’archive. La clé de signature et
 l’autorisation d’installation sont gérées séparément. [Guide auteur de plugins](../dev/plugin-authoring.md)
 
-## Apprendre pendant la rétrospective hebdomadaire
+## Auto-apprentissage
 
-La rétrospective hebdomadaire peut créer un package personnel avec son `SKILL.md` ou réviser une
+Un cycle d’auto-apprentissage peut créer un package personnel avec son `SKILL.md` ou réviser une
 procédure existante à partir de résultats observés. Sa fiche conserve les preuves,
 le nombre de tâches distinctes confirmées et la fiabilité. Une candidate reste consultable et
 éditable, mais ne devient utilisable qu'après les seuils des compétences apprises
@@ -51,7 +51,8 @@ conservent leur activation habituelle.
 Les mêmes actions permettent d'éditer, désactiver, supprimer ou transférer ces packages.
 Un renforcement respecte une désactivation explicite et une révision tardive préserve une
 édition intervenue entre-temps. L'écriture exige la délégation de gestion personnelle du service
-`skills`. Vous pouvez suspendre les prochains bilans dans **Objectifs**.
+`skills`. Dans la page **Objectifs**, ouvrez **Auto-apprentissage** pour choisir la cadence
+ou suspendre les prochains cycles.
 
 La mise à jour transfère les anciennes compétences apprises, leur historique et leurs suspensions
 vers les packages personnels. Un nom déjà utilisé est conservé et la compétence transférée reçoit

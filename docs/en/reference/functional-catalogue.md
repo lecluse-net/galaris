@@ -1600,7 +1600,7 @@ Users configure its title, HTML description, agent, referrer, and a frequency, r
 dates in a chosen timezone, or a parent-Goal trigger. These modes are exclusive and parent
 relationships cannot cycle. Weekly windows
 intersect with global scheduling rules; each Goal keeps its own mode. Controls include pause,
-resume, finish, manual cycle, global pause and calendar display. Definition edits check revisions;
+resume, finish, manual cycle, pause by tab and calendar display. Definition edits check revisions;
 the agent cannot change after cycles exist, and unfinished Goals cannot be deleted.
 Attaching or removing a derived Memory projection preserves the edit revision; concurrent
 changes to the Goal itself still cause a revision conflict.
@@ -1639,12 +1639,12 @@ losing history. Scheduling waits for a busy agent and respects configured window
 
 Historical generative follow-up payloads remain readable in histories and Lab datasets.
 
-“Run now” remains pending until a Task is actually created. It bypasses time windows, but not a
-global pause. A monitoring-model failure preserves its diagnostic and costs, records `CONTINUE`
+“Run now” remains pending until a Task is actually created. It bypasses time windows and waits
+while its group is paused. A monitoring-model failure preserves its diagnostic and costs, records `CONTINUE`
 and leaves subsequent work eligible. The previous cycle's Task and result remain intact.
 
-The Goal page can read scheduling availability without settings-edit rights, distinguishing global
-pause from being outside active windows and showing the next active time when known. Live changes
+The Goal page can read scheduling availability without settings-edit rights, distinguishing a
+paused group from being outside active windows and showing the next active time when known. Live changes
 refresh this state. The schedule editor preserves drafts and selects whole days or hours.
 
 ### Personal tracking classification

@@ -95,6 +95,7 @@ async def read_goals(
     q: str | None = None,
     category_id: int | None = Query(default=None, gt=0),
     uncategorized: bool = False,
+    is_weekly_retrospective: bool | None = None,
     sort_by: Literal["agent", "title"] | None = None,
     descending: bool = False,
 ) -> GoalPage:
@@ -108,6 +109,7 @@ async def read_goals(
         agent_ids=scope.agent_ids,
         category_id=category_id,
         uncategorized=uncategorized,
+        is_weekly_retrospective=is_weekly_retrospective,
         sort_by=sort_by,
         descending=descending,
     )

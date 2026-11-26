@@ -38,9 +38,9 @@ The skill guides source and bundle preparation. The run's workspace and tools de
 the agent can build and qualify the archive. The signing key and installation authorization
 are managed separately. [Plugin authoring guide](../dev/plugin-authoring.md)
 
-## Learn through the weekly retrospective
+## Self-learning
 
-The weekly retrospective can create a personal package or revise an existing procedure from
+A self-learning cycle can create a personal package or revise an existing procedure from
 observed results. The package contains its canonical `SKILL.md` and shows
 its evidence, distinct confirming Tasks and reliability. Candidates can be read and edited, but
 become usable only after meeting the learned-skill thresholds (three Tasks and a score of 0.75 by
@@ -49,8 +49,8 @@ Manually authored personal packages retain their ordinary activation policy.
 
 Use the same personal package actions to edit, disable, delete or transfer learned procedures.
 Reinforcement respects explicit deactivation, and a late revision preserves intervening edits.
-Writing requires personal management delegation on the `skills` Service. You can pause future
-reviews in **Goals**. Upgrades transfer existing procedures,
+Writing requires personal management delegation on the `skills` Service. Open **Self-learning**
+on the **Goals** page to choose the cadence or pause future cycles. Upgrades transfer existing procedures,
 evidence and suspensions; name collisions preserve both packages under distinct codes.
 The former `?tab=learned` link now opens personal skills.
 

@@ -3277,11 +3277,11 @@ Task/Topic detail modals. Identity validation and normalization are covered by
 `back/core/util/tests/test_rich_text.py`. Task-menu restrictions retain terminal mutation
 denials without freezing the number of non-destructive actions.
 
-### Retrospective and personal packages
+### Self-learning and personal packages
 
-`app/goal/tests/test_weekly_retrospective.py` covers assignment, pause, agenda passage,
-admission, MCP tools, weekly evidence, idempotent writing and cycle continuation.
-`goals.spec.mjs` exercises pause and resume in Goal details.
+`app/goal/tests/test_weekly_retrospective.py` covers weekly defaults, existing Goal renaming,
+editable cadence, evidence windows, admission, MCP tools, idempotent writing and cycle continuation.
+`goals.spec.mjs` exercises editing the cadence and pausing both tabs independently.
 
 `app/skill/tests/test_learning.py` follows evidence-backed learning through the personal catalogue,
 canonical file, Harness capabilities and projection. It covers owner isolation, thresholds,

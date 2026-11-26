@@ -37,6 +37,7 @@ export const goalService = {
     status?: GoalStatus | null
     search?: string
     categoryId?: number | 'none' | null
+    isWeeklyRetrospective?: boolean
     sortBy?: 'agent' | 'title' | null
     descending?: boolean
   } = {}): Promise<GoalPage> {
@@ -49,6 +50,7 @@ export const goalService = {
         q: params.search?.trim() || undefined,
         category_id: typeof params.categoryId === 'number' ? params.categoryId : undefined,
         uncategorized: params.categoryId === 'none' ? true : undefined,
+        is_weekly_retrospective: params.isWeeklyRetrospective,
         sort_by: params.sortBy ?? undefined,
         descending: params.sortBy ? params.descending ?? false : undefined,
       },

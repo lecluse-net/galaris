@@ -33,9 +33,9 @@ async def _weekly_retrospective_available(ctx: McpToolContext) -> bool:
 
 
 @mcp_tool("goal", available_when=_weekly_retrospective_available,
-          approval="enabled", approval_reason="Read evidence for the agent's own weekly retrospective",
+          approval="enabled", approval_reason="Read evidence for the agent's own self-learning Goal",
           effect_policy="read", concurrency_policy="safe",
-          description="List a bounded sample of your own terminal Tasks for the current weekly review. "
+          description="List a bounded sample of your own terminal Tasks for the current self-learning cycle. "
                       "Pass one returned source_task_uri to read its redacted observations and evidence references.")
 async def goal_retrospective_evidence(
     ctx: McpToolContext, source_task_uri: str | None = None,
@@ -46,7 +46,7 @@ async def goal_retrospective_evidence(
 @mcp_tool("goal", available_when=_weekly_retrospective_available,
           approval="enabled", approval_reason="Apply verified learning to the agent's own personal skill",
           effect_policy="idempotent",
-          description="Apply one evidence-backed improvement to your own personal skill during its weekly review. "
+          description="Apply one evidence-backed improvement to your own personal skill during the self-learning cycle. "
                       "Use an exact source_task_uri and evidence_refs from goal_retrospective_evidence. "
                       "operation takes action (CREATE, REINFORCE, REVISE, WEAKEN), evidence_refs, rationale, "
                       "confidence (0 to 1); CREATE requires code (use the returned prefix), label and complete "
@@ -60,7 +60,7 @@ async def goal_retrospective_learn(
 
 
 @mcp_tool("goal", available_when=_weekly_retrospective_available,
-          approval="enabled", approval_reason="Save the current Goal's weekly retrospective",
+          approval="enabled", approval_reason="Save the current self-learning review",
           effect_policy="idempotent",
           description="Replace this retrospective's tracking with a short HTML fragment. Use the "
                       "goal_revision from goal_retrospective_evidence. The active Goal is resolved by the server.")

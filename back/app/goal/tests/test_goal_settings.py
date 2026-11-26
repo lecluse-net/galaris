@@ -317,6 +317,8 @@ async def test_global_settings_update_refreshes_stale_cache(
     saved_payload = json.loads(save.await_args_list[-1].args[1])
     assert saved_payload == {
         "globally_paused": True,
+        "goals_paused": True,
+        "self_learning_paused": True,
         "schedule_enabled": False,
         "schedule": [],
     }

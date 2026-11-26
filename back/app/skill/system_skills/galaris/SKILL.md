@@ -1016,7 +1016,7 @@ retain its full `galaris://goal/<uuid>` URI for discovery, file reads and citati
 Use `goal_complete` to stop future cycles while keeping history; reserve
 `goal_delete` for an actual removal request.
 
-The system-assigned weekly retrospective can be paused and resumed. While its Task is running,
+The system-assigned self-learning Goal defaults to a weekly cadence and can be rescheduled, paused or resumed. While its Task is running,
 `goal_retrospective_evidence` lists its source window and reads redacted observations for an exact
 Task URI. Use `goal_retrospective_learn` to apply a justified change to your personal skills.
 `goal_retrospective_record` stores the concise HTML tracking summary using the Goal revision

@@ -29,6 +29,8 @@ export interface GoalScheduleWindow {
 
 export interface GoalSettings {
   globally_paused: boolean
+  goals_paused: boolean
+  self_learning_paused: boolean
   schedule_enabled: boolean
   schedule: GoalScheduleWindow[]
   timezone: string
@@ -39,6 +41,8 @@ export interface GoalSettings {
 
 export interface GoalSettingsUpdate {
   globally_paused?: boolean
+  goals_paused?: boolean
+  self_learning_paused?: boolean
   schedule_enabled?: boolean
   schedule?: GoalScheduleWindow[]
 }

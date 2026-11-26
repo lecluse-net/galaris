@@ -1,13 +1,12 @@
-"""Provisioning and task-scoped evidence for the weekly personal retrospective."""
+"""Provisioning and task-scoped evidence for recurring self-learning."""
 
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from uuid import UUID, uuid4
-from zoneinfo import ZoneInfo
 
 from loguru import logger
-from sqlalchemy import exists, select
+from sqlalchemy import exists, or_, select
 from sqlalchemy.sql.selectable import Exists
 
 from app.agent import Agent
@@ -17,7 +16,7 @@ from core.i18n import t
 
 from . import calendar, settings_service
 from .document_store import get_goal_document_store
-from .models import Goal, GoalCycle, GoalCycleStatus, GoalOccurrence
+from .models import Goal, GoalCalendarPlan, GoalCycle, GoalCycleStatus, GoalOccurrence
 from .schemas import GoalRecurrence
 
 
@@ -80,7 +79,7 @@ def _has_retrospective(agent_id: int | None = None) -> Exists:
 
 
 async def reconcile_weekly_retrospectives() -> None:
-    """Repair missing defaults for pre-existing, restored and seeded Agents."""
+    """Repair missing Goals and refresh their previously generated labels."""
     from . import goal_service
 
     db = get_db()
@@ -94,7 +93,42 @@ async def reconcile_weekly_retrospectives() -> None:
                 await goal_service.emit_created(goal_id)
         except Exception:
             await db.rollback()
-            logger.exception("Could not provision weekly retrospective for agent {}", agent_id)
+            logger.exception("Could not provision self-learning for agent {}", agent_id)
+    await _refresh_legacy_labels()
+
+
+async def _refresh_legacy_labels() -> None:
+    from . import goal_service
+    from .agenda_upgrade import snapshot_legacy_cycles
+
+    titles = {t("goal_retrospective.legacy_title", lang): t("goal_retrospective.title", lang)
+              for lang in ("en", "fr")}
+    descriptions = {f"<p>{t('goal_retrospective.legacy_description', lang)}</p>":
+                    f"<p>{t('goal_retrospective.description', lang)}</p>" for lang in ("en", "fr")}
+    db = get_db()
+    pending = select(Goal.id).where(
+        Goal.deleted_at.is_(None), Goal.is_weekly_retrospective.is_(True),
+        or_(Goal.title.in_(titles), Goal.description.in_(descriptions)),
+    )
+    for goal_id in (await db.scalars(pending.order_by(Goal.id).limit(20))).all():
+        try:
+            goal = await db.scalar(select(Goal).where(Goal.id.in_(pending), Goal.id == goal_id)
+                                   .with_for_update(skip_locked=True).execution_options(populate_existing=True))
+            if goal is None:
+                continue
+            new_title = titles.get(goal.title)
+            if new_title is not None:
+                await snapshot_legacy_cycles(db, goal.id)
+                goal.title = new_title
+            goal.description = descriptions.get(goal.description, goal.description)
+            await calendar.sync_plan(goal)
+            if new_title is not None:
+                await get_goal_document_store().update(goal.tracking_document_id, goal_title=new_title)
+            await db.commit()
+            await goal_service.emit_updated(goal_id)
+        except Exception:
+            await db.rollback()
+            logger.exception("Could not refresh the self-learning labels for Goal {}", goal_id)
 
 
 async def weekly_retrospective_created(agent_id: int, action: str) -> None:
@@ -111,7 +145,7 @@ async def weekly_retrospective_created(agent_id: int, action: str) -> None:
 
 def task_instructions(goal: Goal) -> str:
     return (
-        "<p>Conduct your own weekly retrospective. Use the language of your previous tracking or "
+        "<p>Conduct your self-learning review. Use the language of your previous tracking or "
         "the instance language. Call goal_retrospective_evidence for a bounded sample of your "
         "own completed work. Use services_list and skills_list to check current access and skills. "
         "Include unavailable personal packages when permitted so you can reinforce existing candidates. "
@@ -126,7 +160,7 @@ def task_instructions(goal: Goal) -> str:
         "Keep credentials and sensitive source details out of skills and tracking.</p>"
         f"<p>Read document://{goal.tracking_document_id} for the previous review. Use "
         "goal_retrospective_record with the Goal revision from the evidence tool to retain a short HTML summary of "
-        "what worked, what did not, access gaps, verified changes and one check for next week. "
+        "what worked, what did not, access gaps, verified changes and one check for the next cycle. "
         "Cite source Tasks by URI. If tools are unavailable, record the limitation and finish "
         "the cycle. Do not delegate or contact a referrer.</p>"
     )
@@ -144,18 +178,28 @@ async def available(agent_id: int, task_id: UUID | None) -> bool:
 
 async def _window(agent_id: int, task_id: UUID | None) -> tuple[UUID, int, datetime, datetime]:
     if task_id is None or _learning is None or not await is_executing_task(task_id, agent_id):
-        raise PermissionError("A running weekly retrospective is required.")
-    row = (await get_db().execute(
-        select(Goal.id, Goal.revision, GoalOccurrence.scheduled_at, GoalOccurrence.timezone)
+        raise PermissionError("A running self-learning cycle is required.")
+    db = get_db()
+    row = (await db.execute(
+        select(Goal.id, Goal.revision, GoalOccurrence.scheduled_at, GoalOccurrence.timezone, GoalCalendarPlan.config)
         .join(GoalCycle, GoalCycle.goal_id == Goal.id)
         .join(GoalOccurrence, GoalOccurrence.cycle_id == GoalCycle.id)
+        .outerjoin(GoalCalendarPlan, GoalCalendarPlan.id == GoalOccurrence.plan_id)
         .where(GoalCycle.task_id == task_id, Goal.agent_id == agent_id, Goal.deleted_at.is_(None),
                GoalCycle.status == GoalCycleStatus.RUNNING, Goal.is_weekly_retrospective.is_(True))
     )).one_or_none()
     if row is None:
-        raise PermissionError("A running weekly retrospective is required.")
-    goal_id, revision, end, timezone_name = row
-    start = (end.astimezone(ZoneInfo(timezone_name)) - timedelta(days=7)).astimezone(timezone.utc)
+        raise PermissionError("A running self-learning cycle is required.")
+    goal_id, revision, end, timezone_name, schedule = row
+    if schedule is None:
+        # Manual runs have no plan link. Use the schedule in force at admission.
+        schedule = await db.scalar(select(GoalCalendarPlan.config).where(
+            GoalCalendarPlan.goal_id == goal_id, GoalCalendarPlan.valid_from <= end,
+            or_(GoalCalendarPlan.valid_until.is_(None), GoalCalendarPlan.valid_until > end),
+        ).order_by(GoalCalendarPlan.valid_from.desc()).limit(1))
+    config = (GoalRecurrence.model_validate(schedule) if schedule is not None else
+              GoalRecurrence(start_at=end, timezone=timezone_name, frequency="WEEKLY"))
+    start = calendar.recurrence_period_start(config, end)
     return goal_id, revision, start, end
 
 
@@ -214,5 +258,5 @@ async def record(agent_id: int, task_id: UUID | None, expected_revision: int,
         owner_agent_id=agent_id,
     )
     if goal is None:
-        raise LookupError("The weekly retrospective is no longer available.")
+        raise LookupError("The self-learning Goal is no longer available.")
     return {"goal_uri": f"galaris://goal/{goal.id}", "goal_revision": goal.revision}

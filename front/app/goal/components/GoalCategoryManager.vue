@@ -1,47 +1,36 @@
 <template>
-  <q-dialog v-model="open">
-    <q-card class="galaris-dialog-card" style="width: 600px; max-width: 95vw">
-      <q-toolbar class="galaris-dialog-title bg-primary text-white">
-        <q-toolbar-title>{{ t('goal.categories.manage') }}</q-toolbar-title>
-        <q-btn v-close-popup flat round dense icon="close" :aria-label="t('common.close')" />
-      </q-toolbar>
-      <div class="galaris-dialog-body scroll">
-        <q-card-section>
-          <p class="text-grey-7">{{ t('goal.categories.private') }}</p>
-          <q-form class="row q-col-gutter-sm items-start" @submit="createCategory">
-            <div class="col">
-              <q-input v-model="newLabel" outlined dense maxlength="200" :label="t('goal.categories.new')" :disable="busy" />
-            </div>
-            <div class="col-auto">
-              <q-btn type="submit" color="primary" icon="add" :label="t('goal.categories.add')" :disable="busy || !newLabel.trim()" />
-            </div>
-          </q-form>
-        </q-card-section>
-        <q-banner v-if="error" class="q-mx-md q-mb-md" role="alert">
-          {{ error }}
-          <template #action><q-btn outline color="primary" :label="t('common.retry')" @click="load" /></template>
-        </q-banner>
-        <q-card-section v-if="loading" class="text-center"><q-spinner color="primary" /></q-card-section>
-        <q-list v-else-if="categories.length" separator>
-          <q-item v-for="category in categories" :key="category.id">
-            <q-item-section>
-              <q-input v-model="drafts[category.id]" outlined dense maxlength="200" :aria-label="t('goal.categories.label')" :disable="busy" @keydown.enter.prevent="save(category)" />
-            </q-item-section>
-            <q-item-section side>
-              <div class="row no-wrap">
-                <q-btn flat round color="primary" icon="save" :aria-label="t('common.save')" :disable="busy || !drafts[category.id]?.trim() || drafts[category.id]?.trim() === category.label" @click="save(category)" />
-                <q-btn flat round color="negative" icon="delete" :aria-label="t('goal.delete')" :disable="busy" @click="confirmDelete(category)" />
-              </div>
-            </q-item-section>
-          </q-item>
-        </q-list>
-        <q-card-section v-else-if="!error" class="text-grey-7 text-center">{{ t('goal.categories.empty') }}</q-card-section>
-      </div>
-      <q-card-actions class="galaris-dialog-actions" align="right">
-        <q-btn v-close-popup outline color="primary" :label="t('common.close')" />
-      </q-card-actions>
-    </q-card>
-  </q-dialog>
+  <q-card flat bordered>
+    <q-card-section>
+      <p class="text-grey-7">{{ t('goal.categories.private') }}</p>
+      <q-form class="row q-col-gutter-sm items-start" @submit="createCategory">
+        <div class="col-12 col-sm">
+          <q-input v-model="newLabel" outlined dense maxlength="200" :label="t('goal.categories.new')" :disable="busy" />
+        </div>
+        <div class="col-12 col-sm-auto">
+          <q-btn type="submit" color="primary" icon="add" :label="t('goal.categories.add')" :disable="busy || !newLabel.trim()" />
+        </div>
+      </q-form>
+    </q-card-section>
+    <q-banner v-if="error" class="q-mx-md q-mb-md" role="alert">
+      {{ error }}
+      <template #action><q-btn outline color="primary" :label="t('common.retry')" @click="load" /></template>
+    </q-banner>
+    <q-card-section v-if="loading" class="text-center"><q-spinner color="primary" /></q-card-section>
+    <q-list v-else-if="categories.length" separator>
+      <q-item v-for="category in categories" :key="category.id">
+        <q-item-section>
+          <q-input v-model="drafts[category.id]" outlined dense maxlength="200" :aria-label="t('goal.categories.label')" :disable="busy" @keydown.enter.prevent="save(category)" />
+        </q-item-section>
+        <q-item-section side>
+          <div class="row no-wrap">
+            <q-btn flat round color="primary" icon="save" :aria-label="t('common.save')" :disable="busy || !drafts[category.id]?.trim() || drafts[category.id]?.trim() === category.label" @click="save(category)" />
+            <q-btn flat round color="negative" icon="delete" :aria-label="t('goal.delete')" :disable="busy" @click="confirmDelete(category)" />
+          </div>
+        </q-item-section>
+      </q-item>
+    </q-list>
+    <q-card-section v-else-if="!error" class="text-grey-7 text-center">{{ t('goal.categories.empty') }}</q-card-section>
+  </q-card>
 </template>
 
 <script setup lang="ts">
@@ -52,7 +41,7 @@ import { showConfirmationDialog } from '@/core/util'
 import { categoryService } from '../services/categoryService'
 import type { GoalCategory } from '../types'
 
-const open = defineModel<boolean>({ default: false })
+const { active } = defineProps<{ active: boolean }>()
 const emit = defineEmits<{ changed: [] }>()
 const { t } = useI18n()
 const categories = ref<GoalCategory[]>([])
@@ -63,12 +52,8 @@ const busy = ref(false)
 const error = ref('')
 let generation = 0
 
-watch(open, value => {
-  generation++
-  categories.value = []
-  error.value = ''
-  newLabel.value = ''
-  if (value) void load()
+watch(() => active, visible => {
+  if (visible && !busy.value) void load()
 }, { immediate: true })
 onBeforeUnmount(() => { generation++ })
 

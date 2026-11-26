@@ -3440,11 +3440,12 @@ couvertes par `back/core/util/tests/test_rich_text.py`. Le test des restrictions
 Tâche conserve les interdictions de mutation terminale sans figer le nombre d'actions
 non destructives.
 
-### Rétrospective et packages personnels
+### Auto-apprentissage et packages personnels
 
-`app/goal/tests/test_weekly_retrospective.py` couvre l'attribution, la pause, le passage agenda,
-l'admission, les outils MCP, les preuves de la semaine, l'écriture idempotente et le verdict.
-`goals.spec.mjs` exerce la pause et la reprise dans la fiche Objectif.
+`app/goal/tests/test_weekly_retrospective.py` couvre l’attribution hebdomadaire par défaut, le
+renommage des objectifs existants, la cadence modifiable, la période de preuves, l’admission,
+les outils MCP, l’écriture idempotente et le verdict. `goals.spec.mjs` exerce l’édition de la
+cadence et la pause indépendante des deux onglets.
 
 `app/skill/tests/test_learning.py` suit l’apprentissage jusqu'au catalogue personnel, au
 fichier canonique, aux capacités du harnais et à la projection. Il couvre isolation du propriétaire,
