@@ -146,28 +146,33 @@ async def list_management_connections(
     return list((await get_db().scalars(query.order_by(Connection.id).offset(skip).limit(limit))).all())
 
 
-async def connection_overviews(connections: Collection[Connection]) -> list[ConnectionOverview]:
-    """Read local parameters and schemas once per page without serializing secrets."""
-    if not connections:
-        return []
+async def connection_overviews(
+    connections: Collection[Connection], *, managed_agent_ids: Collection[int] | None = None,
+) -> list[ConnectionOverview]:
+    """Read parameters and schemas only for the connections the caller manages."""
     from app.services.facade import get_services_by_ids
 
-    tools = await get_services_by_ids({connection.service_id for connection in connections})
-    schemas = {service_id: _tool_schema(tool) for service_id, tool in tools.items()}
-    params = await get_db().scalars(select(ConnectionParam).where(
-        ConnectionParam.connection_id.in_([connection.id for connection in connections]),
-    ).execution_options(populate_existing=True))
-    values: dict[int, dict[str, Any]] = {connection.id: {} for connection in connections}
-    configured: dict[int, list[str]] = {connection.id: [] for connection in connections}
-    service_ids = {connection.id: connection.service_id for connection in connections}
-    for param in params:
-        secret = _is_secret_value(param.param_name, param.param_value, schemas.get(service_ids[param.connection_id]))
-        values[param.connection_id][param.param_name] = None if secret else param.param_value
-        if secret and param.param_value:
-            configured[param.connection_id].append(param.param_name)
+    services_by_connection = {
+        connection.id: connection.service_id for connection in connections
+        if managed_agent_ids is None or connection.agent_id in managed_agent_ids
+    }
+    values: dict[int, dict[str, Any]] = {connection_id: {} for connection_id in services_by_connection}
+    configured: dict[int, list[str]] = {connection_id: [] for connection_id in services_by_connection}
+    if services_by_connection:
+        tools = await get_services_by_ids(set(services_by_connection.values()))
+        schemas = {service_id: _tool_schema(tool) for service_id, tool in tools.items()}
+        params = await get_db().scalars(select(ConnectionParam).where(
+            ConnectionParam.connection_id.in_(services_by_connection.keys()),
+        ).execution_options(populate_existing=True))
+        for param in params:
+            secret = _is_secret_value(param.param_name, param.param_value, schemas.get(services_by_connection[param.connection_id]))
+            values[param.connection_id][param.param_name] = None if secret else param.param_value
+            if secret and param.param_value:
+                configured[param.connection_id].append(param.param_name)
     return [ConnectionOverview(id=connection.id, service_id=connection.service_id,
-        agent_id=connection.agent_id, active=connection.active, params=values[connection.id],
-        configured_params=sorted(configured[connection.id])) for connection in connections]
+        agent_id=connection.agent_id, active=connection.active, managed=connection.id in services_by_connection,
+        params=values.get(connection.id, {}), configured_params=sorted(configured.get(connection.id, [])))
+        for connection in connections]
 
 
 async def service_can_disable(service_id: int) -> bool:

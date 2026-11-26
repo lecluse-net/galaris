@@ -73,6 +73,7 @@ test('selecting the same agent through two team sections toggles one membership 
 })
 
 test('process agent choices retain their domain options and default choice when grouped', async ({ page }) => {
+  await jsonRoute(page, '**/api/agents/selection?scope=catalogue', groupedAgents)
   await jsonRoute(page, '**/api/agents/selection?scope=management', groupedAgents)
   await mount(page, 'app/process/components/ProcessAgentSelect.vue', { props: {
     modelValue: null, options: [{ id: null, label: 'Launching agent' },

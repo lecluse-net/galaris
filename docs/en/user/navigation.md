@@ -314,6 +314,10 @@ replaced and then restored.
 In **Connections**, connections belonging to historized agents are hidden. Parameters
 refresh after saving and whenever you return to the tab. Filters apply to the loaded
 list; if loading fails, use **Retry**.
+**Filter by agent** includes agents on your teams and agents you manage. The table shows
+the matching connections. For a teammate’s agent managed by someone else, **View connection**
+opens a read-only view with the agent, service and status. Parameters and management actions
+require management access.
 
 Under **Services**, **Galaris built-in services** groups integrated definitions protected by the
 software. Created or imported Services remain under **Custom services**, including those

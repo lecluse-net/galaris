@@ -11,7 +11,7 @@ export { registerDocumentFullscreenToolbarKey } from './documentFullscreen'
 export const DocumentPdfShareDialog = /* @__PURE__ */ defineAsyncView(() => import('./components/DocumentPdfShareDialog.vue'))
 export type { DocumentToolbarCommand, DocumentToolbarGroup } from './documentToolbar'
 export type { RenderedDocumentResolver } from './renderedDocument'
-export { groupMemberOptions } from './groupMemberOptions'
+export { groupMemberOptions, includeUnavailableMembers } from './groupMemberOptions'
 export type { MemberChoice, MemberTeam, MemberTeams } from './groupMemberOptions'
 export { usePersonMemberships } from './personMemberships'
 export { createSessionReadCache, createSessionResponseCache, invalidateSessionReads, onSessionReadInvalidation } from './sessionReadCache'

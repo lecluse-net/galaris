@@ -3,6 +3,7 @@
     :model-value="selectedOption?.value ?? null"
     :options="allowedOptions"
     :agents="authorized"
+    :scope="scope"
     :label="label"
     :stack-label="Boolean(label)"
     emit-value
@@ -89,8 +90,9 @@ interface AgentSelectOption {
   hasAvatar?: boolean
 }
 
-const { options, label, loadAgents = true, scope = 'management' } = defineProps<{
-  options: readonly AgentSelectOption[]
+const { options, allLabel, label, loadAgents = true, scope = 'management' } = defineProps<{
+  options?: readonly AgentSelectOption[]
+  allLabel?: string
   label?: string
   loadAgents?: boolean
   scope?: AgentSelectionScope
@@ -110,6 +112,12 @@ let defaultPending = model.value === null
 const { t } = useI18n()
 const allowedIds = computed(() => new Set(authorized.value.map(agent => agent.id)))
 const allowedOptions = computed(() => {
+  if (options === undefined) {
+    const choices: AgentSelectOption[] = authorized.value.map(agent => ({
+      value: agent.id, label: agent.label, hasAvatar: agent.has_avatar,
+    }))
+    return allLabel ? [{ label: allLabel, value: null }, ...choices] : choices
+  }
   const positions = new Map(authorized.value.map((agent, index) => [agent.id, index]))
   return options
     .filter(option => option.value === null || allowedIds.value.has(option.value))

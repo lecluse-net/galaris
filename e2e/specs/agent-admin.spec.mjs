@@ -1,6 +1,65 @@
+import { randomUUID } from 'node:crypto'
 import { notificationPrompt } from '../notification-prompt.mjs'
 import { test, expect } from '@playwright/test'
 import { collectPageErrors } from '../page-errors.mjs'
+
+test('connection consultation shows team connections in read-only mode', async ({ page, request }) => {
+  const read = async response => {
+    expect(response.ok(), await response.text()).toBeTruthy()
+    return response.json()
+  }
+  const fixture = await read(await request.post('/api/__test/seed'))
+  const admin = await read(await request.post('/api/auth/login-json', { data: { email: fixture.email, password: fixture.password } }))
+  const headers = { Authorization: `Bearer ${admin.access_token}`, 'X-Editorial-Profile-Version': '1' }
+  const unique = randomUUID()
+  const credentials = { email: `agent-reader-${unique}@example.com`, password: 'Synthetic-agent-reader-123!' }
+  const user = await read(await request.post('/api/auth/users', { headers, data: { ...credentials, language: 'en' } }))
+  const privileges = await read(await request.get('/api/authorize/privileges', { headers }))
+  const role = await read(await request.post('/api/authorize/roles', { headers, data: { code: `agent-reader-${unique}` } }))
+  await read(await request.post(`/api/authorize/roles/${role.id}/privileges`, {
+    headers, data: { privilege_ids: ['CONNECTION_ACCESS'].map(code => privileges.find(privilege => privilege.code === code).id) },
+  }))
+  await read(await request.post('/api/authorize/assignments', { headers, data: { user_id: user.id, role_id: role.id, is_default: true } }))
+  const basis = await read(await request.get(`/api/agents/${fixture.agent_id}`, { headers }))
+  const service = await read(await request.post('/api/services', { headers, data: {
+    code: `team-connector-${unique}`, label: 'Synthetic team connector',
+  } }))
+
+  const teamNames = [`Synthetic North ${fixture.agent_id}`, `Synthetic South ${fixture.agent_id}`]
+  for (const [index, name] of teamNames.entries()) {
+    const team = await read(await request.post('/api/teams', { headers, data: { name } }))
+    const membership = await request.put(`/api/teams/${team.id}/humans/${user.id}`, { headers, data: { present: true } })
+    expect(membership.ok(), await membership.text()).toBeTruthy()
+    const agent = await read(await request.post('/api/agents', { headers, data: {
+      code: `team-reader-${index}-${unique}`, title_id: basis.title_id, team_ids: [team.id],
+      first_name: index === 0 ? 'Synthetic North Agent' : 'Synthetic South Agent',
+      job_description: '<p>Synthetic team profile</p>',
+    } }))
+    if (index === 0) await read(await request.post('/api/connections', { headers, data: {
+      service_id: service.id, agent_id: agent.id, active: true,
+    } }))
+  }
+
+  const session = await read(await page.request.post('/api/auth/login-json', { data: credentials }))
+  await page.addInitScript(token => localStorage.setItem('access_token', token), session.access_token)
+  const errors = collectPageErrors(page)
+  await page.goto('/services?tab=connections')
+  const filter = page.getByRole('combobox', { name: 'Filter by agent', exact: true })
+  await filter.click()
+  const northOption = page.getByRole('option', { name: 'Synthetic North Agent', exact: true })
+  await expect(northOption).toBeEnabled()
+  await expect(page.getByRole('option', { name: 'Synthetic South Agent', exact: true })).toBeEnabled()
+  await northOption.click()
+  await expect(filter.locator('..')).toContainText('Synthetic North Agent')
+  await expect(page.getByRole('button', { name: 'New Connection', exact: true })).toHaveCount(0)
+  const teamConnection = page.locator('.connection-table tbody tr').filter({ hasText: 'Synthetic team connector' })
+  await teamConnection.getByRole('button', { name: 'View connection', exact: true }).click()
+  const connection = page.getByRole('dialog')
+  await expect(connection.getByText('Read only', { exact: true })).toBeVisible()
+  await expect(connection.getByText('Synthetic North Agent', { exact: true })).toBeVisible()
+  await expect(connection.getByText('Synthetic team connector', { exact: true })).toBeVisible()
+  expect(errors()).toEqual([])
+})
 
 async function setupAdministration(page, request) {
   const pageErrors = collectPageErrors(page)

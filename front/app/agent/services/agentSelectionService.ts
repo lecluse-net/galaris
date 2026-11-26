@@ -1,7 +1,7 @@
 import api, { AUTH_TOKEN_CHANGED_EVENT, sessionGeneration } from '@/core/api'
 import { createSessionReadCache } from '@/core/util/facade'
 
-export type AgentSelectionScope = 'management' | 'dialogue' | 'teams'
+export type AgentSelectionScope = 'catalogue' | 'management' | 'dialogue' | 'teams'
 
 export interface AgentSelectionTeam { id: number; name: string; order: number }
 

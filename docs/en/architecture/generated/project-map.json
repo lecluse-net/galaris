@@ -17049,7 +17049,7 @@
         "declared_path": "/connections",
         "file": "back/app/connection/router.py",
         "handler": "list_connections",
-        "line": 338,
+        "line": 340,
         "method": "GET",
         "module": "app.connection"
       },
@@ -17058,7 +17058,7 @@
         "declared_path": "/connections",
         "file": "back/app/connection/router.py",
         "handler": "create_connection",
-        "line": 360,
+        "line": 370,
         "method": "POST",
         "module": "app.connection"
       },
@@ -17067,7 +17067,7 @@
         "declared_path": "/connections/find-by-param",
         "file": "back/app/connection/router.py",
         "handler": "find_agents_by_param",
-        "line": 227,
+        "line": 228,
         "method": "GET",
         "module": "app.connection"
       },
@@ -17076,7 +17076,7 @@
         "declared_path": "/connections/function-permissions",
         "file": "back/app/connection/router.py",
         "handler": "list_function_permissions",
-        "line": 114,
+        "line": 115,
         "method": "GET",
         "module": "app.connection"
       },
@@ -17085,7 +17085,7 @@
         "declared_path": "/connections/oauth/client-metadata",
         "file": "back/app/connection/router.py",
         "handler": "oauth_client_metadata",
-        "line": 161,
+        "line": 162,
         "method": "GET",
         "module": "app.connection"
       },
@@ -17094,7 +17094,7 @@
         "declared_path": "/connections/oauth/client-metadata/loopback/{scheme}/{host}/{port}",
         "file": "back/app/connection/router.py",
         "handler": "oauth_local_client_metadata",
-        "line": 167,
+        "line": 168,
         "method": "GET",
         "module": "app.connection"
       },
@@ -17103,7 +17103,7 @@
         "declared_path": "/connections/overview",
         "file": "back/app/connection/router.py",
         "handler": "list_connection_overviews",
-        "line": 325,
+        "line": 326,
         "method": "GET",
         "module": "app.connection"
       },
@@ -17112,7 +17112,7 @@
         "declared_path": "/connections/permission-options",
         "file": "back/app/connection/router.py",
         "handler": "permission_connection_options",
-        "line": 131,
+        "line": 132,
         "method": "GET",
         "module": "app.connection"
       },
@@ -17121,7 +17121,7 @@
         "declared_path": "/connections/refresh-tools",
         "file": "back/app/connection/router.py",
         "handler": "refresh_connections_and_tool_catalogs",
-        "line": 285,
+        "line": 286,
         "method": "POST",
         "module": "app.connection"
       },
@@ -17130,7 +17130,7 @@
         "declared_path": "/connections/service-options",
         "file": "back/app/connection/router.py",
         "handler": "connection_tool_options",
-        "line": 123,
+        "line": 124,
         "method": "GET",
         "module": "app.connection"
       },
@@ -17139,7 +17139,7 @@
         "declared_path": "/connections/sync-integrated",
         "file": "back/app/connection/router.py",
         "handler": "sync_integrated_connections",
-        "line": 297,
+        "line": 298,
         "method": "POST",
         "module": "app.connection"
       },
@@ -17148,7 +17148,7 @@
         "declared_path": "/connections/test-mcp-tools",
         "file": "back/app/connection/router.py",
         "handler": "test_mcp_tools",
-        "line": 675,
+        "line": 685,
         "method": "POST",
         "module": "app.connection"
       },
@@ -17157,7 +17157,7 @@
         "declared_path": "/connections/{connection_id}",
         "file": "back/app/connection/router.py",
         "handler": "delete_connection",
-        "line": 472,
+        "line": 482,
         "method": "DELETE",
         "module": "app.connection"
       },
@@ -17166,7 +17166,7 @@
         "declared_path": "/connections/{connection_id}",
         "file": "back/app/connection/router.py",
         "handler": "get_connection",
-        "line": 354,
+        "line": 356,
         "method": "GET",
         "module": "app.connection"
       },
@@ -17175,7 +17175,7 @@
         "declared_path": "/connections/{connection_id}",
         "file": "back/app/connection/router.py",
         "handler": "update_connection",
-        "line": 402,
+        "line": 412,
         "method": "PATCH",
         "module": "app.connection"
       },
@@ -17184,7 +17184,7 @@
         "declared_path": "/connections/{connection_id}/capabilities",
         "file": "back/app/connection/router.py",
         "handler": "set_capability_policy",
-        "line": 807,
+        "line": 817,
         "method": "PUT",
         "module": "app.connection"
       },
@@ -17193,7 +17193,7 @@
         "declared_path": "/connections/{connection_id}/functions",
         "file": "back/app/connection/router.py",
         "handler": "list_connection_functions",
-        "line": 746,
+        "line": 756,
         "method": "GET",
         "module": "app.connection"
       },
@@ -17202,7 +17202,7 @@
         "declared_path": "/connections/{connection_id}/functions/{function_name}",
         "file": "back/app/connection/router.py",
         "handler": "set_connection_function",
-        "line": 755,
+        "line": 765,
         "method": "PUT",
         "module": "app.connection"
       },
@@ -17211,7 +17211,7 @@
         "declared_path": "/connections/{connection_id}/functions/{function_name}/global",
         "file": "back/app/connection/router.py",
         "handler": "set_connection_function_global",
-        "line": 769,
+        "line": 779,
         "method": "PUT",
         "module": "app.connection"
       },
@@ -17220,7 +17220,7 @@
         "declared_path": "/connections/{connection_id}/management-scope",
         "file": "back/app/connection/router.py",
         "handler": "update_management_scope",
-        "line": 497,
+        "line": 507,
         "method": "PUT",
         "module": "app.connection"
       },
@@ -17229,7 +17229,7 @@
         "declared_path": "/connections/{connection_id}/oauth",
         "file": "back/app/connection/router.py",
         "handler": "oauth_disconnect",
-        "line": 220,
+        "line": 221,
         "method": "DELETE",
         "module": "app.connection"
       },
@@ -17238,7 +17238,7 @@
         "declared_path": "/connections/{connection_id}/oauth",
         "file": "back/app/connection/router.py",
         "handler": "oauth_status",
-        "line": 176,
+        "line": 177,
         "method": "GET",
         "module": "app.connection"
       },
@@ -17247,7 +17247,7 @@
         "declared_path": "/connections/{connection_id}/oauth/callback",
         "file": "back/app/connection/router.py",
         "handler": "oauth_callback",
-        "line": 196,
+        "line": 197,
         "method": "POST",
         "module": "app.connection"
       },
@@ -17256,7 +17256,7 @@
         "declared_path": "/connections/{connection_id}/oauth/device",
         "file": "back/app/connection/router.py",
         "handler": "oauth_device",
-        "line": 207,
+        "line": 208,
         "method": "POST",
         "module": "app.connection"
       },
@@ -17265,7 +17265,7 @@
         "declared_path": "/connections/{connection_id}/oauth/start",
         "file": "back/app/connection/router.py",
         "handler": "oauth_start",
-        "line": 186,
+        "line": 187,
         "method": "POST",
         "module": "app.connection"
       },
@@ -17274,7 +17274,7 @@
         "declared_path": "/connections/{connection_id}/params",
         "file": "back/app/connection/router.py",
         "handler": "get_connection_params",
-        "line": 521,
+        "line": 531,
         "method": "GET",
         "module": "app.connection"
       },
@@ -17283,7 +17283,7 @@
         "declared_path": "/connections/{connection_id}/params",
         "file": "back/app/connection/router.py",
         "handler": "create_or_update_param",
-        "line": 568,
+        "line": 578,
         "method": "POST",
         "module": "app.connection"
       },
@@ -17292,7 +17292,7 @@
         "declared_path": "/connections/{connection_id}/params/bulk",
         "file": "back/app/connection/router.py",
         "handler": "create_or_update_params_bulk",
-        "line": 595,
+        "line": 605,
         "method": "POST",
         "module": "app.connection"
       },
@@ -17301,7 +17301,7 @@
         "declared_path": "/connections/{connection_id}/params/{param_name}",
         "file": "back/app/connection/router.py",
         "handler": "delete_param",
-        "line": 657,
+        "line": 667,
         "method": "DELETE",
         "module": "app.connection"
       },
@@ -17310,7 +17310,7 @@
         "declared_path": "/connections/{connection_id}/params/{param_name}",
         "file": "back/app/connection/router.py",
         "handler": "get_single_param",
-        "line": 541,
+        "line": 551,
         "method": "GET",
         "module": "app.connection"
       },
@@ -17319,7 +17319,7 @@
         "declared_path": "/connections/{connection_id}/params/{param_name}",
         "file": "back/app/connection/router.py",
         "handler": "update_connection_param",
-        "line": 622,
+        "line": 632,
         "method": "PATCH",
         "module": "app.connection"
       },
@@ -17328,7 +17328,7 @@
         "declared_path": "/connections/{connection_id}/test",
         "file": "back/app/connection/router.py",
         "handler": "test_connection",
-        "line": 736,
+        "line": 746,
         "method": "POST",
         "module": "app.connection"
       },
@@ -17337,7 +17337,7 @@
         "declared_path": "/connections/{connection_id}/voice-auto-answer",
         "file": "back/app/connection/router.py",
         "handler": "update_voice_auto_answer",
-        "line": 511,
+        "line": 521,
         "method": "PUT",
         "module": "app.connection"
       },

@@ -6,7 +6,7 @@
       <div class="row q-gutter-md items-center connection-filters">
         <AgentSelect
           v-model="filterAgent"
-          :options="agentFilterOptions"
+          scope="catalogue"
           :label="$t('connection.filterAgent')"
           clearable
           style="min-width: 200px"
@@ -40,7 +40,7 @@
           color="primary"
           icon="policy"
           :label="$t('connection.managePermissions')"
-          :to="{ path: '/permissions', query: filterAgent ? { agent_id: filterAgent } : {} }"
+          :to="{ path: '/permissions', query: managedFilterAgent ? { agent_id: managedFilterAgent } : {} }"
         />
         <q-btn
           v-if="canEdit"
@@ -102,12 +102,14 @@
       <template v-slot:body-cell-active="props">
         <q-td :props="props" @click.stop>
           <q-toggle
-            v-if="canEdit"
+            v-if="canManageConnection(props.row)"
             :model-value="props.row.active"
             color="positive"
             :disable="connectionStore.loading || isSystemTool(props.row.service_id)"
             @update:model-value="toggleActive(props.row)"
           />
+          <q-badge v-else :color="props.row.active ? 'positive' : 'grey-6'"
+            :label="props.row.active ? t('connection.active') : t('connection.inactive')" />
         </q-td>
       </template>
       <template v-slot:body-cell-params="props">
@@ -129,11 +131,13 @@
       </template>
       <template v-slot:body-cell-actions="props">
         <q-td :props="props" @click.stop>
-          <ConnectionTestButton v-if="canTest" :connection-id="props.row.id" icon-only />
-          <q-btn v-if="canInspectPermissions(props.row) && !canEditSettings(props.row.service_id)" flat round color="primary" icon="shield"
+          <q-btn v-if="props.row.managed === false" flat round color="primary" icon="visibility"
+            :aria-label="t('connection.viewConnection')" @click="openDialog(props.row)" />
+          <ConnectionTestButton v-if="canTestConnection(props.row)" :connection-id="props.row.id" icon-only />
+          <q-btn v-if="canInspectPermissions(props.row) && !canEditSettings(props.row)" flat round color="primary" icon="shield"
             :aria-label="t('permissions.title')" @click="openDialog(props.row)" />
-          <q-btn v-if="canEditSettings(props.row.service_id)" flat round color="primary" icon="edit" size="sm" :aria-label="$t('common.edit')" @click="openDialog(props.row)" />
-          <q-btn v-if="canEdit && !isSystemTool(props.row.service_id)" flat round color="negative" icon="delete" size="sm" :aria-label="$t('common.delete')" @click="confirmDelete(props.row)" />
+          <q-btn v-if="canEditSettings(props.row)" flat round color="primary" icon="edit" size="sm" :aria-label="$t('common.edit')" @click="openDialog(props.row)" />
+          <q-btn v-if="canManageConnection(props.row) && !isSystemTool(props.row.service_id)" flat round color="negative" icon="delete" size="sm" :aria-label="$t('common.delete')" @click="confirmDelete(props.row)" />
         </q-td>
       </template>
 
@@ -154,7 +158,7 @@
                   </div>
                 </div>
                 <q-toggle
-                  v-if="canEdit"
+                  v-if="canManageConnection(props.row)"
                   :model-value="props.row.active"
                   color="positive"
                   size="sm"
@@ -188,20 +192,22 @@
               </div>
             </q-card-section>
 
-            <template v-if="canTest || canInspectPermissions(props.row) || canEditSettings(props.row.service_id)">
+            <template v-if="props.row.managed === false || canTestConnection(props.row) || canInspectPermissions(props.row) || canEditSettings(props.row)">
               <q-separator />
               <q-card-actions align="right" class="q-px-sm q-py-xs" @click.stop>
-                <ConnectionTestButton v-if="canTest" :connection-id="props.row.id" icon-only />
-                <q-btn v-if="canInspectPermissions(props.row) && !canEditSettings(props.row.service_id)" flat round color="primary" icon="shield"
+                <q-btn v-if="props.row.managed === false" flat round color="primary" icon="visibility"
+                  :aria-label="t('connection.viewConnection')" @click="openDialog(props.row)" />
+                <ConnectionTestButton v-if="canTestConnection(props.row)" :connection-id="props.row.id" icon-only />
+                <q-btn v-if="canInspectPermissions(props.row) && !canEditSettings(props.row)" flat round color="primary" icon="shield"
                   :aria-label="t('permissions.title')" @click="openDialog(props.row)" />
                 <q-btn
-                  v-if="canEditSettings(props.row.service_id)"
+                  v-if="canEditSettings(props.row)"
                   flat round color="primary" icon="edit" size="sm"
                   :aria-label="$t('common.edit')"
                   @click="openDialog(props.row)"
                 />
                 <q-btn
-                  v-if="canEdit && !isSystemTool(props.row.service_id)"
+                  v-if="canManageConnection(props.row) && !isSystemTool(props.row.service_id)"
                   flat round color="negative" icon="delete" size="sm"
                   :aria-label="$t('common.delete')"
                   @click="confirmDelete(props.row)"
@@ -216,7 +222,7 @@
 
     <q-dialog v-model="showDialog" @hide="previewConnectionId && emit('close')">
       <q-card class="connection-dialog-card galaris-dialog-card">
-        <DialogHeader :title="!showSettings ? t('permissions.title') : isEdit ? $t('connection.editDialogTitle') : $t('connection.addDialogTitle')" :close-label="$t('common.close')" />
+        <DialogHeader :title="readOnlyConnection ? t('connection.viewConnection') : !showSettings ? t('permissions.title') : isEdit ? $t('connection.editDialogTitle') : $t('connection.addDialogTitle')" :close-label="$t('common.close')" />
 
         <q-tabs v-if="currentConnection && showPermissionTab && !previewLoading && !previewError"
           v-model="connectionTab" inline-label align="left" active-color="primary" indicator-color="primary"
@@ -226,7 +232,18 @@
         </q-tabs>
         <q-separator v-if="currentConnection && showPermissionTab && !previewLoading && !previewError" />
 
-        <div class="galaris-dialog-body">
+        <q-card-section v-if="readOnlyConnection && !previewLoading && !previewError" class="galaris-dialog-body">
+          <p class="text-caption">{{ t('connection.readOnly') }}</p>
+          <dl class="q-mb-none">
+            <dt class="text-weight-medium">{{ t('connection.colAgent') }}</dt>
+            <dd class="q-ml-none q-mb-sm">{{ getAgentName(readOnlyConnection.agent_id) }}</dd>
+            <dt class="text-weight-medium">{{ t('connection.colTool') }}</dt>
+            <dd class="q-ml-none q-mb-sm">{{ getToolLabel(readOnlyConnection.service_id) }}</dd>
+            <dt class="text-weight-medium">{{ t('connection.colState') }}</dt>
+            <dd class="q-ml-none">{{ t(readOnlyConnection.active ? 'connection.active' : 'connection.inactive') }}</dd>
+          </dl>
+        </q-card-section>
+        <div v-else class="galaris-dialog-body">
           <q-linear-progress v-if="previewLoading" indeterminate color="primary" />
           <q-banner v-if="previewError" role="alert" class="q-ma-md">
             {{ previewError }}
@@ -260,7 +277,7 @@
               :agent-options="agentOptions"
               :service-options="serviceOptions"
               :tools="serviceStore.services"
-              :default-agent-id="filterAgent"
+              :default-agent-id="managedFilterAgent"
               :default-tool-id="filterTool"
               :persist-for-action="persistForAction"
               @submit="onSubmit"
@@ -268,7 +285,7 @@
               @cancel="showDialog = false"
             >
               <template #actions>
-                <div v-if="currentConnection && canTest">
+                <div v-if="currentConnection && canTestConnection(currentConnection)">
                   <ConnectionTestButton :connection-id="currentConnection.id" />
                 </div>
               </template>
@@ -341,6 +358,7 @@ interface VisibleConnectionParam {
 const connectionStore = useConnectionStore()
 const connectionRequests = storeRequests(connectionStore)
 const agentOptionsData = ref<AgentSelectionOption[]>([])
+const teamAgentLabels = ref(new Map<number, string>())
 const serviceStore = reactive({ services: [] as Service[], loading: false })
 const { t, te } = useI18n()
 const $q = useQuasar()
@@ -348,14 +366,20 @@ const privilegeStore = usePrivilegeStore()
 const canEdit = computed(() => privilegeStore.hasPrivilege(privileges.CONNECTION_EDIT))
 const canTest = computed(() => canEdit.value || privilegeStore.hasPrivilege(privileges.CONNECTION_ACCESS))
 const connectionTab = ref('settings')
+const readOnlyConnection = computed(() => currentConnection.value?.managed === false ? currentConnection.value : null)
 const showSettings = computed(() => !currentConnection.value || !isSystemTool(currentConnection.value.service_id)
-  || canEditSettings(currentConnection.value.service_id))
-function canInspectPermissions(connection: Connection): boolean {
-  return canViewPermissions.value && Boolean(serviceStore.services.find(tool => tool.id === connection.service_id)?.has_function_permissions)
+  || canEditSettings(currentConnection.value))
+function canManageConnection(connection: Connection): boolean {
+  return canEdit.value && connection.managed !== false
 }
-const showPermissionTab = computed(() => canViewPermissions.value && Boolean(
-  serviceStore.services.find(tool => tool.id === currentConnection.value?.service_id)?.has_function_permissions,
-))
+function canTestConnection(connection: Connection): boolean {
+  return canTest.value && connection.managed !== false
+}
+function canInspectPermissions(connection: Connection): boolean {
+  return connection.managed !== false && canViewPermissions.value
+    && Boolean(serviceStore.services.find(tool => tool.id === connection.service_id)?.has_function_permissions)
+}
+const showPermissionTab = computed(() => currentConnection.value !== null && canInspectPermissions(currentConnection.value))
 const canViewPermissions = computed(() => privilegeStore.hasAnyPrivilege([
   privileges.PERMISSION_ACCESS, privileges.PERMISSION_DECIDE, privileges.PERMISSION_REVOKE,
 ]))
@@ -425,9 +449,8 @@ const isEdit = computed(() => !!currentConnection.value || Boolean(props.preview
 const agentsById = computed(() => new Map(agentOptionsData.value.map(agent => [agent.id, agent])))
 const toolsById = computed(() => new Map(serviceStore.services.map(tool => [tool.id, tool])))
 
-const agentFilterOptions = computed(() =>
-  agentOptionsData.value.map(e => ({ label: e.label, value: e.id }))
-)
+const managedFilterAgent = computed(() => filterAgent.value !== null && agentsById.value.has(filterAgent.value)
+  ? filterAgent.value : null)
 
 const stateFilterOptions = computed(() => [
   { label: t('connection.stateActive'), value: 'active' as FilterState },
@@ -475,15 +498,15 @@ function localizedToolLabel(tool: Service): string {
 }
 
 function getAgentName(agentId: number): string {
-  const e = agentsById.value.get(agentId)
-  return e ? e.label : `ID: ${agentId}`
+  return agentsById.value.get(agentId)?.label ?? teamAgentLabels.value.get(agentId) ?? `ID: ${agentId}`
 }
 
 function isSystemTool(toolId: number): boolean {
   return toolsById.value.get(toolId)?.can_disable === false
 }
-function canEditSettings(toolId: number): boolean {
-  return canEdit.value && (!isSystemTool(toolId) || toolsById.value.get(toolId)?.code === 'chat')
+function canEditSettings(connection: Connection): boolean {
+  return canManageConnection(connection) && (!isSystemTool(connection.service_id)
+    || toolsById.value.get(connection.service_id)?.code === 'chat')
 }
 function getToolLabel(toolId: number): string {
   const tool = toolsById.value.get(toolId)
@@ -565,16 +588,17 @@ function hasVisibleParams(connectionId: number, toolId: number): boolean {
 }
 
 async function openDialog(connection?: Connection) {
-  if (!canEdit.value && !props.previewConnectionId && !(connection && canInspectPermissions(connection))) return
-  if (connection && isSystemTool(connection.service_id) && !canEditSettings(connection.service_id)
+  const readOnly = connection?.managed === false
+  if (!readOnly && !canEdit.value && !props.previewConnectionId && !(connection && canInspectPermissions(connection))) return
+  if (!readOnly && connection && isSystemTool(connection.service_id) && !canEditSettings(connection)
     && !canInspectPermissions(connection)) return
   const generation = ++dialogGeneration
-  connectionTab.value = connection && !canEditSettings(connection.service_id) ? 'permissions' : 'settings'
+  connectionTab.value = connection && !canEditSettings(connection) ? 'permissions' : 'settings'
   actionConnection = null
   saveError.value = null
   existingConnectionTarget.value = null
   currentConnection.value = connection || null
-  if (connection && isSystemTool(connection.service_id) && !canEditSettings(connection.service_id)) {
+  if (readOnly || (connection && isSystemTool(connection.service_id) && !canEditSettings(connection))) {
     currentConnectionParams.value = null
     currentConnectionConfiguredParams.value = []
     showDialog.value = true
@@ -601,13 +625,13 @@ async function openDialog(connection?: Connection) {
 }
 
 function confirmDelete(connection: Connection) {
-  if (!canEdit.value || isSystemTool(connection.service_id)) return
+  if (!canManageConnection(connection) || isSystemTool(connection.service_id)) return
   connectionToDelete.value = connection
   showDeleteDialog.value = true
 }
 
 async function toggleActive(connection: Connection) {
-  if (!canEdit.value || isSystemTool(connection.service_id)) return
+  if (!canManageConnection(connection) || isSystemTool(connection.service_id)) return
   const newActive = !connection.active
   try {
     await connectionStore.updateConnection(connection.id, { active: newActive })
@@ -834,6 +858,12 @@ async function onDelete() {
 async function reloadConnections(): Promise<void> {
   try {
     await connectionStore.fetchConnectionOverview()
+    if (connectionStore.connections.some(connection => connection.managed === false)) {
+      const agents = await getAgentSelection('catalogue')
+      teamAgentLabels.value = new Map(agents.map(agent => [agent.id, agent.label]))
+    } else {
+      teamAgentLabels.value = new Map()
+    }
   } catch (error) {
     console.error('Error loading connection overview:', error)
   }
@@ -882,7 +912,7 @@ async function loadPreview(): Promise<void> {
     if (request !== previewRequest || !showDialog.value) return
     if (connectionRequests.fetchConnectionOverview?.error) throw connectionRequests.fetchConnectionOverview.error
     const connection = connectionStore.connections.find(row => row.id === props.previewConnectionId)
-    if (!connection || (isSystemTool(connection.service_id) && !canEditSettings(connection.service_id)
+    if (!connection || (connection.managed !== false && isSystemTool(connection.service_id) && !canEditSettings(connection)
       && !canInspectPermissions(connection))) throw new Error(t('connection.auth.loadConnectionsError'))
     await openDialog(connection)
   } catch (error) {

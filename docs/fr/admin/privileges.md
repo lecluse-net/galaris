@@ -19,6 +19,10 @@ consultation **ou** son droit de modification, un opérateur peut lire ce qu'il 
 recevoir implicitement un autre privilège. Les droits sur la ressource et le périmètre des
 agents gérés restent nécessaires ; `AGENT_MANAGE_ALL` est une délégation distincte.
 
+`CONNECTION_ACCESS` ouvre la consultation des connexions de vos agents et de ceux de vos
+équipes. Pour les connexions hors de votre périmètre de gestion, la fiche présente le service
+et l’état en lecture seule.
+
 | Fonction | Consultation | Modification ou contrôle |
 |---|---|---|
 | Agents | `AGENT_ACCESS` | `AGENT_EDIT` |

@@ -52,8 +52,8 @@ export const test = base.extend({
     })
     // Personal Goal classifications start empty; classification journeys override this.
     await page.route('**/api/goals/categories', route => route.fulfill({ json: [] }))
-    // Ordinary component fixtures use Alice (7) as the managed agent. Scope tests override this catalogue.
-    await page.route('**/api/agents/selection?scope=management', route => route.fulfill({ json: [{ id: 7, label: 'Alice Example', has_avatar: false }] }))
+    // Scope tests can distinguish the agents in the catalogue from those the user manages.
+    await page.route(/\/api\/agents\/selection\?scope=(catalogue|management)$/, route => route.fulfill({ json: [{ id: 7, label: 'Alice Example', has_avatar: false }] }))
     // Activity and shared resources may know an agent by ID only. Portrait scenarios supply bytes explicitly.
     await page.route(url => /^\/api\/agents\/\d+\/avatar$/.test(url.pathname), route => route.request().method() === 'GET'
       ? route.fulfill({ status: 404 }) : route.fallback())

@@ -1,6 +1,6 @@
 <template>
   <q-select ref="select" :model-value="$attrs.modelValue" :options="groupedOptions" emit-value map-options v-bind="$attrs"
-    :use-input="false" :hide-selected="false" behavior="menu"
+    :use-input="false" :hide-selected="false" :loading="loading" behavior="menu"
     @popup-show="showPopup" @popup-hide="hidePopup" @update:model-value="setQuery('')">
     <template v-for="(_, name) in forwardedSlots" #[name]="scope">
       <slot :name="name" v-bind="scope ?? {}" />
@@ -42,31 +42,39 @@ import { useI18n } from 'vue-i18n'
 import type { QSelect } from 'quasar'
 import AgentAvatar from './AgentAvatar.vue'
 import AgentSearchInput from './AgentSearchInput.vue'
-import { groupAgentOptions, type AgentChoice } from '../services/agentOptionGroups'
+import { groupAgentOptions, includeUnavailableMembers, type AgentChoice } from '../services/agentOptionGroups'
 import type { AgentSelectionOption, AgentSelectionScope } from '../services/agentSelectionService'
 import { useAgentTeamMetadata } from '../composables/useAgentTeamMetadata'
 
 defineOptions({ inheritAttrs: false })
 type FilterUpdate = (callback: () => void) => void
-const { options, agents, scope = 'management', onFilter } = defineProps<{
+const { options, agents, scope = 'management', loading = false, onFilter } = defineProps<{
   options: readonly AgentChoice[]
   agents?: readonly AgentSelectionOption[]
   scope?: AgentSelectionScope
+  loading?: boolean
   onFilter?: (value: string, update: FilterUpdate, abort: () => void) => void
 }>()
 const { t } = useI18n()
 const attrs = useAttrs()
 const slots = useSlots()
 const forwardedSlots = computed(() => Object.fromEntries(Object.entries(slots).filter(([name]) => !['option', 'no-option', 'before-options'].includes(name))))
-const { metadata, open, close } = useAgentTeamMetadata(() => scope, () => agents)
+const showUnavailable = computed(() => scope === 'management' || scope === 'dialogue')
+const { metadata, open, close } = useAgentTeamMetadata(
+  () => showUnavailable.value ? 'catalogue' : scope,
+  () => showUnavailable.value ? undefined : agents,
+)
 const query = ref('')
 const select = useTemplateRef<QSelect>('select')
 const search = useTemplateRef<InstanceType<typeof AgentSearchInput>>('search')
 const normalize = (value: string) => value.normalize('NFD').replace(/\p{M}/gu, '').toLocaleLowerCase()
-const groupedOptions = computed(() => groupAgentOptions(
-  options.filter(option => normalize(option.label).includes(normalize(query.value.trim()))),
-  agents ?? metadata.value, t('agent.noGroup'),
-))
+const groupedOptions = computed(() => {
+  const memberMetadata = showUnavailable.value && metadata.value.length ? metadata.value : agents ?? metadata.value
+  const visible = showUnavailable.value && !loading
+    ? includeUnavailableMembers(options, metadata.value, t('agent.selectionUnavailable')) : options
+  const searchTerm = normalize(query.value.trim())
+  return groupAgentOptions(visible.filter(option => normalize(option.label).includes(searchTerm)), memberMetadata, t('agent.noGroup'))
+})
 let filterVersion = 0
 function setQuery(value: string): void {
   query.value = value

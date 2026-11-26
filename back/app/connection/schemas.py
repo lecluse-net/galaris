@@ -35,8 +35,12 @@ class Connection(ConnectionBase):
     model_config = ConfigDict(from_attributes=True)
 
 
-class ConnectionOverview(Connection):
-    """Connection list projection with write-only secrets."""
+class ConnectionDetails(Connection):
+    managed: bool
+
+
+class ConnectionOverview(ConnectionDetails):
+    """Connection identity and state, with parameters for managed agents only."""
 
     params: Dict[str, Any]
     configured_params: List[str]

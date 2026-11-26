@@ -68,7 +68,9 @@ export const useConnectionStore = withSessionScope(defineStore('connection', {
                 }
                 // Publish the rows and their parameters together, including removals.
                 this.$patch(state => {
-                    state.connections = rows.map(({ id, service_id, agent_id, active }) => ({ id, service_id, agent_id, active }))
+                    state.connections = rows.map(({ id, service_id, agent_id, active, managed }) => ({
+                        id, service_id, agent_id, active, ...(managed === false ? { managed } : {}),
+                    }))
                     state.paramsCache = Object.fromEntries(rows.map(row => [row.id, row.params]))
                     state.configuredParamsCache = Object.fromEntries(rows.map(row => [row.id, row.configured_params]))
                 })

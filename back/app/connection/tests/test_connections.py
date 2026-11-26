@@ -177,10 +177,12 @@ async def test_dashboard_scope_delegation_is_human_global_local_and_bounded(clie
 
 
 @pytest.mark.asyncio
-async def test_overview_http_requires_privileges_and_limits_rows_to_managed_agents(client):
+async def test_overview_http_shows_team_connections_without_management_access(client):
     from uuid import uuid4
+    from app.agent.dialogue_service import set_agent_membership
     from core.authorize import Assignment, Privilege, Role
     from core.database import get_db_session
+    from core.team import TeamModel, set_human_membership
     from core.user import UserModel, encrypt_password
 
     suffix = uuid4().hex
@@ -188,16 +190,18 @@ async def test_overview_http_requires_privileges_and_limits_rows_to_managed_agen
     async with get_db_session() as db:
         privilege = await db.scalar(select(Privilege).where(Privilege.code == "CONNECTION_ACCESS"))
         assert privilege is not None
-        role = Role(code=f"overview-{suffix}", privileges=[privilege])
+        edit = await db.scalar(select(Privilege).where(Privilege.code == "CONNECTION_EDIT"))
+        assert edit is not None
+        role = Role(code=f"overview-{suffix}", privileges=[privilege, edit])
         empty_role = Role(code=f"overview-denied-{suffix}", privileges=[])
         users = [UserModel(email=f"overview-{suffix}-{index}@example.com", hashed_password=encrypt_password(password))
-                 for index in range(2)]
+                 for index in range(3)]
         title = Title(label="Synthetic overview HTTP", gender="X")
         tool = Service(code=f"overview-http-{suffix}", label="Synthetic HTTP connector")
         db.add_all([role, empty_role, *users, title, tool])
         await db.flush()
         db.add_all([Assignment(user_id=user.id, role_id=selected.id, is_default=True)
-                    for user, selected in zip(users, [role, empty_role], strict=True)])
+                    for user, selected in zip(users, [role, empty_role, empty_role], strict=True)])
         agents = [Agent(user_id=user.id, title_id=title.id, code=f"overview-http-{suffix}-{index}",
                         first_name="Synthetic", last_name=str(index)) for index, user in enumerate(users)]
         db.add_all(agents)
@@ -205,7 +209,14 @@ async def test_overview_http_requires_privileges_and_limits_rows_to_managed_agen
         connections = [Connection(agent_id=agent.id, service_id=tool.id, active=True) for agent in agents]
         db.add_all(connections)
         await db.flush()
-        expected = connections[0].id
+        own, team_connection, outside = [connection.id for connection in connections]
+        team = TeamModel(name="Synthetic connection team")
+        db.add_all([team, ConnectionParam(connection_id=team_connection, param_name="host",
+                                         param_value="private.example.test")])
+        await db.flush()
+        await set_human_membership(team.id, users[0].id, True)
+        await set_agent_membership(team.id, agents[1].id, True)
+        team_id = team.id
     path = "/api/connections/overview"
     assert (await client.get(path)).status_code == 401
     for index, expected_status in enumerate([200, 403]):
@@ -216,16 +227,29 @@ async def test_overview_http_requires_privileges_and_limits_rows_to_managed_agen
         response = await client.get(path, headers=headers)
         assert response.status_code == expected_status, response.text
         if expected_status == 200:
-            assert [row["id"] for row in response.json()] == [expected]
-            assert response.json()[0]["params"] == {}
+            rows = response.json()
+            assert [row["id"] for row in rows] == [own, team_connection]
+            assert rows[0]["managed"] and rows[0]["params"] == {}
+            assert not rows[1]["managed"] and rows[1]["params"] == {} and rows[1]["configured_params"] == []
             assert (await client.get(path, headers=headers, params={"limit": 501})).status_code == 422
-            diagnostic = await client.post(f"/api/connections/{expected}/test", headers=headers)
+            diagnostic = await client.post(f"/api/connections/{own}/test", headers=headers)
             assert diagnostic.status_code == 200, diagnostic.text
             assert diagnostic.json()["status"] == "unsupported"
-            assert (await client.post(f"/api/connections/{connections[1].id}/test", headers=headers)).status_code == 404
+            detail_url = f"/api/connections/{team_connection}"
+            detail = await client.get(detail_url, headers=headers)
+            assert detail.status_code == 200 and detail.json()["managed"] is False
+            assert (await client.get(f"/api/connections/{outside}", headers=headers)).status_code == 404
+            assert (await client.get(f"{detail_url}/params", headers=headers)).status_code == 404
+            assert (await client.post(f"{detail_url}/test", headers=headers)).status_code == 404
+            assert (await client.patch(detail_url, headers=headers, json={"active": False})).status_code == 404
+            assert (await client.delete(detail_url, headers=headers)).status_code == 404
+            async with get_db_session():
+                await set_human_membership(team_id, users[0].id, False)
+            assert [row["id"] for row in (await client.get(path, headers=headers)).json()] == [own]
+            assert (await client.get(detail_url, headers=headers)).status_code == 404
         else:
-            assert (await client.post(f"/api/connections/{expected}/test", headers=headers)).status_code == 403
-    assert (await client.post(f"/api/connections/{expected}/test")).status_code == 401
+            assert (await client.post(f"/api/connections/{own}/test", headers=headers)).status_code == 403
+    assert (await client.post(f"/api/connections/{own}/test")).status_code == 401
 
 
 @pytest.mark.asyncio
@@ -312,6 +336,11 @@ async def test_overview_batches_parameters_preserves_scope_and_hides_historized_
     assert [row.id for row in options] == [connection.id for connection in connections[2:-1]]
     assert [row.id for row in await router.permission_connection_options(skip=0, limit=1)] == [connections[2].id]
     assert [row.id for row in await router.permission_connection_options(skip=1, limit=1)] == [connections[3].id]
+
+    async def visible_catalogue():
+        return await router.current_management_scope()
+
+    monkeypatch.setattr(router, "current_dialogue_scope", visible_catalogue)
 
     monkeypatch.setattr(router, "current_management_scope", AsyncMock(return_value=AgentManagementScope(7, frozenset({agents[1].id, agents[-1].id}))))
     assert [row.id for row in await router.list_connection_overviews(skip=0, limit=500)] == [connections[1].id]

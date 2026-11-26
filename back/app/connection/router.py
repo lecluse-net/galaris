@@ -12,10 +12,11 @@ from core.authorize import Privileges, authorize, public
 from core.authorize import check_privilege
 from core.user import get_current_user
 from core.i18n import render_prompt, tr
-from app.agent import AgentManagementScope, current_management_scope
+from app.agent import AgentManagementScope, current_dialogue_scope, current_management_scope
 from .models import Connection, ConnectionParam
 from .schemas import (
     Connection as ConnectionSchema,
+    ConnectionDetails,
     ConnectionOverview,
     ConnectionCreate,
     ConnectionUpdate,
@@ -326,11 +327,12 @@ async def list_connection_overviews(
     skip: Annotated[int, Query(ge=0)] = 0,
     limit: Annotated[int, Query(ge=1, le=500)] = 50,
 ) -> list[ConnectionOverview]:
-    scope = await current_management_scope()
+    managed = await current_management_scope()
+    visible = managed if managed.is_global else await current_dialogue_scope()
     connections = await connection_service.list_management_connections(
-        agent_ids=scope.agent_ids, skip=skip, limit=limit,
+        agent_ids=visible.agent_ids, skip=skip, limit=limit,
     )
-    return await connection_service.connection_overviews(connections)
+    return await connection_service.connection_overviews(connections, managed_agent_ids=managed.agent_ids)
 
 
 @router.get("", response_model=List[ConnectionSchema])
@@ -349,10 +351,18 @@ async def list_connections(
     )
 
 
-@router.get("/{connection_id}", response_model=ConnectionSchema)
+@router.get("/{connection_id}", response_model=ConnectionDetails)
 @authorize(privileges=[Privileges.CONNECTION_ACCESS, Privileges.CONNECTION_EDIT])
-async def get_connection(connection_id: int):
-    return await _managed_connection(connection_id)
+async def get_connection(connection_id: int) -> ConnectionDetails:
+    managed = await current_management_scope()
+    connection = await connection_service.get_connection(connection_id)
+    if connection is None:
+        raise HTTPException(status_code=404, detail=await _message("errors.not_found"))
+    can_manage = managed.allows(connection.agent_id)
+    if not can_manage and not (await current_dialogue_scope(agent_id=connection.agent_id)).allows(connection.agent_id):
+        raise HTTPException(status_code=404, detail=await _message("errors.not_found"))
+    return ConnectionDetails(id=connection.id, service_id=connection.service_id,
+        agent_id=connection.agent_id, active=connection.active, managed=can_manage)
 
 
 @router.post("", response_model=ConnectionSchema, status_code=status.HTTP_201_CREATED)

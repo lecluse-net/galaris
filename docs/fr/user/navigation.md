@@ -340,6 +340,11 @@ y compris un avatar remplacé puis restauré.
 Dans **Connexions**, les connexions des agents historisés sont masquées. Les paramètres
 s’actualisent après l’enregistrement et à chaque retour dans l’onglet. Les filtres
 s’appliquent à la liste chargée ; si son chargement échoue, utilisez **Réessayer**.
+**Filtrer par agent** propose les agents de vos équipes et ceux dont vous êtes responsable.
+Le tableau affiche les connexions correspondantes. Pour un agent de votre équipe confié à
+un autre responsable, **Consulter la connexion** ouvre une fiche en lecture seule avec
+l’agent, le service et l’état. Les paramètres et les actions de gestion sont réservés au
+périmètre de gestion.
 
 Dans **Services**, **Services internes à Galaris** regroupe les définitions intégrées protégées par le
 logiciel. Les Services créés ou importés restent dans **Services personnalisés**, y compris

@@ -58,11 +58,11 @@ async def dialogue_scope_for(user: UserModel, db: AsyncSession, *, agent_id: int
     return AgentManagementScope(user_id=user.id, agent_ids=frozenset(await db.scalars(allowed)))
 
 
-async def current_dialogue_scope() -> AgentManagementScope:
+async def current_dialogue_scope(*, agent_id: int | None = None) -> AgentManagementScope:
     user = await user_service.get_current_user()
     if user is None:
         raise AgentScopeDeniedError("An authenticated user is required")
-    return await dialogue_scope_for(user, get_db())
+    return await dialogue_scope_for(user, get_db(), agent_id=agent_id)
 
 
 async def require_peer_interaction(agent_id: int, peer_agent_id: int) -> None:

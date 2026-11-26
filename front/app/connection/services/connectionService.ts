@@ -17,6 +17,7 @@ export interface Connection {
     service_id: number
     agent_id: number
     active: boolean
+    managed?: boolean
 }
 
 export interface ConnectionOverview extends Connection {

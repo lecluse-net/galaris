@@ -33,7 +33,15 @@ for (const width of [390, 1440]) test(`One Mail provider retains multiple accoun
       email: { type: 'string', label: 'Mailbox address', required: true },
       poll_interval_minutes: { type: 'integer', label: 'Inbox polling interval (minutes)', required: false },
     } } }
-  const accounts = [{ id: 42, service_id: 8, agent_id: 7, active: true, params: { email: 'first@example.org' }, configured_params: [] }]
+  const accounts = [
+    { id: 42, service_id: 8, agent_id: 7, active: true, params: { email: 'first@example.org' }, configured_params: [] },
+    { id: 44, service_id: 8, agent_id: 8, active: true, managed: false, params: {}, configured_params: [] },
+  ]
+  const team = { id: 12, name: 'Synthetic team', order: 1 }
+  await jsonRoute(page, '**/api/agents/selection?scope=catalogue', [
+    { id: 7, label: 'Alice Example', has_avatar: false, teams: [] },
+    { id: 8, label: 'Team Agent', has_avatar: false, teams: [team] },
+  ])
   await jsonRoute(page, '**/api/connections/service-options', [tool])
   await jsonRoute(page, '**/api/mail/approvers', [])
   await jsonRoute(page, '**/api/mail/status', { enabled: true })
@@ -48,9 +56,25 @@ for (const width of [390, 1440]) test(`One Mail provider retains multiple accoun
   })
   await mount(page, 'app/connection/components/ConnectionList.vue', { privileges: ['CONNECTION_ACCESS', 'CONNECTION_EDIT'] })
   await expect(page.getByText('first@example.org', { exact: true })).toBeVisible()
+  const filter = page.getByRole('combobox', { name: 'Filter by agent', exact: true })
+  await filter.click()
+  await expect(page.getByText(team.name, { exact: true })).toBeVisible()
+  await page.getByRole('option', { name: 'Team Agent', exact: true }).click()
+  await expect(page.getByText('first@example.org', { exact: true })).toHaveCount(0)
+  await page.getByRole('button', { name: 'View connection', exact: true }).click()
+  const teamDialog = page.getByRole('dialog')
+  await expect(teamDialog.getByText('Read only', { exact: true })).toBeVisible()
+  await expect(teamDialog.getByText('Synthetic Mail', { exact: true })).toBeVisible()
+  await expect(teamDialog.getByText('Team Agent', { exact: true })).toBeVisible()
+  await expect(teamDialog.getByRole('button', { name: 'Edit', exact: true })).toHaveCount(0)
+  await page.keyboard.press('Escape')
+  await expect(teamDialog).toHaveCount(0)
+  await expect(page.getByRole('button', { name: 'Delete', exact: true })).toHaveCount(0)
+  await expect(page.getByRole('switch')).toHaveCount(0)
   await page.getByRole('button', { name: 'New Connection', exact: true }).click()
   const dialog = page.getByRole('dialog')
   await dialog.getByRole('combobox', { name: 'Agent', exact: true }).click()
+  await expect(page.getByRole('option', { name: 'Team Agent', exact: true })).toBeDisabled()
   await page.getByRole('option', { name: 'Alice Example', exact: true }).click()
   await dialog.getByRole('combobox', { name: 'Service', exact: true }).click()
   await page.getByRole('option', { name: 'Synthetic Mail', exact: true }).click()
@@ -60,6 +84,8 @@ for (const width of [390, 1440]) test(`One Mail provider retains multiple accoun
   await expect(dialog).toHaveCount(0)
   expect(writes).toHaveLength(1)
   expect(writes[0]).toMatchObject({ service_id: 8, agent_id: 7, params: { email: 'second@example.org', poll_interval_minutes: '3' } })
+  await filter.click()
+  await page.getByRole('option', { name: 'Alice Example', exact: true }).click()
   await expect(page.getByText('first@example.org', { exact: true })).toBeVisible()
   await expect(page.getByText('second@example.org', { exact: true })).toBeVisible()
   await page.screenshot({ path: testInfo.outputPath('same-provider-mail-accounts.png'), fullPage: true })

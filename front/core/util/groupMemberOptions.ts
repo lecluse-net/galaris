@@ -1,5 +1,5 @@
 export interface MemberTeam { id: number; name: string; order: number }
-export interface MemberTeams { id: number; teams?: MemberTeam[] }
+export interface MemberTeams { id: number; label?: string; has_avatar?: boolean; teams?: MemberTeam[] }
 
 export interface MemberChoice {
   value: number | null
@@ -7,6 +7,16 @@ export interface MemberChoice {
   hasAvatar?: boolean
   caption?: string
   disable?: boolean
+}
+
+export function includeUnavailableMembers(
+  options: readonly MemberChoice[], members: readonly MemberTeams[], caption: string,
+): MemberChoice[] {
+  const eligible = new Set(options.map(option => option.value))
+  const unavailable = members.flatMap(member => member.label && !eligible.has(member.id)
+    ? [{ value: member.id, label: member.label, hasAvatar: member.has_avatar, disable: true, caption }]
+    : [])
+  return [...options, ...unavailable]
 }
 
 export function groupMemberOptions(

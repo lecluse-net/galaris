@@ -27,6 +27,10 @@ agrégats et ressources indirectes. Une ressource hors périmètre est traitée 
 cela évite d’en divulguer l’existence. Les opérations intrinsèquement globales exigent
 `AGENT_MANAGE_ALL`.
 
+L’aperçu et la fiche de lecture des connexions incluent aussi celles des agents d’une équipe
+commune. Cette lecture expose l’identité de l’agent et du service ainsi que l’état de la
+connexion. La configuration, les diagnostics et les mutations utilisent le périmètre de gestion.
+
 Les API `/agent/openai`, Janus et les corrélations de processus des façades compatibles
 OpenAI/Anthropic appliquent la même frontière. Un token de runtime reste borné à son Agent ; une
 session humaine utilise son périmètre de management.
@@ -38,7 +42,7 @@ créer une dépendance frontend supplémentaire.
 
 ## Conséquences
 
-- Un gestionnaire ne voit et ne sélectionne que ses Agents dans toutes les projections métier.
+- Un gestionnaire ne sélectionne que ses Agents pour les opérations de gestion.
 - Un identifiant deviné ne permet ni lecture ni mutation hors périmètre.
 - Les opérations de catalogue ou de supervision qui affectent plusieurs gestionnaires sont
   réservées au management global.
