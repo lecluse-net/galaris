@@ -87,11 +87,7 @@
             <StatusBadge :id="`${roomListId}-question-${room.id}`" tone="warning" icon="help_outline" class="room-question-badge" :label="t('chat.pendingQuestion')" />
           </q-item-label>
           <q-item-label v-if="cards" class="card-agent">{{ room.agent_name }}</q-item-label>
-          <q-item-label v-if="room.show_last_message && (!cards || room.last_message)" class="room-message-preview" :lines="cards ? 2 : 1">{{ lastMessageText(room) || t('chat.emptyRoom') }}</q-item-label>
-          <q-item-label v-if="cards" class="card-date">
-            <time v-if="room.last_message?.created_at" :datetime="room.last_message.created_at" :title="t('chat.home.lastMessage')">{{ formatDate(room.last_message.created_at) }}</time>
-            <span v-else>{{ t('chat.emptyRoom') }}</span>
-          </q-item-label>
+          <q-item-label v-if="!cards && room.show_last_message" class="room-message-preview" :lines="1">{{ lastMessageText(room) || t('chat.emptyRoom') }}</q-item-label>
         </q-item-section>
         <q-item-section v-if="room.unread_count > 0" side>
           <q-badge
@@ -102,6 +98,13 @@
             <q-tooltip>{{ unreadMessageLabel(room.unread_count) }}</q-tooltip>
           </q-badge>
         </q-item-section>
+        <div v-if="cards" class="card-details">
+          <q-item-label v-if="room.show_last_message && room.last_message" class="room-message-preview" :lines="4">{{ lastMessageText(room) || t('chat.emptyRoom') }}</q-item-label>
+          <q-item-label class="card-date">
+            <time v-if="room.last_message?.created_at" :datetime="room.last_message.created_at" :title="t('chat.home.lastMessage')">{{ formatDate(room.last_message.created_at) }}</time>
+            <span v-else>{{ t('chat.emptyRoom') }}</span>
+          </q-item-label>
+        </div>
       </q-item>
       <div v-if="loadingMore" class="room-list-loader"><q-spinner color="primary" size="22px" /></div>
     </q-list>
@@ -212,15 +215,28 @@ function onScroll(event: Event): void {
 .room-list-shell--cards .room-filters { margin-bottom: 20px; border: 0; }
 .room-list-shell--cards .room-filters > div { padding-left: 0; padding-right: 0; }
 .room-list-shell--cards .viewer-select { padding-left: 0; padding-right: 0; padding-bottom: 8px; }
-.conversation-list--cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); gap: 16px; }
-.room-item--card { align-items: flex-start; margin: 0; padding: 20px; border: 1px solid var(--chat-border-strong); border-radius: 16px; background: var(--chat-surface); }
+.conversation-list--cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); gap: 12px; }
+.room-item--card {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-rows: auto 1fr;
+  align-items: start;
+  row-gap: 6px;
+  margin: 0;
+  padding: 12px;
+  border: 1px solid var(--chat-border-strong);
+  border-radius: 16px;
+  background: var(--chat-surface);
+}
 .room-item--card:hover, .room-item--card:focus-visible { border-color: var(--solaire-blue-accent); }
 .room-item--card.room-item--unread { background: var(--solaire-blue-light); }
 .room-item--card .room-agent-name { font-size: 1rem; font-weight: 650; color: var(--chat-text); }
 .card-title { overflow-wrap: anywhere; }
 .card-agent, .card-date { color: var(--chat-text-secondary); font-size: .78rem; line-height: 1.5; }
-.room-item--card .room-message-preview { margin-top: 14px; min-height: 2.8em; line-height: 1.4 !important; overflow-wrap: anywhere; font-weight: 400; }
-.room-item--card .card-date { margin-top: 16px; }
+.card-details { grid-column: 1 / -1; align-self: stretch; display: flex; flex-direction: column; min-width: 0; }
+.card-details .room-message-preview { margin-top: 0; line-height: 1.4 !important; overflow-wrap: anywhere; font-weight: 400; }
+.card-details .card-date { margin-top: auto; }
+.card-details .room-message-preview + .card-date { padding-top: 6px; }
 .cards-empty { grid-column: 1 / -1; padding: 32px 16px; text-align: center; color: var(--chat-text-secondary); }
 body.body--dark .room-item--card.room-item--unread { background: var(--solaire-blue-dark); }
 :global(.q-dark) .room-item--unread:not(.room-item--active):not(.room-item--card) { background: color-mix(in srgb, var(--q-primary) 15%, var(--chat-surface, #1f232b)); }
