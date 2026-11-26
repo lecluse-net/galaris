@@ -42,17 +42,21 @@ des tokens et du coût. L'usage du SDK reste un repli `partial` lorsque le gatew
 trace ; il ne peut donc pas masquer un coût fournisseur exact ni une estimation tarifaire
 explicitement qualifiée par Galaris.
 
-Le SDK utilise `permission_mode="default"`. Pour ses outils locaux, le callback vérifie
-l'autorisation Galaris de l'action exacte. Les appels au serveur MCP Galaris configuré
-passent par le proxy du run et suivent les modes et droits de la fonction du Service.
+Le SDK utilise `permission_mode="dontAsk"`. Claude découvre et lit les compétences par
+`skills_list` et `skill_read`. Le serveur MCP applique les droits, la portée et le mode configuré
+pour chaque fonction. La recherche d'outils et les lectures dans l'espace de travail sont
+admises par le harnais après validation du contexte. Pour une action locale soumise à accord,
+le hook vérifie l'autorisation Galaris de l'action exacte.
 Le serveur MCP gère la demande d'accord et sa continuation sur le même appel. Les accords
 mémorisés pour les outils locaux restent liés à l'agent, au harnais et à sa configuration.
 Lorsqu’un outil local attend un accord, Claude managé sauvegarde le point de reprise
 dans son volume de données et ferme le processus SDK. La décision réveille la même tâche.
 Le harnais reprend l’appel différé avec la même autorisation à usage unique et vérifie
 de nouveau le contexte et les données de l’action avant de l’exécuter.
-Le nombre de tours et d'outils suit les limites figées dans
-`AgentRunEnvelopeV1`.
+Le nombre de tours et d'outils suit les limites figées dans `AgentRunEnvelopeV1`.
+Le SDK gère l'historique de ses requêtes et la compaction dans la fenêtre de contexte du modèle.
+Si le point de reprise du harnais atteint sa limite de taille, il conserve le résultat terminal,
+le curseur et les résultats d'outils récents, avec des aperçus pour les entrées plus anciennes.
 
 `start`, `restart` et `update` construisent ou recréent l'image épinglée par
 `requirements.txt`. `refresh` reprojette configuration, token MCP et compétences avant de redémarrer.

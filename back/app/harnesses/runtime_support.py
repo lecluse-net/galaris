@@ -21,6 +21,7 @@ from urllib.request import Request, urlopen
 
 
 PROTOCOL = "galaris.runtime-authorization/v1"
+_STATE_MAX_BYTES = 4_000_000
 
 
 def deep_turn_text(dialogue: Sequence[tuple[str, str]]) -> str:
@@ -334,13 +335,33 @@ class RuntimeActor:
 
     def persist(self) -> None:
         with self.lock:
-            encoded = json.dumps({"fingerprint": self.fingerprint, "state": self.state,
-                "continuation": self.continuation}, ensure_ascii=False, default=str)
-            if len(encoded.encode()) > 4_000_000:
+            record = {"fingerprint": self.fingerprint, "state": self.state, "continuation": self.continuation}
+            encoded = json.dumps(record, ensure_ascii=False, default=str).encode()
+            if len(encoded) > _STATE_MAX_BYTES:
+                # Keep the durable cursor, outcomes and recent receipts. Detailed output
+                # from the live actor remains available to the Galaris event journal.
+                messages = list(self.state["messages"])
+                remaining = len(encoded) - _STATE_MAX_BYTES
+                for index, message in enumerate(messages):
+                    if remaining <= 0:
+                        break
+                    preview = dict(message)
+                    content = str(preview.get("content") or "")
+                    preview.pop("tool_arguments", None)
+                    preview.pop("tool_result", None)
+                    preview["content"] = content[:512] + "\n[Tool details shortened in the runtime checkpoint]"
+                    saved = (len(json.dumps(message, ensure_ascii=False, default=str).encode())
+                             - len(json.dumps(preview, ensure_ascii=False, default=str).encode()))
+                    if saved > 0:
+                        messages[index] = preview
+                        remaining -= saved
+                record["state"] = {**self.state, "messages": messages}
+                encoded = json.dumps(record, ensure_ascii=False, default=str).encode()
+            if len(encoded) > _STATE_MAX_BYTES:
                 raise RuntimeError("Runtime control state exceeded its bounded journal")
             self.path.parent.mkdir(parents=True, exist_ok=True)
             temporary = self.path.with_suffix(".pending")
-            with temporary.open("w", encoding="utf-8") as stream:
+            with temporary.open("wb") as stream:
                 os.chmod(temporary, 0o600)
                 stream.write(encoded)
                 stream.flush()

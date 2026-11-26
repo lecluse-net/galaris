@@ -130,7 +130,9 @@ Sa portée locale `services.management_scope` n'a ni valeur globale ni héritage
 avec édition des connexions et gestion globale des agents, peut modifier cette délégation.
 Activer une connexion seule ne donne aucune portée globale.
 
-L'agent utilise `skills_list` et `skill_read` pour découvrir et lire le `SKILL.md`.
+En conversation et dans les tâches Claude Agent managé, l’agent utilise `skills_list` et
+`skill_read` pour découvrir ses compétences autorisées et lire leur `SKILL.md`. Les modes
+configurés sur le Service Skills déterminent les demandes d’accord.
 Les fichiers passent par `file_*` sur `galaris://skill/` ; l'espace personnel est
 `galaris://skill/personnal/<agent>/<code>/` (orthographe canonique `personnal`). La création
 commence par un `SKILL.md` valide dans l'espace de l'agent authentifié. Les fonctions

@@ -25,6 +25,7 @@ from sqlalchemy import select
 
 from app.agent.contracts import AIResult
 from core.database import get_db, release_db_transaction
+from core.util import as_dict, as_list
 from . import inference_execution as execution, inference_store, llm_service, proxy_service
 from .accounting_scope import record_persisted_call_cost
 from .call_capture import TextCallCapture, text_call_capture
@@ -184,7 +185,8 @@ class _ProtocolTransport(httpx2.AsyncBaseTransport):
         body = source.model_copy(deep=True).body
         if source.protocol == "chat":
             response = await proxy_service.proxy_chat_completion(
-                body, unwrap_deferred_tools=source.unwrap_deferred_tools, **options,
+                body, unwrap_deferred_tools=source.unwrap_deferred_tools,
+                preserve_message_history=source.preserve_message_history, **options,
             )
         else:
             response = await proxy_service.proxy_responses(
@@ -431,6 +433,7 @@ async def _request(
     reasoning_effort: ReasoningEffort | None = None, force_reasoning_effort: bool = False,
     sdk_request: bool = False, unwrap_deferred_tools: bool = False,
     request_timeout: dict[str, float | None] | None = None,
+    preserve_message_history: bool = False,
     profile_model: bool = False,
 ) -> JSONResponse | StreamingResponse:
     deep_session_id = current_deep_session()
@@ -462,8 +465,13 @@ async def _request(
     from .message_cleanup import clean_request_messages
 
     async def send(payload: dict[str, Any]) -> JSONResponse | StreamingResponse:
-        messages = (clean_request_messages(payload.get("messages")) if protocol == "chat"
-                    else proxy_service.responses_request_messages(payload))
+        if protocol == "chat":
+            raw_messages = payload.get("messages")
+            if not preserve_message_history:
+                raw_messages = clean_request_messages(raw_messages)
+            messages = [as_dict(message) for message in as_list(raw_messages) if isinstance(message, dict)]
+        else:
+            messages = proxy_service.responses_request_messages(payload)
         prompt, system_prompt = extract_prompts(messages)
         request = ProtocolInferenceRequest(
             llm_id=llm.id, task_id=task_id, agent_id=agent_id, agent_run_id=agent_run_id,
@@ -474,6 +482,7 @@ async def _request(
             reasoning_effort=effort, body=payload, protocol=protocol,
             sdk_request=sdk_request, managed_runtime_request=managed_runtime_request,
             force_reasoning_effort=force_reasoning_effort, unwrap_deferred_tools=unwrap_deferred_tools,
+            preserve_message_history=preserve_message_history,
             request_timeout=request_timeout,
             correlation_ref=str(payload.get("model")) if profile_model else None,
             profile_fallback=profile_fallback_route.get(),

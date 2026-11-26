@@ -3,6 +3,8 @@
 import json
 from typing import Any
 
+import pytest
+
 from app.llm.message_cleanup import clean_request_messages
 
 
@@ -204,22 +206,26 @@ def test_conversation_is_capped_to_most_recent_messages() -> None:
     assert not any("message 0" in str(m["content"]) for m in non_system)
 
 
-def test_cap_drops_leading_orphan_tool_results() -> None:
-    # If the cap falls after an assistant tool call, remove the orphaned tool result that would
-    # otherwise lead the retained window, preserving OpenAI pairing.
+@pytest.mark.parametrize("interleaved_user_message", [False, True])
+def test_cap_drops_orphan_tool_results(interleaved_user_message: bool) -> None:
+    # Claude can put plain text in the same user turn as tool results. Translation
+    # represents that text as a user message before the results.
     messages: list[dict[str, Any]] = [{"role": "system", "content": "s"}]
-    for i in range(29):
-        messages.append({"role": "user", "content": f"<message-or-task>\nm{i}\n</message-or-task>"})
-        messages.append({"role": "assistant", "content": f"r{i}"})
-    # Position a tool pair so the 30-message cap splits it.
-    messages.insert(3, {
+    messages.append({
         "role": "assistant", "content": "",
         "tool_calls": [{"id": "c1", "type": "function", "function": {"name": "search_web", "arguments": "{}"}}],
     })
-    messages.insert(4, {"role": "tool", "tool_call_id": "c1", "content": "result"})
+    if interleaved_user_message:
+        messages.append({"role": "user", "content": "Interleaved context"})
+    messages.append({"role": "tool", "tool_call_id": "c1", "content": "Old result"})
+    messages.extend([
+        {"role": "assistant", "tool_calls": [{"id": "c2", "type": "function", "function": {"name": "search_web", "arguments": "{}"}}]},
+        {"role": "tool", "tool_call_id": "c2", "content": "Recent result"},
+        *[{"role": "user", "content": f"<message-or-task>\nm{i}\n</message-or-task>"}
+          for i in range(26 if interleaved_user_message else 27)],
+    ])
 
     cleaned = clean_request_messages(messages)
 
-    non_system = [m for m in cleaned if m["role"] != "system"]
-    assert len(non_system) <= 30
-    assert non_system[0]["role"] != "tool"
+    assert [message["tool_call_id"] for message in cleaned if message["role"] == "tool"] == ["c2"]
+    assert any(message.get("content") == "Interleaved context" for message in cleaned) == interleaved_user_message

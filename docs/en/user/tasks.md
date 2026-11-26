@@ -101,6 +101,9 @@ once its executor has regained ownership. Agreement remains recorded during this
 do not create another Task to bypass a resumption refusal or repeat the action.
 A manual pause still takes precedence.
 
+A Task can continue for several hours while it makes progress and stays within the time,
+model request, and tool limits configured by the administrator.
+
 ## Change an instruction during contributions
 
 In the same conversation, state what changes and what remains valid, for example:

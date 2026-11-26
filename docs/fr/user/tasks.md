@@ -102,6 +102,9 @@ appel lorsque son exécuteur a repris la main. L'accord reste enregistré pendan
 attente ; ne créez pas une autre tâche pour contourner un refus de reprise et ne répétez
 pas l'action. Une pause manuelle reste prioritaire.
 
+Une tâche peut continuer pendant plusieurs heures tant qu'elle progresse et respecte les
+limites de durée, de requêtes et d'outils configurées par l'administrateur.
+
 ## Modifier une consigne pendant les contributions
 
 Dans la même discussion, précisez ce qui change et ce qui reste valable, par exemple :

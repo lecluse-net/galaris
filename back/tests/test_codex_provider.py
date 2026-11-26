@@ -10,6 +10,8 @@ import httpx
 from fastapi.responses import StreamingResponse
 
 from app.llm import proxy_service
+from app.llm.anthropic_schemas import MessageRequest
+from app.llm.anthropic_service import translate_to_openai
 from app.llm.provider_facade import ProviderConnection
 from bridge.openai import codex_oauth
 from bridge.openai.codex import CodexBridge
@@ -619,15 +621,25 @@ async def test_proxy_bridges_managed_runtime_nonstream_call_to_codex_stream(
     assert captured["upstream_closed"] is True
     assert captured["client_closed"] is True
 
+    turns: list[dict[str, Any]] = [{"role": "user", "content": "<message-or-task>Review records</message-or-task>"}]
+    for index in range(300):
+        call_id = f"toolu_synthetic_{index}"
+        turns += [
+            {"role": "assistant", "content": [{"type": "tool_use", "id": call_id, "name": "read_record", "input": {}}]},
+            {"role": "user", "content": [
+                {"type": "tool_result", "tool_use_id": call_id, "content": "Synthetic result"},
+                {"type": "text", "text": "Additional context"},
+            ]},
+        ]
+    claude_body = translate_to_openai(MessageRequest.model_validate({
+        "model": "codex-main", "messages": turns, "stream": True,
+    }))
     streamed_response = await proxy_service.proxy_chat_completion(
-        {
-            "model": "codex-main",
-            "messages": [{"role": "user", "content": "Review this command"}],
-            "stream": True,
-        },
+        claude_body,
         task_id=task_id,
         agent_id=7,
         managed_runtime_request=True,
+        preserve_message_history=True,
         llm_override=SimpleNamespace(
             id=1,
             code="codex-main",
@@ -642,6 +654,10 @@ async def test_proxy_bridges_managed_runtime_nonstream_call_to_codex_stream(
     assert isinstance(streamed_response, StreamingResponse)
     streamed_chunks = [chunk async for chunk in streamed_response.body_iterator]
     assert captured["recorded_stream"] is True
+    forwarded = captured["json"]["input"]
+    expected_ids = [f"toolu_synthetic_{index}" for index in range(300)]
+    assert [item["call_id"] for item in forwarded if item.get("type") == "function_call"] == expected_ids
+    assert [item["call_id"] for item in forwarded if item.get("type") == "function_call_output"] == expected_ids
     assert b'{\\"decision\\":\\"allow\\"}' in b"".join(streamed_chunks)
     assert streamed_chunks[-1] == b"data: [DONE]\n\n"
     assert json.loads(captured["raw_response"]) == payload

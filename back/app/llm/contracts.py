@@ -85,6 +85,7 @@ class ProtocolInferenceRequest(InferenceInput):
     sdk_request: bool = False
     managed_runtime_request: bool = False
     unwrap_deferred_tools: bool = False
+    preserve_message_history: bool = False
     force_reasoning_effort: bool = False
     request_timeout: dict[str, float | None] | None = None
 

@@ -433,6 +433,7 @@ async def proxy_chat_completion(
     llm_override: LLM | None = None,
     route_executor_model: bool = True,
     unwrap_deferred_tools: bool = False,
+    preserve_message_history: bool = False,
     managed_runtime_request: bool = False,
     reasoning_effort: ReasoningEffort | None = None,
     force_reasoning_effort: bool = False,
@@ -446,7 +447,8 @@ async def proxy_chat_completion(
 
     await require_managed_runtime_context(managed_runtime_request, task_id)
 
-    body["messages"] = clean_request_messages(body.get("messages"))
+    if not preserve_message_history:
+        body["messages"] = clean_request_messages(body.get("messages"))
     forwarded = dict(body)
     requested_model = str(body.get("model") or "")
     async with get_db_session():

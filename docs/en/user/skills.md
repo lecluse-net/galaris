@@ -123,7 +123,9 @@ personal package uses an explicit view and never grants usage. Only a human web 
 Connection editing and global agent management can change this delegation. Activating a
 connection alone grants no global scope.
 
-Agents use `skills_list` and `skill_read` to discover and read `SKILL.md`. Files use `file_*`
+In conversation and managed Claude Agent tasks, agents use `skills_list` and `skill_read` to
+discover their authorized skills and read their `SKILL.md`. The modes configured on the Skills
+Service determine when approval is required. Files use `file_*`
 on `galaris://skill/`; personal packages use `galaris://skill/personnal/<agent>/<code>/`
 (canonical spelling `personnal`). Creation starts with a valid `SKILL.md` in the authenticated
 agent's space. `skill_update`, `skill_set_enabled`, `skill_delete`, `skill_set_authorization`,

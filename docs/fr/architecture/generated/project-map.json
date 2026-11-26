@@ -3308,6 +3308,7 @@
           "back/app/llm/message_cleanup.py",
           "back/app/llm/personal_service.py",
           "back/app/llm/pricing_sync.py",
+          "back/app/llm/protocol_inference.py",
           "back/app/llm/provider_quota.py",
           "back/app/llm/proxy_service.py",
           "back/app/llm/responses_stream.py",

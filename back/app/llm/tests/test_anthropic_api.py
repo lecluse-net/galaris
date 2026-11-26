@@ -100,17 +100,19 @@ def test_tool_use_ids_pass_through_verbatim() -> None:
                 "role": "user",
                 "content": [
                     {"type": "tool_result", "tool_use_id": service_id, "content": "42"},
+                    {"type": "text", "text": "Continue finding sources."},
                 ],
             },
         ],
     })
 
     body = translate_to_openai(request)
-    assistant, tool = body["messages"]
+    assistant, tool, user = body["messages"]
 
     assert assistant["tool_calls"][0]["id"] == service_id
     assert assistant["tool_calls"][0]["function"]["arguments"] == '{"q":"x"}'
     assert tool == {"role": "tool", "tool_call_id": service_id, "content": "42"}
+    assert user == {"role": "user", "content": "Continue finding sources."}
 
 
 def test_tool_error_is_marked_in_band_and_images_become_vision_payload() -> None:

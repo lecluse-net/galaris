@@ -22,8 +22,6 @@ from claude_agent_sdk import (
     ClaudeAgentOptions,
     ClaudeSDKClient,
     HookMatcher,
-    PermissionResultAllow,
-    PermissionResultDeny,
 )
 from claude_agent_sdk.types import AssistantMessage, UserMessage, ToolUseBlock, ToolResultBlock, ResultMessage, StreamEvent, SystemMessage
 from fastapi import FastAPI, HTTPException, Request
@@ -50,6 +48,10 @@ class ChatRequest(BaseModel):
 
 
 app = FastAPI(title="Claude Agent Harness", docs_url=None, redoc_url=None)
+
+_SDK_INTERACTION_TOOLS = ("Skill", "AskUserQuestion", "EnterPlanMode", "ExitPlanMode")
+_SESSION_TOOLS = frozenset({"ToolSearch", "TodoWrite", "TaskCreate", "TaskUpdate", "TaskGet", "TaskList"})
+_WORKSPACE_READ_TOOLS = frozenset({"Read", "Glob", "Grep"})
 
 
 def _authenticate(request: Request) -> None:
@@ -158,7 +160,7 @@ def _sse(event: str | None, payload: Any) -> str:
 
 
 async def _prompt_messages(prompt: str) -> AsyncIterator[dict[str, Any]]:
-    """Use SDK streaming input so the tool permission callback remains available."""
+    """Supply the initial user message in the SDK's streaming input format."""
 
     yield {
         "type": "user",
@@ -226,9 +228,8 @@ async def _run_events(
     reasoning_effort = request.headers.get(
         "X-Galaris-Reasoning-Effort", ""
     ).strip().lower()
-    approval = request.headers.get("X-Galaris-Approval-Action", "ask").strip()
     max_turns = _header_int(request, "X-Galaris-Request-Limit", 40, 500)
-    tool_limit = _header_int(request, "X-Galaris-Tool-Call-Limit", 80, 2_000)
+    tool_limit = _header_int(request, "X-Galaris-Tool-Call-Limit", 80, 5_000)
 
     semantic_events: asyncio.Queue[dict[str, Any]] = asyncio.Queue()
     trace = ClaudeStreamTrace()
@@ -245,14 +246,10 @@ async def _run_events(
             return message
         return {**message, "activity_ref": call_id, "parent_activity_ref": parents.get(call_id)}
 
-    def deep_read_allowed(tool: str, arguments: dict[str, Any]) -> bool:
-        if not deep_session or tool not in {"Read", "Glob", "Grep", "ToolSearch", "Agent", "Task"}:
-            return False
-        for key in ("path", "file_path"):
-            if value := arguments.get(key):
-                if not (workspace / str(value)).resolve().is_relative_to(workspace.resolve()):
-                    return False
-        return True
+    def workspace_read_allowed(arguments: dict[str, Any]) -> bool:
+        root = workspace.resolve()
+        return all((root / str(arguments[key])).resolve().is_relative_to(root)
+                   for key in ("path", "file_path") if arguments.get(key))
 
     async def authorize_local(name: str, arguments: dict[str, Any], call_id: str) -> bool:
         if not actor or not actor.approvals or not call_id:
@@ -281,21 +278,25 @@ async def _run_events(
                 }
             }
         name = str(input_data.get("tool_name") or "")
-        trace.record_tool_call(call_id, name, _bounded_json(input_data.get("tool_input") or {}))
-        if name.startswith("mcp__galaris__"):
-            return {}
-        if name in {"Read", "Glob", "Grep", "ToolSearch"}:
-            if deep_read_allowed(name, input_data.get("tool_input") or {}):
-                return {}
-            try:
-                if not actor or not actor.approvals:
-                    raise PermissionError("No current runtime context")
-                await asyncio.to_thread(actor.approvals.validate)
-                return {}
-            except Exception:
-                return {"hookSpecificOutput": {"hookEventName": "PreToolUse",
-                    "permissionDecision": "deny", "permissionDecisionReason": "Galaris runtime authority changed"}}
         arguments = input_data.get("tool_input") or {}
+        trace.record_tool_call(call_id, name, _bounded_json(arguments))
+        if name in _SDK_INTERACTION_TOOLS:
+            return {"hookSpecificOutput": {"hookEventName": "PreToolUse",
+                "permissionDecision": "deny", "permissionDecisionReason": "Use the corresponding Galaris tool."}}
+        if name.startswith("mcp__"):
+            # The run-scoped MCP proxy owns Service permissions and continuation.
+            allowed = name.startswith("mcp__galaris__") and actor and actor.approvals and "galaris" in mcp_servers
+            return {"hookSpecificOutput": {"hookEventName": "PreToolUse",
+                "permissionDecision": "allow" if allowed else "deny"}}
+        if name in _SESSION_TOOLS or name in _WORKSPACE_READ_TOOLS or (deep_session and name in {"Agent", "Task"}):
+            try:
+                if not actor or not actor.approvals or not workspace_read_allowed(arguments):
+                    raise PermissionError("Tool has no current workspace authority")
+                await asyncio.to_thread(actor.approvals.validate)
+            except (OSError, RuntimeError, ValueError):
+                return {"hookSpecificOutput": {"hookEventName": "PreToolUse",
+                    "permissionDecision": "deny", "permissionDecisionReason": "Galaris runtime authority unavailable"}}
+            return {"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "allow"}}
         if managed is not None and managed.approvals is not None:
             async with local_approval_lock:
                 if deferred is not None:
@@ -306,12 +307,10 @@ async def _run_events(
                             "After it is resolved, request this action again if still needed."}}
                 decision, identifier = await asyncio.to_thread(managed.approvals.authorize_once, call_id, name, arguments,
                     precondition=lambda: file_precondition(arguments, workspace))
-                if decision == "allow":
-                    permitted[call_id] = (name, arguments)
-                elif decision == "defer":
+                if decision == "defer":
                     deferred = (call_id, identifier, str(input_data["transcript_path"]))
         else:
-            allowed = deep_read_allowed(name, arguments) or await authorize_local(name, arguments, call_id)
+            allowed = await authorize_local(name, arguments, call_id)
             decision = "allow" if allowed else "deny"
         return {"hookSpecificOutput": {"hookEventName": "PreToolUse",
             "permissionDecision": decision,
@@ -341,33 +340,6 @@ async def _run_events(
         if message is not None:
             await semantic_events.put(message)
         return {}
-
-    async def permission(tool_name: str, input_data: dict[str, Any], _context: Any):
-        if actor and actor.approvals and "galaris" in mcp_servers and tool_name.startswith("mcp__galaris__"):
-            # The managed MCP proxy checks the live Service policy and owns the continuation.
-            return PermissionResultAllow(updated_input=input_data)
-        call_id = str(getattr(_context, "tool_use_id", "") or "")
-        if (permitted.get(call_id) == (tool_name, input_data)
-                or (managed is None and await authorize_local(tool_name, input_data, call_id))):
-            return PermissionResultAllow(updated_input=input_data)
-        reason = (
-            "An AI requester cannot approve this operation."
-            if approval == "deny_agent"
-            else "This operation requires a current Galaris one-action authorization."
-        )
-        await semantic_events.put(
-            {
-                "type": "tool",
-                "content": reason,
-                "tool_name": "approval",
-                "tool_arguments": {"requested_tool": tool_name},
-                "tool_result": {"decision": "deny"},
-                "execution_time": 0.0,
-                "cost": 0.0,
-                "success": False,
-            }
-        )
-        return PermissionResultDeny(message=reason, interrupt=False)
 
     custom_headers = []
     if task_id:
@@ -405,15 +377,19 @@ async def _run_events(
         }
     options = ClaudeAgentOptions(
         tools={"type": "preset", "preset": "claude_code"},
+        disallowed_tools=list(_SDK_INTERACTION_TOOLS),
+        skills=[],
         system_prompt={
             "type": "preset",
             "preset": "claude_code",
-            "append": system_prompt,
+            "append": system_prompt + (
+                "\n\nUse the Galaris MCP tools `skills_list` and `skill_read` to discover and read skills. "
+                "Use Galaris Service tools for external resources and Galaris interactions for user input."
+            ),
         },
         mcp_servers=mcp_servers,
-        strict_mcp_config=bool(mcp_servers),
-        permission_mode="default",
-        can_use_tool=permission,
+        strict_mcp_config=True,
+        permission_mode="dontAsk",
         hooks={
             "PreToolUse": [HookMatcher(hooks=[pre_tool], on_failure="block")],
             "PostToolUse": [HookMatcher(hooks=[post_tool])],
@@ -423,8 +399,7 @@ async def _run_events(
         resume=native_session or None,
         model=model,
         cwd=workspace,
-        add_dirs=[Path("/data/skills")],
-        setting_sources=["project"],
+        setting_sources=[],
         max_turns=max_turns,
         effort={
             "none": "low",

@@ -8,7 +8,7 @@ from uuid import uuid4
 
 import pytest
 
-from app.harnesses.runtime_support import ActionApprovals, RuntimeRuns, file_precondition
+from app.harnesses.runtime_support import ActionApprovals, RuntimeActor, RuntimeRuns, file_precondition
 
 
 @pytest.fixture
@@ -53,6 +53,31 @@ def eventually(predicate):
             return
         time.sleep(0.01)
     raise AssertionError("The bounded runtime transition did not occur")
+
+
+@pytest.mark.asyncio
+async def test_long_runtime_preserves_the_outcome_and_tool_cursor_at_finalization(tmp_path):
+    run_id = "a" * 64
+    actor = RuntimeActor(run_id, tmp_path / f"{run_id}.json", "synthetic")
+    call_ids = [f"synthetic-{index}" for index in range(350)]
+    content = "Synthetic record content. " * 325
+
+    async def events():
+        for call_id in call_ids:
+            yield "tool", {"type": "tool", "tool_name": "read_record", "tool_call_external_id": call_id,
+                           "success": True, "content": content, "tool_result": {"output": content}}
+        yield "result", {"success": True, "result": "Review complete"}
+
+    await actor.consume(events())
+    live = actor.snapshot()
+    restored = RuntimeRuns(tmp_path).get(run_id)
+
+    assert live["messages"][0]["tool_result"] == {"output": content}
+    assert restored["status"] == "completed" and restored["stopped"] is True
+    assert restored["result"] == "Review complete"
+    assert [message["tool_call_external_id"] for message in restored["messages"]] == call_ids
+    assert all(message["success"] for message in restored["messages"])
+    assert restored["messages"][-1] == live["messages"][-1]
 
 
 @pytest.mark.parametrize("sibling", ["mcp", "local", "lost_receipt"])

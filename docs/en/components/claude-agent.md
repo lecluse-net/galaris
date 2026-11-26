@@ -39,15 +39,19 @@ shared client aggregates these persisted traces and treats them as the primary t
 source. SDK usage remains a `partial` fallback when the gateway produced no trace; it therefore
 cannot hide an exact provider cost or a pricing estimate explicitly qualified by Galaris.
 
-The SDK uses `permission_mode="default"`. For local tools, its callback checks Galaris
-authorization for the exact action. Calls to the configured Galaris MCP server pass through
-the run's proxy and follow the Service function's mode and permissions. The MCP server
+The SDK uses `permission_mode="dontAsk"`. Claude discovers and reads skills with `skills_list`
+and `skill_read`. The Galaris MCP server enforces the configured mode, scope, and rights for
+each function. The harness admits tool discovery and workspace reads after checking the active
+context. For local actions that require approval, the hook checks Galaris authorization for the
+exact action. The MCP server
 manages the approval request and continues the same call. Remembered local-tool grants
 remain bound to the agent, harness and configuration. When a local tool needs approval, managed
 Claude saves the continuation to its data volume and closes the SDK process. The decision wakes
 the same Task. The harness resumes the deferred call with the same one-use authorization and
-checks its context and action data again before executing it. Turn and Service counts follow the limits frozen in
-`AgentRunEnvelopeV1`.
+checks its context and action data again before executing it. Turn and tool counts follow the
+limits frozen in `AgentRunEnvelopeV1`. The SDK manages request history and compaction within
+the model's context window. If the harness checkpoint reaches its size limit, it preserves the
+terminal result, the cursor, and recent tool results, with previews for older entries.
 
 `start`, `restart`, and `update` build or recreate the image pinned by `requirements.txt`.
 `refresh` reprojects configuration, MCP token, and Skills before restarting. Deleting the Harness

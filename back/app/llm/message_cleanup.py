@@ -145,17 +145,27 @@ def _clean_old_user_content(content: str) -> str:
 def _cap_messages(messages: list[dict[str, Any]]) -> list[dict[str, Any]]:
     """Keep the newest non-system messages while preserving every system message.
 
-    Leading orphan tool results are removed after truncation because the OpenAI protocol requires
-    their assistant tool call to remain present.
+    Tool results can follow an interleaved user message, so validate them across the
+    entire retained window against the preceding assistant tool calls.
     """
     system = [m for m in messages if m.get("role") == "system"]
     rest = [m for m in messages if m.get("role") != "system"]
     if len(rest) <= _MAX_MESSAGES:
         return messages
-    rest = rest[-_MAX_MESSAGES:]
-    while rest and rest[0].get("role") == "tool":
-        rest.pop(0)
-    return [*system, *rest]
+    retained = list(system)
+    call_ids: set[str] = set()
+    for message in rest[-_MAX_MESSAGES:]:
+        if message.get("role") == "assistant":
+            for call in as_list(message.get("tool_calls")):
+                identifier = as_dict(call).get("id")
+                if isinstance(identifier, str) and identifier:
+                    call_ids.add(identifier)
+        if message.get("role") == "tool":
+            identifier = message.get("tool_call_id")
+            if not isinstance(identifier, str) or identifier not in call_ids:
+                continue
+        retained.append(message)
+    return retained
 
 
 def _prune_current_history(messages: list[dict[str, Any]]) -> list[dict[str, Any]]:

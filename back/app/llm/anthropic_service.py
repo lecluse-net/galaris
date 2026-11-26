@@ -318,14 +318,15 @@ def translate_to_openai(request: MessageRequest) -> dict[str, Any]:
 
         tool_results = [block for block in blocks if block.type == "tool_result"]
         regular = [block for block in blocks if block.type != "tool_result"]
-        if regular or not tool_results:
-            messages.append({"role": "user", "content": _blocks_to_content(regular)})
         for block in tool_results:
             messages.append({
                 "role": "tool",
                 "tool_call_id": block.tool_use_id,
                 "content": _tool_result_content(block),
             })
+        if regular or not tool_results:
+            # Keep tool results adjacent to the assistant tool-call batch.
+            messages.append({"role": "user", "content": _blocks_to_content(regular)})
 
     tools: list[dict[str, Any]] | None = None
     if request.tools:
@@ -750,6 +751,7 @@ async def call_proxy(
         process_run_id=process_run_id,
         agent_id=agent_id,
         unwrap_deferred_tools=agent_id is not None,
+        preserve_message_history=True,
         managed_runtime_request=agent_id is not None,
         reasoning_effort=reasoning_effort,
         force_reasoning_effort=force_reasoning_effort,
