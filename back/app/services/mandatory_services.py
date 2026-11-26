@@ -651,6 +651,14 @@ async def sync_mandatory_services() -> list[ServiceModel]:
     return synced
 
 
+async def legacy_builtin_services_pending() -> bool:
+    """Detect an unfinished transfer before granting defaults to a newly seeded assistant."""
+    from .builtin_merge import FAMILY_MERGES, MERGES
+
+    retired_codes = (*MERGES, *FAMILY_MERGES, "conversation")
+    return await get_db().scalar(select(ServiceModel.id).where(ServiceModel.code.in_(retired_codes)).limit(1)) is not None
+
+
 async def initialize_admin_agent_connections(agent_id: int) -> None:
     """Seed native permissions once, when the Galaris assistant is created."""
     from app.connection import Connection

@@ -196,7 +196,8 @@ def register_dbadmin(registry: DbAdminRegistry) -> None:
         DbAdminReconciler(
             key="app.memory.source_projections",
             handler=_reconcile_source_projections,
-            depends_on=("app.llm.current_profile", "app.memory.temporal_timezone", "app.memory.goal_document_paths"),
+            depends_on=("app.agent.initial_galaris", "app.llm.current_profile", "app.memory.temporal_timezone",
+                        "app.memory.goal_document_paths"),
         )
     )
     registry.register_reconciler(

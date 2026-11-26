@@ -40,6 +40,27 @@ async def _proposal(db):
 
 
 @pytest.mark.asyncio
+async def test_default_agent_waits_for_legacy_service_policies_to_move(db):
+    from app.services import sync_mandatory_services
+
+    await _admin(db)
+    db.add_all([ServiceModel(code="audio", label="Legacy audio"),
+                ServiceModel(code="conversation", label="Legacy conversation")])
+    await db.flush()
+
+    dataset = default_agent_dataset()
+    assert (await reconcile_dataset(db, dataset)).inserted == 0
+    assert await db.scalar(select(Param.value).where(Param.name == Params.GALARIS_AGENT_ID)) is None
+
+    await sync_mandatory_services()
+    assert (await reconcile_dataset(db, dataset)).inserted == 1
+    proposed = await _proposal(db)
+    for service_code, name in (("multimedia", "audio_transcribe"), ("chat", "chat_round_get")):
+        assert await has_active_service_function(proposed.id, service_code, name)
+    assert (await reconcile_dataset(db, dataset)).inserted == 0
+
+
+@pytest.mark.asyncio
 async def test_replaying_initial_agent_does_not_load_unrelated_profiles(db):
     from sqlalchemy import event
     from app.document import Document
@@ -147,7 +168,7 @@ async def test_seed_waits_for_manager_then_preserves_edits_revocations_and_delet
     validate_avatar(agent.avatar)
     assert await has_galaris_admin_access(agent.id)
     assert await has_documentation_access(agent.id)
-    assert await has_active_service_function(agent.id, "service", "service_admin_list")
+    assert await has_active_service_function(agent.id, "service", "service_list")
     assert await has_active_service_function(agent.id, "agent", "agent_options")
     scoped_tools = {"service", "agent", "skills", "chat"}
     assert await get_management_scope(agent.id, "galaris") == "usage"
@@ -199,7 +220,7 @@ async def test_seed_waits_for_manager_then_preserves_edits_revocations_and_delet
     )
     assert not await has_galaris_admin_access(agent.id)
     assert not await has_documentation_access(agent.id)
-    assert not await has_active_service_function(agent.id, "service", "service_admin_list")
+    assert not await has_active_service_function(agent.id, "service", "service_list")
     assert not await has_active_service_function(agent.id, "agent", "agent_options")
     assert skill_code not in await skill_service.get_assigned_codes(agent.id)
     assignment = await db.scalar(select(AgentSkill).where(
@@ -250,7 +271,7 @@ async def test_seed_preserves_existing_galaris_agent(db):
     for definition in tool_datasets():
         await reconcile_dataset(db, definition)
     assert await get_management_scope(existing.id, "service") == "usage"
-    assert await has_active_service_function(proposal.id, "service", "service_admin_list")
+    assert await has_active_service_function(proposal.id, "service", "service_list")
     assert await get_management_scope(existing.id, "agent") == "usage"
     assert await has_active_service_function(proposal.id, "agent", "agent_options")
     # Documentation access alone must not grant the bundled assistant's skills.

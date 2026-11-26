@@ -389,6 +389,10 @@ Objectifs, Processus et Tâches gardent leur portée personnelle. Les compétenc
 `galaris-lab`, `galaris-knowledge` et `galaris-plugin-development` sont autorisées
 individuellement et restent désactivées globalement par défaut.
 
+DbAdmin propose l’agent après le transfert des anciens Services. Ses permissions initiales
+s’appliquent au catalogue consolidé. Si un Service à transférer est encore présent, la
+proposition attend la prochaine synchronisation.
+
 Le renommage des services intégrés conserve leurs identifiants et les références depuis les
 connexions. DbAdmin transfère les réglages de fonction et l'historique des autorisations avec
 les outils déplacés, notamment lors des fusions vers Chat, Galaris, Multimédia et Navigateur

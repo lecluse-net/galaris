@@ -17,6 +17,10 @@ administrateur actif. Les installations existantes reçoivent également cette
 proposition à la prochaine synchronisation. Une collision de code reçoit un
 suffixe sans modifier ni augmenter les droits de l'agent préexistant.
 
+DbAdmin applique ce dataset après le regroupement des Services intégrés. La proposition attend
+si des Services historiques restent à transférer. Les droits initiaux du nouvel agent sont
+ainsi créés après la migration des réglages déjà présents.
+
 Le paramètre global interne `galaris.agent_id` conserve l'identifiant de l'agent proposé.
 Le renommage et la suppression ne vident jamais ce paramètre et ne rendent pas la proposition
 à nouveau éligible. Ce paramètre n'est pas éditable par l'API d'administration et aucun

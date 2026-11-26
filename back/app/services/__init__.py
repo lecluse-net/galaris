@@ -74,7 +74,7 @@ from .agent_registry import (
     get_enabled_integrated_service_codes,
 )
 from .mandatory_services import sync_integrated_service_connections, sync_mandatory_services
-from .mandatory_services import initialize_admin_agent_connections
+from .mandatory_services import initialize_admin_agent_connections, legacy_builtin_services_pending
 from .admin_access import GALARIS_ADMIN_SERVICE_CODE, has_galaris_admin_access, require_galaris_admin_access, has_process_admin_access
 from .admin_access import has_documentation_access, require_documentation_access
 from .connection_functions import list_available_connection_functions
@@ -104,6 +104,7 @@ __all__ = [
     "reset_protocol_connection", "resolve_protocol_connection",
     "RestAuth", "RestConfig", "RestError", "RestRequest", "RestResponse", "execute_rest_request",
     "initialize_admin_agent_connections",
+    "legacy_builtin_services_pending",
     "native_failure_key",
     "get_service_codes",
     "prune_desktop_relay_requests",

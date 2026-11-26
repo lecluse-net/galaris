@@ -28,10 +28,17 @@ async def installed_galaris_agent_id() -> int | None:
 
 
 async def _rows(session: AsyncSession) -> tuple[dict[str, object], ...]:
+    from app.services import legacy_builtin_services_pending
+
+    installed = select(Param.value).where(Param.name == Params.GALARIS_AGENT_ID)
+    if await session.scalar(installed):
+        return ()
     # Signup and DbAdmin may overlap in different workers. The lock and all seed
     # effects belong to the same transaction; failed initialization can retry.
     await session.execute(text("SELECT pg_advisory_xact_lock(719362840125)"))
-    if await session.scalar(select(Param.value).where(Param.name == Params.GALARIS_AGENT_ID)):
+    if await session.scalar(installed):
+        return ()
+    if await legacy_builtin_services_pending():
         return ()
     manager_id = await session.scalar(
         select(UserModel.id)
@@ -94,8 +101,11 @@ def default_agent_dataset() -> DbAdminDataset:
         rows=_rows,
         update_columns=(),
         after_merge=_after_merge,
-        depends_on=("app.llm.current_profile", "app.skill.assignments", "core.authorize.admin_role", "core.params.declarations"),
     )
+
+
+async def reconcile_default_agent(session: AsyncSession) -> None:
+    await reconcile_dataset(session, default_agent_dataset())
 
 
 async def _on_user_access_changed(_user_id: int | None) -> None:

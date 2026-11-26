@@ -344,6 +344,10 @@ and enables automatic answers. Agenda, Contact, Documents, Goals, Processes and 
 personal scope. The assistant receives an individual authorization for `galaris-lab`,
 `galaris-knowledge` and `galaris-plugin-development`. These skills remain globally disabled by default.
 
+DbAdmin proposes the agent after transferring legacy Services. Its initial permissions apply
+to the consolidated catalogue. If a Service still awaits transfer, the proposal waits for the
+next synchronization.
+
 Renaming built-in Services preserves their identifiers and connection references. DbAdmin
 moves function settings and authorization history with relocated tools, including the merges into
 Chat, Galaris, Multimedia and Browser and the transfers to Documents, Tasks and Processes.
