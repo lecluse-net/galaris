@@ -8,6 +8,10 @@ export const teamService = {
   async humanSelection(signal?: AbortSignal): Promise<HumanSelection[]> {
     return (await api.get<HumanSelection[]>('/teams/human-selection', { signal })).data
   },
+  async myTeams(userId: number, signal?: AbortSignal): Promise<HumanSelection['teams']> {
+    const { data } = await api.get<HumanSelection[]>('/teams/human-selection', { params: { self_only: true }, signal })
+    return data.find(item => item.id === userId)?.teams ?? []
+  },
   async list(userId?: number): Promise<Team[]> {
     return (await api.get<Team[]>('/teams', { params: { user_id: userId } })).data
   },

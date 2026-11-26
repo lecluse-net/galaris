@@ -84,7 +84,11 @@ type Option = { id: number; label: string }
 type Team = { id: number; name: string }
 type AssignedRole = Pick<AssignmentWithRole, 'id' | 'role' | 'is_default'>
 
-const { userId, disabled } = defineProps<{ userId?: number; disabled: boolean }>()
+const { userId, disabled, refreshUserList } = defineProps<{
+  userId?: number
+  disabled: boolean
+  refreshUserList?: () => void
+}>()
 const draft = defineModel<UserAccessDraft>({ required: true })
 const { t } = useI18n()
 const $q = useQuasar()
@@ -196,6 +200,7 @@ function add(kind: AccessKind, selected: Option) {
       if (userId) {
         const assignment = await authorizeService.createAssignment({ user_id: userId, role_id: role.id })
         assignments.value.push({ ...assignment, role })
+        refreshUserList?.()
       } else {
         draft.value = { ...draft.value, role_ids: [...draft.value.role_ids, role.id] }
       }
@@ -204,6 +209,7 @@ function add(kind: AccessKind, selected: Option) {
       if (userId) {
         await userTeams.membership(selected.id, userId, true)
         memberships.value.push({ id: selected.id, name: selected.label })
+        refreshUserList?.()
       } else {
         draft.value = { ...draft.value, team_ids: [...draft.value.team_ids, selected.id] }
       }
@@ -234,9 +240,11 @@ function remove(kind: AccessKind, row: Option) {
       if (!assignment) return
       await authorizeService.deleteAssignment(assignment.id)
       assignments.value = assignments.value.filter(item => item.id !== assignment.id)
+      refreshUserList?.()
     } else if (userTeams) {
       await userTeams.membership(row.id, currentUserId, false)
       memberships.value = memberships.value.filter(item => item.id !== row.id)
+      refreshUserList?.()
     }
   }, kind === 'role' ? 'authorize.assignments.deleteError' : 'team.error'))
 }

@@ -13,8 +13,8 @@ export default {
       profile_desc: 'Profil et informations utilisateur',
       apiTokens: 'Mes Tokens API',
       apiTokens_desc: 'Gérer mes tokens d\'authentification API',
-      users: 'Utilisateurs',
-      users_desc: 'Gestion des utilisateurs',
+      users: 'Utilisateurs & Droits',
+      users_desc: 'Gérer les utilisateurs, les équipes, les rôles et les affectations',
     },
     user: {
       myAssignments: 'Mes affectations',
@@ -160,6 +160,9 @@ export default {
       removeTeamConfirm: 'Retirer cet utilisateur de l’équipe {name} ?',
     },
     usersAdmin: {
+      tabUsers: 'Utilisateurs',
+      filterTeam: 'Équipe',
+      filterLoadError: 'Impossible de charger les rôles ou les équipes pour les filtres',
       title: 'Gestion des Utilisateurs',
       newUser: 'Nouvel Utilisateur',
       colName: 'Nom',
@@ -237,8 +240,8 @@ export default {
       profile_desc: 'User profile and information',
       apiTokens: 'My API Tokens',
       apiTokens_desc: 'Manage my API authentication tokens',
-      users: 'Users',
-      users_desc: 'User management',
+      users: 'Users & Permissions',
+      users_desc: 'Manage users, teams, roles and assignments',
     },
     user: {
       myAssignments: 'My assignments',
@@ -384,6 +387,9 @@ export default {
       removeTeamConfirm: 'Remove this user from team {name}?',
     },
     usersAdmin: {
+      tabUsers: 'Users',
+      filterTeam: 'Team',
+      filterLoadError: 'Unable to load roles or teams for the filters',
       title: 'User Management',
       newUser: 'New User',
       colName: 'Name',
@@ -461,8 +467,8 @@ export default {
       profile_desc: '用户资料和信息',
       apiTokens: '我的 API 令牌',
       apiTokens_desc: '管理我的 API 身份验证令牌',
-      users: '用户',
-      users_desc: '用户管理',
+      users: '用户与权限',
+      users_desc: '管理用户、团队、角色和分配',
     },
     user: {
       myAssignments: '我的角色分配',
@@ -608,6 +614,9 @@ export default {
       removeTeamConfirm: '要将此用户从团队 {name} 移除吗？',
     },
     usersAdmin: {
+      tabUsers: '用户',
+      filterTeam: '团队',
+      filterLoadError: '无法加载筛选所需的角色或团队',
       title: '用户管理',
       newUser: '新建用户',
       colName: '名称',

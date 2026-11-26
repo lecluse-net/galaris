@@ -59,7 +59,7 @@ async def _guard_admin(*, role: Role | None = None, assignment_id: int | None = 
 # ==================== Privileges ====================
 
 @router.get("/privileges", response_model=List[PrivilegeSchema])
-@authorize(privileges=[Privileges.READ_PRIVILEGE, Privileges.MANAGE_PRIVILEGE, Privileges.MANAGE_ROLE])
+@authorize(privileges=[Privileges.READ_PRIVILEGE, Privileges.MANAGE_PRIVILEGE, Privileges.READ_ROLE, Privileges.MANAGE_ROLE])
 async def list_privileges(db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(Privilege))
     return result.scalars().all()

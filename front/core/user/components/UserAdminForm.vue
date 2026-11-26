@@ -62,7 +62,7 @@
         <component v-else-if="user" :is="section.component" :user-id="user.id" class="q-mt-lg" />
       </template>
 
-      <UserAdminAccess v-model="access" :user-id="user?.id" :disabled="loading" />
+      <UserAdminAccess v-model="access" :user-id="user?.id" :disabled="loading" :refresh-user-list="refreshUserList" />
     </q-card-section>
 
     <q-card-actions align="right" class="galaris-dialog-actions q-pa-md">
@@ -83,7 +83,11 @@ import type { User, UserAccessDraft, UserAdminSubmission } from '../services/aut
 import { userTabs } from '../userTabs'
 import UserAdminAccess from './UserAdminAccess.vue'
 
-const { user = null, loading = false } = defineProps<{ user?: User | null; loading?: boolean }>()
+const { user = null, loading = false, refreshUserList } = defineProps<{
+  user?: User | null
+  loading?: boolean
+  refreshUserList?: () => void
+}>()
 const emit = defineEmits<{ submit: [submission: UserAdminSubmission] }>()
 
 const privilegeStore = usePrivilegeStore()

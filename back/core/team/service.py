@@ -1,6 +1,6 @@
 """Team catalogue and human memberships; callers own transaction completion."""
 
-from collections.abc import Awaitable, Callable, Sequence
+from collections.abc import Awaitable, Callable, Collection, Sequence
 
 from sqlalchemy import delete, func, select
 from sqlalchemy.dialects.postgresql import insert
@@ -157,27 +157,36 @@ async def human_memberships() -> dict[int, set[int]]:
     return result
 
 
-async def human_selection() -> list[HumanSelection]:
+async def membership_teams_by_user(user_ids: Collection[int]) -> dict[int, list[SelectionTeam]]:
+    if not user_ids:
+        return {}
+    rows = await get_db().execute(
+        select(TeamUser.user_id, Team.id, Team.name, Team.order).join(Team, Team.id == TeamUser.team_id)
+        .where(TeamUser.user_id.in_(user_ids)).order_by(Team.order, Team.id)
+    )
+    teams: dict[int, list[SelectionTeam]] = {}
+    for user_id, team_id, name, order in rows:
+        teams.setdefault(user_id, []).append(SelectionTeam(id=team_id, name=name, order=order))
+    return teams
+
+
+async def human_selection(*, self_only: bool = False) -> list[HumanSelection]:
     """Display memberships within the user's existing directory access, or only self."""
     user = await get_current_user()
     if user is None:
         return []
     can_read_all = False
-    for privilege in ("TEAM_ACCESS", "READ_USER", "CREATE_USER", "UPDATE_USER", "DELETE_USER"):
-        if await check_privilege(user, privilege, get_db()):
-            can_read_all = True
-            break
+    if not self_only:
+        for privilege in ("TEAM_ACCESS", "READ_USER", "CREATE_USER", "UPDATE_USER", "DELETE_USER"):
+            if await check_privilege(user, privilege, get_db()):
+                can_read_all = True
+                break
     statement = select(UserModel.id).where(UserModel.is_active.is_(True)).order_by(UserModel.id)
     if not can_read_all:
         statement = statement.where(UserModel.id == user.id)
-    people = {identity: HumanSelection(id=identity) for identity in await get_db().scalars(statement)}
-    rows = await get_db().execute(
-        select(TeamUser.user_id, Team.id, Team.name, Team.order).join(Team, Team.id == TeamUser.team_id)
-        .where(TeamUser.user_id.in_(people)).order_by(Team.order, Team.id)
-    )
-    for identity, team_id, name, order in rows:
-        people[identity].teams.append(SelectionTeam(id=team_id, name=name, order=order))
-    return list(people.values())
+    user_ids = list(await get_db().scalars(statement))
+    teams = await membership_teams_by_user(user_ids)
+    return [HumanSelection(id=user_id, teams=teams.get(user_id, [])) for user_id in user_ids]
 
 
 async def team_humans(team_id: int) -> list[HumanInfo]:

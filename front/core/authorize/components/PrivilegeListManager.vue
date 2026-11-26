@@ -120,21 +120,26 @@
           <q-btn v-close-popup flat round dense icon="close" :aria-label="$t('common.close')" />
         </q-card-section>
 
-        <q-card-section class="q-pt-md galaris-dialog-body">
-          <q-form @submit="saveList" class="q-gutter-md">
+        <q-card-section class="galaris-dialog-body">
+          <q-form :id="listFormId" @submit="saveList">
             <q-input
               v-model="editedItem.display_name"
               :label="$t('authorize.privilegeLists.listName')"
+              outlined
+              dense
+              hide-bottom-space
               lazy-rules
               :rules="[val => val && val.length > 0 || $t('authorize.privilegeLists.nameRequired')]"
               autofocus
             />
-            <div class="privilege-dialog-actions galaris-dialog-actions q-mt-md q-pa-md">
-              <q-btn outline :label="$t('common.cancel')" color="primary"  v-close-popup />
-              <q-btn v-if="canManage" :label="isEdit ? $t('common.save') : $t('common.create')" type="submit" color="primary" />
-            </div>
           </q-form>
         </q-card-section>
+        <q-separator />
+        <q-card-actions align="right" class="galaris-dialog-actions q-pa-md">
+          <q-btn v-close-popup outline color="primary" :label="$t('common.cancel')" />
+          <q-btn v-if="canManage" color="primary" type="submit" :form="listFormId"
+            :label="isEdit ? $t('common.save') : $t('common.create')" />
+        </q-card-actions>
       </q-card>
     </q-dialog>
 
@@ -143,7 +148,7 @@
 
 <script setup lang="ts">
 import { showConfirmationDialog } from '@/core/util'
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, useId } from 'vue'
 import { useQuasar } from 'quasar'
 import { useI18n } from 'vue-i18n'
 import { authorizeService, type Privilege, type PrivilegeList } from '../services/authorize.service'
@@ -153,6 +158,7 @@ import { localizedAuthorizeLabel, localizedPrivilegeListLabel } from '../present
 
 const $q = useQuasar()
 const { t } = useI18n()
+const listFormId = useId()
 const privilegeStore = usePrivilegeStore()
 const canManage = computed(() => privilegeStore.hasPrivilege(privileges.MANAGE_PRIVILEGE))
 
@@ -396,8 +402,7 @@ function confirmDelete(item: PrivilegeList) {
     min-height: 100px;
 }
 
-.privilege-count,
-.privilege-list-dialog :deep(.q-field__bottom) {
+.privilege-count {
     font-size: 0.8125rem;
 }
 
@@ -422,13 +427,6 @@ function confirmDelete(item: PrivilegeList) {
 .privilege-list-dialog {
     width: 420px;
     max-width: calc(100vw - 32px);
-}
-
-.privilege-dialog-actions {
-    display: flex;
-    justify-content: flex-end;
-    gap: 8px;
-    flex-wrap: wrap;
 }
 
 body.body--dark .privilege-info-banner {
@@ -481,14 +479,8 @@ body.body--dark .privilege-chip--unassigned {
         padding: 8px;
     }
 
-    .privilege-list-actions .q-btn,
-    .privilege-dialog-actions .q-btn {
+    .privilege-list-actions .q-btn {
         width: 100%;
-    }
-
-    .privilege-dialog-actions {
-        display: grid;
-        grid-template-columns: 1fr;
     }
 }
 </style>

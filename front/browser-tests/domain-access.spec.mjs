@@ -3,7 +3,7 @@ import { test, expect, mount, setPrivileges, jsonRoute } from './fixtures.mjs'
 test('the Laboratory menu follows access to its entries', async ({ page }) => {
   await page.route('**/api/auth/users?*', route => route.fulfill({ headers: { 'x-total-count': '0' }, json: [] }))
   await mount(page, 'core/user/pages/users.vue', {
-    route: '/user/users', shell: true, privileges: ['READ_USER'],
+    route: '/users', shell: true, privileges: ['READ_USER'],
   })
   const laboratory = page.getByRole('link', { name: 'Laboratory', exact: true })
   await expect(laboratory).toHaveCount(0)
@@ -79,18 +79,17 @@ test('Contacts-only operators select an agent without requesting Agent administr
   expect(forbidden).toEqual([])
 })
 
-test('authorization tabs load only the permitted domain and follow role changes', async ({ page }) => {
+test('user and authorization tabs load only the permitted domain and follow role changes', async ({ page }) => {
+  await page.route('**/api/auth/users?*', route => route.fulfill({ headers: { 'x-total-count': '0' }, json: [] }))
   await jsonRoute(page, '**/api/authorize/privileges', [])
   await jsonRoute(page, '**/api/authorize/privilege-lists', [])
   await jsonRoute(page, '**/api/authorize/roles', [])
-  await jsonRoute(page, '**/api/authorize/role-options', [])
-  await jsonRoute(page, '**/api/authorize/assignments?*', { items: [], total: 0 })
-  await mount(page, 'core/authorize/pages/index.vue', { privileges: ['READ_PRIVILEGE'] })
-  await expect(page.getByRole('tab', { name: 'Privileges', exact: true })).toHaveAttribute('aria-selected', 'true')
+  await mount(page, 'core/user/pages/users.vue', { route: '/users?tab=roles', privileges: ['READ_USER', 'READ_PRIVILEGE'] })
+  await expect(page.getByRole('heading', { name: 'Users & Permissions', exact: true })).toBeVisible()
+  await expect(page.getByRole('tab', { name: 'Users', exact: true })).toHaveAttribute('aria-selected', 'true')
   await expect(page.getByRole('tab')).toHaveCount(1)
   await setPrivileges(page, ['READ_ASSIGNMENT'])
-  await expect(page.getByRole('tab', { name: 'Assignments', exact: true })).toHaveAttribute('aria-selected', 'true')
-  await expect(page.getByRole('tab')).toHaveCount(1)
+  await expect(page.getByRole('tab')).toHaveCount(0)
   await setPrivileges(page, ['READ_ROLE'])
   await expect(page.getByRole('tab', { name: 'Roles', exact: true })).toHaveAttribute('aria-selected', 'true')
   await expect(page.getByRole('button', { name: 'New role', exact: true })).toHaveCount(0)

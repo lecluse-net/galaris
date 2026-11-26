@@ -1110,7 +1110,7 @@ mise à jour, vérifiez toujours le rôle administrateur et les rôles personnal
 les privilèges de gestion des connexions avec prudence : ils donnent accès à la modification
 de secrets, même si les valeurs ne sont pas retournées en clair.
 
-Dans **Rôles & autorisations → Privilèges**, des rubriques sont installées par défaut à
+Dans **Utilisateurs & Droits → Privilèges**, des rubriques sont installées par défaut à
 la première synchronisation. Leurs libellés suivent la langue de l’interface, y compris
 dans les rôles. Les catégories personnalisées et les rubriques renommées conservent le
 texte saisi. Vous pouvez déplacer les privilèges et supprimer une rubrique avec

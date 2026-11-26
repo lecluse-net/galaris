@@ -392,29 +392,13 @@ Le [guide de navigation](../../user/navigation.md) détaille les onglets, le men
 - Conditions supplémentaires : admin.executor: dynamic
 - Sources : `front/app/console/navigation.ts`
 
-## Administrer → Utilisateurs
+## Administrer → Utilisateurs & Droits
 
-- Route : `/user/users`
-- Usage : Gestion des utilisateurs
-- Visibilité du menu (privilèges) : (READ_USER OR CREATE_USER OR UPDATE_USER OR DELETE_USER)
-- Conditions supplémentaires : —
+- Route : `/users`
+- Usage : Gérer les utilisateurs, les équipes, les rôles et les affectations
+- Visibilité du menu (privilèges) : (READ_USER OR CREATE_USER OR UPDATE_USER OR DELETE_USER OR TEAM_ACCESS OR READ_ROLE OR MANAGE_ROLE OR READ_PRIVILEGE OR MANAGE_PRIVILEGE)
+- Conditions supplémentaires : admin.users: dynamic
 - Sources : `front/core/user/navigation.ts`
-
-## Administrer → Équipes
-
-- Route : `/team`
-- Usage : Les humains et les agents de vos équipes.
-- Visibilité du menu (privilèges) : (TEAM_ACCESS)
-- Conditions supplémentaires : —
-- Sources : `front/core/team/navigation.ts`
-
-## Administrer → Rôles & autorisations
-
-- Route : `/authorize`
-- Usage : Gestion des rôles et privilèges
-- Visibilité du menu (privilèges) : (READ_ROLE OR MANAGE_ROLE OR READ_PRIVILEGE OR MANAGE_PRIVILEGE OR READ_ASSIGNMENT OR MANAGE_ASSIGNMENT)
-- Conditions supplémentaires : —
-- Sources : `front/core/authorize/navigation.ts`
 
 ## Administrer → Plugins
 

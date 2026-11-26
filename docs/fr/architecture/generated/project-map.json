@@ -15600,7 +15600,7 @@
         "declared_path": "/auth/avatars/{avatar_key}",
         "file": "back/core/user/router.py",
         "handler": "read_user_avatar",
-        "line": 412,
+        "line": 413,
         "method": "GET",
         "module": "core.user"
       },
@@ -15609,7 +15609,7 @@
         "declared_path": "/auth/keep-alive",
         "file": "back/core/user/router.py",
         "handler": "keep_alive",
-        "line": 385,
+        "line": 386,
         "method": "POST",
         "module": "core.user"
       },
@@ -15618,7 +15618,7 @@
         "declared_path": "/auth/login",
         "file": "back/core/user/router.py",
         "handler": "login",
-        "line": 210,
+        "line": 211,
         "method": "POST",
         "module": "core.user"
       },
@@ -15627,7 +15627,7 @@
         "declared_path": "/auth/login-json",
         "file": "back/core/user/router.py",
         "handler": "login_json",
-        "line": 234,
+        "line": 235,
         "method": "POST",
         "module": "core.user"
       },
@@ -15636,7 +15636,7 @@
         "declared_path": "/auth/logout",
         "file": "back/core/user/router.py",
         "handler": "logout",
-        "line": 327,
+        "line": 328,
         "method": "POST",
         "module": "core.user"
       },
@@ -15645,7 +15645,7 @@
         "declared_path": "/auth/me",
         "file": "back/core/user/router.py",
         "handler": "delete_user_me",
-        "line": 478,
+        "line": 479,
         "method": "DELETE",
         "module": "core.user"
       },
@@ -15654,7 +15654,7 @@
         "declared_path": "/auth/me",
         "file": "back/core/user/router.py",
         "handler": "read_users_me",
-        "line": 404,
+        "line": 405,
         "method": "GET",
         "module": "core.user"
       },
@@ -15663,7 +15663,7 @@
         "declared_path": "/auth/me",
         "file": "back/core/user/router.py",
         "handler": "update_user_me",
-        "line": 522,
+        "line": 523,
         "method": "PUT",
         "module": "core.user"
       },
@@ -15672,7 +15672,7 @@
         "declared_path": "/auth/me/avatar",
         "file": "back/core/user/router.py",
         "handler": "delete_user_avatar",
-        "line": 466,
+        "line": 467,
         "method": "DELETE",
         "module": "core.user"
       },
@@ -15681,7 +15681,7 @@
         "declared_path": "/auth/me/avatar",
         "file": "back/core/user/router.py",
         "handler": "upload_user_avatar",
-        "line": 429,
+        "line": 430,
         "method": "POST",
         "module": "core.user"
       },
@@ -15690,7 +15690,7 @@
         "declared_path": "/auth/me/help-dismissals",
         "file": "back/core/user/router.py",
         "handler": "list_help_dismissals",
-        "line": 498,
+        "line": 499,
         "method": "GET",
         "module": "core.user"
       },
@@ -15699,7 +15699,7 @@
         "declared_path": "/auth/me/help-dismissals/{help_key}",
         "file": "back/core/user/router.py",
         "handler": "dismiss_help",
-        "line": 511,
+        "line": 512,
         "method": "PUT",
         "module": "core.user"
       },
@@ -15708,7 +15708,7 @@
         "declared_path": "/auth/me/tokens",
         "file": "back/core/user/router.py",
         "handler": "list_my_tokens",
-        "line": 640,
+        "line": 660,
         "method": "GET",
         "module": "core.user"
       },
@@ -15717,7 +15717,7 @@
         "declared_path": "/auth/me/tokens",
         "file": "back/core/user/router.py",
         "handler": "create_my_token",
-        "line": 656,
+        "line": 676,
         "method": "POST",
         "module": "core.user"
       },
@@ -15726,7 +15726,7 @@
         "declared_path": "/auth/me/tokens/{token_id}",
         "file": "back/core/user/router.py",
         "handler": "delete_my_token",
-        "line": 699,
+        "line": 719,
         "method": "DELETE",
         "module": "core.user"
       },
@@ -15735,7 +15735,7 @@
         "declared_path": "/auth/me/tokens/{token_id}",
         "file": "back/core/user/router.py",
         "handler": "update_my_token",
-        "line": 677,
+        "line": 697,
         "method": "PUT",
         "module": "core.user"
       },
@@ -15744,7 +15744,7 @@
         "declared_path": "/auth/mfa/confirm",
         "file": "back/core/user/router.py",
         "handler": "confirm_mfa",
-        "line": 288,
+        "line": 289,
         "method": "POST",
         "module": "core.user"
       },
@@ -15753,7 +15753,7 @@
         "declared_path": "/auth/mfa/disable",
         "file": "back/core/user/router.py",
         "handler": "disable_mfa",
-        "line": 301,
+        "line": 302,
         "method": "POST",
         "module": "core.user"
       },
@@ -15762,7 +15762,7 @@
         "declared_path": "/auth/mfa/recovery-codes",
         "file": "back/core/user/router.py",
         "handler": "regenerate_mfa_recovery_codes",
-        "line": 314,
+        "line": 315,
         "method": "POST",
         "module": "core.user"
       },
@@ -15771,7 +15771,7 @@
         "declared_path": "/auth/mfa/setup",
         "file": "back/core/user/router.py",
         "handler": "setup_mfa",
-        "line": 276,
+        "line": 277,
         "method": "POST",
         "module": "core.user"
       },
@@ -15780,7 +15780,7 @@
         "declared_path": "/auth/mfa/status",
         "file": "back/core/user/router.py",
         "handler": "read_mfa_status",
-        "line": 263,
+        "line": 264,
         "method": "GET",
         "module": "core.user"
       },
@@ -15789,7 +15789,7 @@
         "declared_path": "/auth/refresh",
         "file": "back/core/user/router.py",
         "handler": "refresh_session",
-        "line": 345,
+        "line": 346,
         "method": "POST",
         "module": "core.user"
       },
@@ -15798,7 +15798,7 @@
         "declared_path": "/auth/register",
         "file": "back/core/user/router.py",
         "handler": "register",
-        "line": 135,
+        "line": 136,
         "method": "POST",
         "module": "core.user"
       },
@@ -15807,7 +15807,7 @@
         "declared_path": "/auth/registration-status",
         "file": "back/core/user/router.py",
         "handler": "registration_status",
-        "line": 123,
+        "line": 124,
         "method": "GET",
         "module": "core.user"
       },
@@ -15816,7 +15816,7 @@
         "declared_path": "/auth/users",
         "file": "back/core/user/router.py",
         "handler": "list_users",
-        "line": 552,
+        "line": 553,
         "method": "GET",
         "module": "core.user"
       },
@@ -15825,7 +15825,7 @@
         "declared_path": "/auth/users",
         "file": "back/core/user/router.py",
         "handler": "create_user_endpoint",
-        "line": 569,
+        "line": 589,
         "method": "POST",
         "module": "core.user"
       },
@@ -15834,7 +15834,7 @@
         "declared_path": "/auth/users/{user_id}",
         "file": "back/core/user/router.py",
         "handler": "delete_user_endpoint",
-        "line": 624,
+        "line": 644,
         "method": "DELETE",
         "module": "core.user"
       },
@@ -15843,7 +15843,7 @@
         "declared_path": "/auth/users/{user_id}",
         "file": "back/core/user/router.py",
         "handler": "read_user",
-        "line": 598,
+        "line": 618,
         "method": "GET",
         "module": "core.user"
       },
@@ -15852,7 +15852,7 @@
         "declared_path": "/auth/users/{user_id}",
         "file": "back/core/user/router.py",
         "handler": "update_user_endpoint",
-        "line": 607,
+        "line": 627,
         "method": "PUT",
         "module": "core.user"
       },
@@ -24950,7 +24950,7 @@
       },
       {
         "files": [
-          "front/core/authorize/components/AssignmentManager.vue",
+          "front/core/authorize/components/RoleManager.vue",
           "front/core/authorize/services/authorize.service.ts",
           "front/core/authorize/services/privilege.service.ts",
           "front/core/authorize/stores/authorizeStore.ts"
@@ -24969,8 +24969,6 @@
       },
       {
         "files": [
-          "front/core/authorize/navigation.ts",
-          "front/core/authorize/pages/index.vue",
           "front/core/authorize/pages/profile.vue"
         ],
         "source": "core/authorize",
@@ -24998,12 +24996,10 @@
       },
       {
         "files": [
-          "front/core/authorize/components/AssignmentManager.vue",
           "front/core/authorize/components/PrivilegeListManager.vue",
           "front/core/authorize/components/RoleManager.vue",
           "front/core/authorize/components/UserPreferencesMenu.vue",
           "front/core/authorize/index.ts",
-          "front/core/authorize/pages/index.vue",
           "front/core/authorize/pages/profile.vue"
         ],
         "source": "core/authorize",
@@ -25115,13 +25111,6 @@
       },
       {
         "files": [
-          "front/core/team/navigation.ts"
-        ],
-        "source": "core/team",
-        "target": "core/navigation"
-      },
-      {
-        "files": [
           "front/core/team/components/TeamEditor.vue",
           "front/core/team/components/TeamHumanSummary.vue",
           "front/core/team/userTeams.ts"
@@ -25133,14 +25122,14 @@
         "files": [
           "front/core/team/components/TeamEditor.vue",
           "front/core/team/components/TeamManager.vue",
-          "front/core/team/components/TeamMembersDialog.vue",
-          "front/core/team/pages/index.vue"
+          "front/core/team/components/TeamMembersDialog.vue"
         ],
         "source": "core/team",
         "target": "core/util"
       },
       {
         "files": [
+          "front/core/user/components/UserManager.vue",
           "front/core/user/services/authService.ts",
           "front/core/user/services/helpService.ts",
           "front/core/user/services/tokenService.ts",
@@ -25153,9 +25142,12 @@
       },
       {
         "files": [
+          "front/core/user/access.ts",
           "front/core/user/components/UserAdminAccess.vue",
           "front/core/user/components/UserAdminForm.vue",
+          "front/core/user/components/UserManager.vue",
           "front/core/user/components/UserMenu.vue",
+          "front/core/user/navigation.ts",
           "front/core/user/pages/users.vue"
         ],
         "source": "core/user",
@@ -25192,6 +25184,7 @@
           "front/core/user/components/UserAdminAccess.vue",
           "front/core/user/components/UserAdminForm.vue",
           "front/core/user/components/UserAvatar.vue",
+          "front/core/user/components/UserManager.vue",
           "front/core/user/components/UserMenu.vue",
           "front/core/user/contextHelp.ts",
           "front/core/user/index.ts",
@@ -25614,7 +25607,7 @@
           {
             "file": "front/core/user/pages/users.vue",
             "module": "core/user",
-            "route_hint": "/user/users"
+            "route_hint": "/users"
           }
         ],
         "path": "front/core/user"
@@ -25623,7 +25616,6 @@
         "capabilities": [
           "components",
           "i18n.ts",
-          "navigation.ts",
           "pages",
           "services"
         ],
@@ -25643,7 +25635,6 @@
         "capabilities": [
           "components",
           "i18n.ts",
-          "navigation.ts",
           "pages",
           "presentation.ts",
           "services",
@@ -26739,7 +26730,7 @@
       {
         "file": "front/core/user/pages/users.vue",
         "module": "core/user",
-        "route_hint": "/user/users"
+        "route_hint": "/users"
       }
     ]
   },

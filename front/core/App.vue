@@ -9,11 +9,12 @@ import { useBrowserTheme } from '../quasar-user-options'
 import { provideContextHelp } from './user/facade'
 import { MainLayout } from '@/app/index'
 import { useAuthStore } from './user/facade'
-import { useAuthorizeStore, usePrivilegeStore } from './authorize'
+import { configurePrivilegeCatalogue, useAuthorizeStore, usePrivilegeStore } from './authorize'
 import { settings } from './settings'
 
 useBrowserTheme()
 useMeta({ title: settings.APP_LABEL })
+configurePrivilegeCatalogue(settings.is_dev)
 const authStore = useAuthStore()
 provideContextHelp()
 const authorizeStore = useAuthorizeStore()

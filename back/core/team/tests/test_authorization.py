@@ -34,6 +34,9 @@ async def test_human_selection_exposes_only_directory_scope_and_orders_live_memb
     assert (outside in people) is (privilege is not None)
     if privilege is None:
         assert set(people) == {own}
+    own_only = await client.get(url, params={"self_only": True}, headers=headers)
+    assert own_only.status_code == 200
+    assert own_only.json() == [{'id': own, 'teams': expected}]
 
 
 @pytest.mark.asyncio

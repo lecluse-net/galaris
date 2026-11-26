@@ -2600,105 +2600,46 @@
     {
       "id": "admin.users",
       "labels": {
-        "fr": "Utilisateurs",
-        "en": "Users"
+        "fr": "Utilisateurs & Droits",
+        "en": "Users & Permissions"
       },
       "breadcrumbs": {
         "fr": [
           "Administrer",
-          "Utilisateurs"
+          "Utilisateurs & Droits"
         ],
         "en": [
           "Administer",
-          "Users"
+          "Users & Permissions"
         ]
       },
-      "route": "/user/users",
+      "route": "/users",
       "href": null,
       "description": {
-        "fr": "Gestion des utilisateurs",
-        "en": "User management"
+        "fr": "Gérer les utilisateurs, les équipes, les rôles et les affectations",
+        "en": "Manage users, teams, roles and assignments"
       },
       "privilege_groups": [
         [
           "READ_USER",
           "CREATE_USER",
           "UPDATE_USER",
-          "DELETE_USER"
-        ]
-      ],
-      "conditions": [],
-      "sources": [
-        "front/core/user/navigation.ts"
-      ]
-    },
-    {
-      "id": "admin.teams",
-      "labels": {
-        "fr": "Équipes",
-        "en": "Teams"
-      },
-      "breadcrumbs": {
-        "fr": [
-          "Administrer",
-          "Équipes"
-        ],
-        "en": [
-          "Administer",
-          "Teams"
-        ]
-      },
-      "route": "/team",
-      "href": null,
-      "description": {
-        "fr": "Les humains et les agents de vos équipes.",
-        "en": "The humans and agents in your teams."
-      },
-      "privilege_groups": [
-        [
-          "TEAM_ACCESS"
-        ]
-      ],
-      "conditions": [],
-      "sources": [
-        "front/core/team/navigation.ts"
-      ]
-    },
-    {
-      "id": "admin.authorizations",
-      "labels": {
-        "fr": "Rôles & autorisations",
-        "en": "Roles & permissions"
-      },
-      "breadcrumbs": {
-        "fr": [
-          "Administrer",
-          "Rôles & autorisations"
-        ],
-        "en": [
-          "Administer",
-          "Roles & permissions"
-        ]
-      },
-      "route": "/authorize",
-      "href": null,
-      "description": {
-        "fr": "Gestion des rôles et privilèges",
-        "en": "Role and privilege management"
-      },
-      "privilege_groups": [
-        [
+          "DELETE_USER",
+          "TEAM_ACCESS",
           "READ_ROLE",
           "MANAGE_ROLE",
           "READ_PRIVILEGE",
-          "MANAGE_PRIVILEGE",
-          "READ_ASSIGNMENT",
-          "MANAGE_ASSIGNMENT"
+          "MANAGE_PRIVILEGE"
         ]
       ],
-      "conditions": [],
+      "conditions": [
+        {
+          "node": "admin.users",
+          "visibility": "dynamic"
+        }
+      ],
       "sources": [
-        "front/core/authorize/navigation.ts"
+        "front/core/user/navigation.ts"
       ]
     },
     {

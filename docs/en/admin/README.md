@@ -1077,7 +1077,7 @@ update, always verify the administrator role and custom roles. Grant connection-
 privileges carefully: they provide access to modifying secrets, even though the values are not
 returned in clear text.
 
-In **Roles & permissions → Privileges**, default categories are installed on the
+In **Users & Permissions → Privileges**, default categories are installed on the
 first synchronization. Their labels follow the interface language, including within
 roles. Custom categories and renamed categories preserve the entered text. With
 `MANAGE_PRIVILEGE`, you can move privileges and delete a category: its privileges become

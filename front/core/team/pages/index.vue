@@ -1,7 +1,9 @@
-<template><q-page class="q-pa-md"><PageHeader icon="groups" :title="t('team.title')" :description="t('team.intro')" /><TeamManager /></q-page></template>
+<template><span /></template>
+
 <script setup lang="ts">
-import { useI18n } from 'vue-i18n'
-import { PageHeader } from '@/core/util'
-import TeamManager from '../components/TeamManager.vue'
-const { t } = useI18n()
+import { definePage } from 'vue-router/experimental'
+
+definePage({
+  redirect: to => ({ path: '/users', query: { ...to.query, tab: 'teams' }, hash: to.hash }),
+})
 </script>

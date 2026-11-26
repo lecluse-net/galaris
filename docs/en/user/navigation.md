@@ -126,7 +126,7 @@ requires `SERVICE_ACCESS` or `SERVICE_EDIT`.
 | **Act** | Chat, Goals, Processes |
 | **Knowledge** | Documents, Files, Memory, Agenda, Contacts, Thematic dossiers |
 | **Monitor** | Dashboard, Activity, Dream, Permissions, Mail journal, Failure journal |
-| **Administer** | Preferences, Laboratory, Console, Users, Teams, Roles & permissions, Plugins |
+| **Administer** | Preferences, Laboratory, Console, Users & Permissions, Plugins |
 | **Developers** (dev mode only) | Visual reference, Tool inventory |
 
 Technical documentation may refer to “Tasks”, “Conversations” or “AI Lab”. Tasks and
@@ -879,8 +879,14 @@ Useful distinctions:
   LLM/voice preferences are also managed through a web session. API tokens cannot
   create, update or delete accounts through administrative routes. The usual
   privileges are still required in the web application.
-- **Administer → Roles & permissions** (`/authorize`) manages user permissions;
-  agent dialogue permissions also involve [teams](teams.md), accessible at `/team`.
+- **Administer → Users & Permissions** (`/users`) groups accounts, teams and roles.
+  On **Users**, search by name or email and combine the **Role**, **Team** and **Status**
+  filters. Manage assignments in the account editor. On the
+  **Roles** tab, select a role at the top of the page and click a privilege row or its
+  switch to change it. Each change is saved immediately. The role buttons stay visible
+  while the list scrolls. The **Privileges** tab for organizing
+  categories is available in development mode. Open **Teams** (`/users?tab=teams`)
+  to manage [teams and their members](teams.md).
 
 ## A menu or button is missing
 

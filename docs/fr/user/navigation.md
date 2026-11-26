@@ -140,7 +140,7 @@ Les valeurs secrètes sont masquées. La consultation nécessite `SERVICE_ACCESS
 | **Agir** | Discussion, Objectifs, Processus |
 | **Connaissances** | Documents, Fichiers, Mémoire, Agenda, Contacts, Sujets |
 | **Superviser** | Tableau de bord, Activité, Dream, Permissions, Journal des mails, Journal des échecs |
-| **Administrer** | Préférences, Laboratoire, Console, Utilisateurs, Équipes, Rôles & autorisations, Plugins |
+| **Administrer** | Préférences, Laboratoire, Console, Utilisateurs & Droits, Plugins |
 | **Développeurs** (mode dev uniquement) | Référence graphique, Inventaire des outils |
 
 Dans la documentation technique, « Chat » correspond au menu **Discussion**,
@@ -953,9 +953,14 @@ Quelques distinctions utiles :
   et les préférences personnelles LLM/voix se gèrent également en session web.
   Les jetons API ne peuvent pas créer, modifier ou supprimer un compte via les routes
   d’administration. Les privilèges habituels restent nécessaires dans l’interface web.
-- **Administrer → Rôles & autorisations** (`/authorize`) gère les autorisations des
-  utilisateurs ; les droits de dialogue avec les agents passent aussi par les
-  [équipes](teams.md), accessibles dans `/team`.
+- **Administrer → Utilisateurs & Droits** (`/users`) réunit les comptes, les équipes et les
+  rôles. Dans **Utilisateurs**, recherchez un nom ou un e-mail et combinez les filtres
+  **Rôle**, **Équipe** et **Statut**. Les affectations se gèrent dans la fiche du compte.
+  Dans **Rôles**, sélectionnez un rôle en haut de la page, puis activez ou
+  désactivez ses privilèges en cliquant sur leur ligne ou leur interrupteur. Chaque
+  changement est enregistré immédiatement. Seule la liste défile, avec les rôles en haut.
+  L’onglet **Privilèges**, qui organise les catégories, est réservé au mode développement.
+  L’onglet **Équipes** (`/users?tab=teams`) gère les [équipes et leurs membres](teams.md).
 
 ## Un menu ou un bouton manque
 

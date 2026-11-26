@@ -156,6 +156,39 @@ async def test_initialization_failure_rolls_back_categories_assignments_and_rece
 
 
 @pytest.mark.asyncio
+async def test_role_editor_catalogue_and_privilege_changes(client):
+    manager, _ = await actor(["MANAGE_ROLE"])
+    reader, _ = await actor(["READ_ROLE"])
+    unrelated, _ = await actor([])
+    async with get_db_session() as db:
+        privilege = Privilege(code=f"ROLE_EDITOR_{uuid4().hex.upper()}")
+        db.add(privilege)
+        await db.flush()
+        privilege_id = privilege.id
+
+    catalogue_path = "/api/authorize/privileges"
+    assert (await client.get(catalogue_path, headers=unrelated)).status_code == 403
+    catalogue = await client.get(catalogue_path, headers=reader)
+    assert catalogue.status_code == 200
+    assert any(item["id"] == privilege_id and item["privilege_list_id"] is None for item in catalogue.json())
+
+    role = await client.post("/api/authorize/roles", headers=manager, json={"code": f"ROLE_EDITOR_{uuid4().hex.upper()}"})
+    assert role.status_code == 201
+    role_path = f"/api/authorize/roles/{role.json()['id']}"
+    grants_path = f"{role_path}/privileges"
+    payload = {"privilege_ids": [privilege_id]}
+    assert (await client.post(grants_path, headers=reader, json=payload)).status_code == 403
+    assert (await client.post(grants_path, headers=manager, json=payload)).status_code == 200
+    saved = await client.get(role_path, headers=reader)
+    assert [item["id"] for item in saved.json()["privileges"]] == [privilege_id]
+
+    assert (await client.request("DELETE", grants_path, headers=reader, json=payload)).status_code == 403
+    assert (await client.request("DELETE", grants_path, headers=manager, json=payload)).status_code == 200
+    saved = await client.get(role_path, headers=reader)
+    assert saved.json()["privileges"] == []
+
+
+@pytest.mark.asyncio
 async def test_admin_can_delete_a_default_without_recreation_or_reassignment(client):
     reader, _ = await actor(["READ_PRIVILEGE"])
     admin, _ = await actor(["MANAGE_PRIVILEGE"])

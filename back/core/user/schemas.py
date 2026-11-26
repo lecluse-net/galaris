@@ -78,6 +78,27 @@ class User(UserBase):
 
     model_config = ConfigDict(from_attributes=True)
 
+
+class UserListRole(BaseModel):
+    id: int
+    code: str
+    display_name: str | None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class UserListTeam(BaseModel):
+    id: int
+    name: str
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class UserListEntry(User):
+    assignments: list[UserListRole] | None = None
+    teams: list[UserListTeam] | None = None
+
+
 class Token(BaseModel):
     access_token: str
     token_type: str

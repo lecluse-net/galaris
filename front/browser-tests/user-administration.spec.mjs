@@ -1,5 +1,36 @@
 import { test, expect, jsonRoute, mount, setPrivileges } from './fixtures.mjs'
 
+test('the user directory combines text, role, team and status on the server', async ({ page }) => {
+  await jsonRoute(page, '**/api/authorize/role-options', [{ id: 11, code: 'SYNTHETIC_READER', display_name: 'Reader' }])
+  await jsonRoute(page, '**/api/teams', [{ id: 21, name: 'Research' }])
+  const requests = []
+  await page.route('**/api/auth/users?*', route => {
+    const filters = Object.fromEntries(new URL(route.request().url()).searchParams)
+    requests.push(filters)
+    const match = filters.search === 'archived' && filters.role_id === '11'
+      && filters.team_id === '21' && filters.is_active === 'false'
+    return route.fulfill({
+      headers: { 'x-total-count': match ? '1' : '0' },
+      json: match ? [{ id: 23, email: 'archived@example.invalid', display_name: 'Archived user',
+        is_active: false, created_at: '2026-01-01T00:00:00Z' }] : [],
+    })
+  })
+  await mount(page, 'core/user/pages/users.vue', {
+    route: '/users', privileges: ['READ_USER', 'READ_ASSIGNMENT', 'TEAM_ACCESS'],
+  })
+  await expect(page.getByRole('tab', { name: 'Assignments', exact: true })).toHaveCount(0)
+  await page.getByRole('textbox', { name: 'Search', exact: true }).fill('archived')
+  for (const [field, value] of [['Role', 'Reader'], ['Team', 'Research'], ['Status', 'Inactive']]) {
+    await page.getByRole('combobox', { name: field, exact: true }).click()
+    await page.getByRole('option', { name: value, exact: true }).click()
+  }
+  await expect(page.getByText('archived@example.invalid', { exact: true })).toBeVisible()
+  expect(requests.at(-1)).toMatchObject({ search: 'archived', role_id: '11', team_id: '21', is_active: 'false', skip: '0' })
+  await page.getByRole('textbox', { name: 'Search', exact: true }).fill('')
+  await expect(page.getByText('archived@example.invalid', { exact: true })).toHaveCount(0)
+  expect(requests.at(-1)).not.toHaveProperty('search')
+})
+
 async function stubUserModels(page, userId) {
   await jsonRoute(page, '**/api/llm/me/options', {
     profiles: [{ id: 17, label: 'Research profile' }], current_profile_id: null, voices: [], native_voices: [],
@@ -8,16 +39,26 @@ async function stubUserModels(page, userId) {
 }
 
 for (const width of [1440, 390]) {
-  test(`user row editing respects privileges and keeps deletion separate (${width}px)`, async ({ page }) => {
+  test(`user row editing respects privileges and keeps deletion separate (${width}px)`, async ({ page }, testInfo) => {
     const email = 'synthetic.user@example.invalid'
     await page.setViewportSize({ width, height: 900 })
     await stubUserModels(page, 23)
-    await page.route('**/api/auth/users?*', route => route.fulfill({
-      headers: { 'x-total-count': '1' },
-      json: [{ id: 23, email, display_name: 'Synthetic User', is_active: true, created_at: '2026-01-01T00:00:00Z' }],
-    }))
+    await jsonRoute(page, '**/api/authorize/role-options', [])
+    await jsonRoute(page, '**/api/teams', [])
+    await jsonRoute(page, '**/api/teams?user_id=23', [])
+    await page.route('**/api/auth/users?*', route => {
+      const memberships = new URL(route.request().url()).searchParams.get('include_access') === 'true'
+        ? { assignments: [{ id: 11, code: 'synthetic-reader', display_name: 'Reader' }], teams: [] }
+        : {}
+      return route.fulfill({
+        headers: { 'x-total-count': '1' },
+        json: [{ id: 23, email, display_name: 'Synthetic User', is_active: true, created_at: '2026-01-01T00:00:00Z',
+          ...memberships }],
+      })
+    })
     await mount(page, 'core/user/pages/users.vue', {
-      route: '/user/users', shell: true, dark: width < 1024, privileges: ['READ_USER', 'UPDATE_USER', 'DELETE_USER'],
+      route: '/users', shell: true, dark: width < 1024,
+      privileges: ['READ_USER', 'UPDATE_USER', 'DELETE_USER', 'READ_ASSIGNMENT', 'TEAM_ACCESS'],
     })
     if (width < 1024) {
       await page.locator('.q-drawer__backdrop').click({ position: { x: width - 10, y: 200 } })
@@ -25,12 +66,18 @@ for (const width of [1440, 390]) {
 
     const user = page.getByText(email, { exact: true })
     const dialog = page.getByRole('dialog')
+    await expect(page.getByText('Reader', { exact: true })).toBeVisible()
+    await expect(page.getByText('No teams', { exact: true })).toBeVisible()
+    await page.screenshot({ animations: 'disabled', path: testInfo.outputPath('users-list.png') })
     await user.click()
     await expect(dialog.getByLabel('Email', { exact: true })).toHaveValue(email)
+    await expect(dialog.getByLabel('LLM profile', { exact: true })).toBeEnabled()
     await page.keyboard.press('Escape')
     await expect(dialog).toHaveCount(0)
 
     await setPrivileges(page, ['READ_USER', 'DELETE_USER'])
+    await expect(page.getByText('Reader', { exact: true })).toHaveCount(0)
+    await expect(page.getByText('No teams', { exact: true })).toHaveCount(0)
     await user.click()
     await expect(dialog).toHaveCount(0)
     await setPrivileges(page, ['READ_USER', 'UPDATE_USER', 'DELETE_USER'])
@@ -43,6 +90,7 @@ for (const width of [1440, 390]) {
 
     await page.getByRole('button', { name: 'Edit', exact: true }).press('Enter')
     await expect(dialog.getByLabel('Email', { exact: true })).toHaveValue(email)
+    await expect(dialog.getByLabel('LLM profile', { exact: true })).toBeEnabled()
   })
 }
 
@@ -73,7 +121,10 @@ test('creates a user with assignments and teams, then manages their saved access
     return route.fulfill({ json: assignments[0] })
   })
   await page.route('**/api/auth/users?*', route => route.fulfill({
-    headers: { 'x-total-count': created ? '1' : '0' }, json: created ? [user] : [],
+    headers: { 'x-total-count': created ? '1' : '0' },
+    json: created ? [{
+      ...user, assignments: assignments.map(entry => entry.role), teams: teams.filter(team => teamIds.includes(team.id)),
+    }] : [],
   }))
   await page.route('**/api/auth/users', route => {
     const data = route.request().postDataJSON()
@@ -90,7 +141,7 @@ test('creates a user with assignments and teams, then manages their saved access
   })
 
   await mount(page, 'core/user/pages/users.vue', {
-    route: '/user/users', shell: true,
+    route: '/users', shell: true,
     privileges: ['READ_USER', 'CREATE_USER', 'UPDATE_USER', 'MANAGE_ASSIGNMENT', 'TEAM_ACCESS', 'TEAM_MEMBERS_EDIT'],
   })
   const dialog = page.getByRole('dialog')
@@ -130,6 +181,9 @@ test('creates a user with assignments and teams, then manages their saved access
   await expect(dialog.getByRole('cell', { name: 'Research', exact: true })).toBeVisible()
   await dialog.getByRole('button', { name: 'Create', exact: true }).click()
   await expect(dialog).toHaveCount(0)
+  await expect(page.getByText('Reader', { exact: true })).toBeVisible()
+  await expect(page.getByText('Editor', { exact: true })).toBeVisible()
+  await expect(page.getByText('Research', { exact: true })).toBeVisible()
 
   const reopen = async () => {
     await page.getByRole('button', { name: 'Edit', exact: true }).click()
@@ -149,6 +203,8 @@ test('creates a user with assignments and teams, then manages their saved access
   await addOption('Support', 'Add team')
   await dialog.getByRole('button', { name: 'Cancel', exact: true }).click()
   await expect(dialog).toHaveCount(0)
+  await expect(page.getByText('Support', { exact: true })).toBeVisible()
+  await expect(page.getByText('Research', { exact: true })).toHaveCount(0)
   await reopen()
   await expect(readerDefault).toBeChecked()
   await expect(dialog.getByRole('cell', { name: 'Support', exact: true })).toBeVisible()

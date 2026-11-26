@@ -392,29 +392,13 @@ The [navigation guide](../../user/navigation.md) explains tabs, the account menu
 - Additional conditions : admin.executor: dynamic
 - Sources : `front/app/console/navigation.ts`
 
-## Administer → Users
+## Administer → Users & Permissions
 
-- Route : `/user/users`
-- Purpose : User management
-- Menu visibility (privileges) : (READ_USER OR CREATE_USER OR UPDATE_USER OR DELETE_USER)
-- Additional conditions : —
+- Route : `/users`
+- Purpose : Manage users, teams, roles and assignments
+- Menu visibility (privileges) : (READ_USER OR CREATE_USER OR UPDATE_USER OR DELETE_USER OR TEAM_ACCESS OR READ_ROLE OR MANAGE_ROLE OR READ_PRIVILEGE OR MANAGE_PRIVILEGE)
+- Additional conditions : admin.users: dynamic
 - Sources : `front/core/user/navigation.ts`
-
-## Administer → Teams
-
-- Route : `/team`
-- Purpose : The humans and agents in your teams.
-- Menu visibility (privileges) : (TEAM_ACCESS)
-- Additional conditions : —
-- Sources : `front/core/team/navigation.ts`
-
-## Administer → Roles & permissions
-
-- Route : `/authorize`
-- Purpose : Role and privilege management
-- Menu visibility (privileges) : (READ_ROLE OR MANAGE_ROLE OR READ_PRIVILEGE OR MANAGE_PRIVILEGE OR READ_ASSIGNMENT OR MANAGE_ASSIGNMENT)
-- Additional conditions : —
-- Sources : `front/core/authorize/navigation.ts`
 
 ## Administer → Plugins
 

@@ -42,9 +42,10 @@ const cases = [
   ['DOCUMENT_ADMIN', '/documents'], ['DATASET_ADMIN', '/dataset', ['DOCUMENT_ADMIN']], ['MEMORY_ADMIN', '/memory'],
   ['PROCESS_ADMIN', '/process'], ['SKILL_ASSIGN', '/skill'], ['PERMISSION_REVOKE', '/permissions'],
   ['INCIDENT_ACCESS', '/incident'], ['INCIDENT_EDIT', '/incident'],
-  ...['READ_USER', 'CREATE_USER', 'UPDATE_USER', 'DELETE_USER'].map(code => [code, '/user/users']),
-  ...['READ_ROLE', 'MANAGE_ROLE', 'READ_PRIVILEGE', 'MANAGE_PRIVILEGE', 'READ_ASSIGNMENT', 'MANAGE_ASSIGNMENT'].map(code => [code, '/authorize']),
-  ['TEAM_ACCESS', '/team'], ['TEAM_EDIT', '/team', ['TEAM_ACCESS']], ['TEAM_MEMBERS_EDIT', '/team', ['TEAM_ACCESS']],
+  ...['READ_USER', 'CREATE_USER', 'UPDATE_USER', 'DELETE_USER',
+    'READ_ROLE', 'MANAGE_ROLE', 'READ_PRIVILEGE', 'MANAGE_PRIVILEGE', 'READ_ASSIGNMENT', 'MANAGE_ASSIGNMENT',
+  ].map(code => [code, '/users']),
+  ['TEAM_ACCESS', '/team'], ['TEAM_EDIT', '/users?tab=teams', ['TEAM_ACCESS']], ['TEAM_MEMBERS_EDIT', '/users?tab=teams', ['TEAM_ACCESS']],
   ...[
     ['EVALUATION', 'ai-evaluations'], ['PROCESS_EVALUATION', 'processes'],
     ['DISPATCHER_EVALUATION', 'dispatcher'], ['PLANNER_EVALUATION', 'planner'],
@@ -125,6 +126,10 @@ for (const [code, path] of cases) test(`${code} opens its function without neigh
     await expect(page).toHaveURL(url => url.pathname === '/documents' && url.searchParams.get('type') === 'data')
   } else if (path === '/params/audio') {
     await expect(page).toHaveURL(url => url.pathname === '/params/instructions')
+  } else if (path === '/team') {
+    await expect(page).toHaveURL(url => url.pathname === '/users' && url.searchParams.get('tab') === 'teams')
+    await expect(page.getByRole('tab', { name: 'Teams', exact: true })).toHaveAttribute('aria-selected', 'true')
+    await expect(page.getByRole('tab')).toHaveCount(1)
   } else {
     await expect(page).toHaveURL(new RegExp(new URL(path, 'http://test').pathname.replaceAll('/', '\\/')))
   }

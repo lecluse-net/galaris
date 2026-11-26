@@ -459,15 +459,25 @@ assemblée avec conservation du prix saisi, clavier et vues ordinateur/mobile.
 `core/authorize/tests/test_default_lists.py` vérifie l’installation des rubriques par défaut,
 la reprise des regroupements existants, le rollback et la conservation des renommages,
 déplacements et suppressions après synchronisation, avec refus HTTP pour un lecteur.
+Il vérifie aussi l’accès au catalogue avec `READ_ROLE` et la persistance des ajouts et
+retraits avec `MANAGE_ROLE`.
 `front/browser-tests/privilege-lists.spec.mjs` couvre les libellés traduits, les textes
-personnalisés, l’édition sans perte de la clé et les groupes dans les rôles, sur mobile et ordinateur.
-`e2e/specs/privilege-categories.spec.mjs` vérifie dans l’application assemblée les
-rubriques installées, l’édition traduite et la création personnalisée après rechargement.
+personnalisés et l’édition des catégories sans perte de la clé. Il vérifie aussi l’accès à
+l’onglet **Privilèges** en développement et la reprise après un échec d’enregistrement sur un rôle.
+`e2e/specs/privilege-categories.spec.mjs` vérifie l’accès à **Utilisateurs & Droits** depuis
+l’ancienne adresse, les rubriques installées et l’absence de l’onglet **Privilèges**
+en production. Sur mobile et ordinateur, il exerce le défilement de la liste sous
+un en-tête fixe et les modifications par clic ou au clavier, avec rechargement de la page.
 `app/chat/tests/test_dbadmin.py` vérifie aussi que les contributions Chat et Authorize
 réunies ne recréent ni l’ancienne catégorie Chat ni les affectations retirées. L’ancien test
 imposant ce regroupement propre au Chat est remplacé par cette garantie administrable.
 
 ## Domaines fonctionnels RBAC et projection des rôles
+
+`core/user/tests/test_admin_invariants.py` vérifie les filtres utilisateurs combinés avant
+pagination, le total filtré et le refus des filtres sur des appartenances non autorisées.
+`front/browser-tests/user-administration.spec.mjs` exerce la recherche et les trois
+filtres dans **Utilisateurs**, ainsi que la modification des affectations dans la fiche.
 
 `core/authorize/tests/test_domain_authorization.py` exerce les vraies routes avec lecteurs,
 opérateurs, anciens droits seuls et droits voisins : Contacts, indexation, tableau de bord,

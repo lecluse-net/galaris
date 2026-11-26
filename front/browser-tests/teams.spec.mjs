@@ -97,7 +97,9 @@ async function addMember(page, kind, name) {
 
 test('team list shows members with avatars and readers can inspect the dialog without editing', async ({ page }) => {
   await teamFixtures(page, { many: true })
-  await mount(page, 'core/team/components/TeamManager.vue', { privileges: ['TEAM_ACCESS'] })
+  await mount(page, 'core/user/pages/users.vue', { route: '/users', privileges: ['TEAM_ACCESS'] })
+  await expect(page.getByRole('tab', { name: 'Teams', exact: true })).toHaveAttribute('aria-selected', 'true')
+  await expect(page.getByRole('tab')).toHaveCount(1)
   const sales = page.getByRole('row').filter({ hasText: 'Sales' })
   await expect(sales.getByRole('img', { name: 'Sophie', exact: true })).toBeVisible()
   await expect(sales.getByRole('img', { name: 'Atlas', exact: true })).toBeVisible()
@@ -124,7 +126,7 @@ for (const viewport of [{ width: 1400, height: 1000 }, { width: 390, height: 850
   test(`team editing stages both types of members until save and preserves cancellation at ${viewport.width}`, async ({ page }) => {
     await page.setViewportSize(viewport)
     const writes = await teamFixtures(page, { many: true })
-    await mount(page, 'core/team/pages/index.vue', { route: '/team', shell: true, privileges: ['TEAM_ACCESS', 'TEAM_EDIT', 'TEAM_MEMBERS_EDIT'] })
+    await mount(page, 'core/user/pages/users.vue', { route: '/users?tab=teams', shell: true, privileges: ['TEAM_ACCESS', 'TEAM_EDIT', 'TEAM_MEMBERS_EDIT'] })
     if (viewport.width < 1024) {
       await page.locator('.q-drawer__backdrop').click({ position: { x: viewport.width - 10, y: 200 } })
     }

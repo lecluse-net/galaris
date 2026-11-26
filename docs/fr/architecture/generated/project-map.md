@@ -12,7 +12,7 @@ tests restent l’autorité sur le comportement.
 - 80 modules backend déclarés ;
 - 41 modules frontend déclarés ;
 - 656 arêtes de dépendance backend ;
-- 231 arêtes de dépendance frontend ;
+- 230 arêtes de dépendance frontend ;
 - 309 arêtes entre domaines `app`/`bridge` ;
 - 30 paires de domaines directement bidirectionnelles ;
 - 1 composantes fortement connexes ;
@@ -112,8 +112,8 @@ tests restent l’autorité sur le comportement.
 | Module | Existe | Capacités | Pages |
 |---|---:|---|---:|
 | `core/user` | oui | `components`, `i18n.ts`, `navigation.ts`, `pages`, `services`, `stores` | 4 |
-| `core/team` | oui | `components`, `i18n.ts`, `navigation.ts`, `pages`, `services` | 1 |
-| `core/authorize` | oui | `components`, `i18n.ts`, `navigation.ts`, `pages`, `presentation.ts`, `services`, `stores` | 2 |
+| `core/team` | oui | `components`, `i18n.ts`, `pages`, `services` | 1 |
+| `core/authorize` | oui | `components`, `i18n.ts`, `pages`, `presentation.ts`, `services`, `stores` | 2 |
 | `core/params` | oui | `components`, `i18n.ts`, `navigation.ts`, `pages`, `presentation.ts`, `services`, `stores` | 3 |
 | `app/index` | oui | `components`, `i18n.ts`, `navigation.ts`, `pages`, `presentation.ts`, `services`, `stores` | 11 |
 | `app/agent` | oui | `components`, `i18n.ts`, `navigation.ts`, `services`, `stores` | 0 |
@@ -1021,12 +1021,12 @@ tests restent l’autorité sur le comportement.
 | `core/App` | `core/settings` | `front/core/App.vue` |
 | `core/App` | `core/user` | `front/core/App.vue` |
 | `core/api` | `core/i18n` | `front/core/api.ts` |
-| `core/authorize` | `core/api` | `front/core/authorize/components/AssignmentManager.vue`, `front/core/authorize/services/authorize.service.ts`, `front/core/authorize/services/privilege.service.ts`, `front/core/authorize/stores/authorizeStore.ts` |
+| `core/authorize` | `core/api` | `front/core/authorize/components/RoleManager.vue`, `front/core/authorize/services/authorize.service.ts`, `front/core/authorize/services/privilege.service.ts`, `front/core/authorize/stores/authorizeStore.ts` |
 | `core/authorize` | `core/i18n` | `front/core/authorize/components/UserPreferencesMenu.vue`, `front/core/authorize/pages/profile.vue`, `front/core/authorize/presentation.ts` |
-| `core/authorize` | `core/navigation` | `front/core/authorize/navigation.ts`, `front/core/authorize/pages/index.vue`, `front/core/authorize/pages/profile.vue` |
+| `core/authorize` | `core/navigation` | `front/core/authorize/pages/profile.vue` |
 | `core/authorize` | `core/theme` | `front/core/authorize/components/UserPreferencesMenu.vue`, `front/core/authorize/pages/profile.vue` |
 | `core/authorize` | `core/user` | `front/core/authorize/components/AssignmentMenu.vue`, `front/core/authorize/components/UserPreferencesMenu.vue`, `front/core/authorize/pages/profile.vue`, `front/core/authorize/services/authorize.service.ts`, `front/core/authorize/stores/authorizeStore.ts`, `front/core/authorize/stores/privilegeStore.ts` |
-| `core/authorize` | `core/util` | `front/core/authorize/components/AssignmentManager.vue`, `front/core/authorize/components/PrivilegeListManager.vue`, `front/core/authorize/components/RoleManager.vue`, `front/core/authorize/components/UserPreferencesMenu.vue`, `front/core/authorize/index.ts`, `front/core/authorize/pages/index.vue`, `front/core/authorize/pages/profile.vue` |
+| `core/authorize` | `core/util` | `front/core/authorize/components/PrivilegeListManager.vue`, `front/core/authorize/components/RoleManager.vue`, `front/core/authorize/components/UserPreferencesMenu.vue`, `front/core/authorize/index.ts`, `front/core/authorize/pages/profile.vue` |
 | `core/main` | `app/index` | `front/core/main.ts` |
 | `core/main` | `app/style` | `front/core/main.ts` |
 | `core/main` | `core/App` | `front/core/main.ts` |
@@ -1038,15 +1038,14 @@ tests restent l’autorité sur le comportement.
 | `core/params` | `core/util` | `front/core/params/components/MessagingSettingsPanel.vue`, `front/core/params/components/PreferencesMenuGrid.vue`, `front/core/params/components/PreferencesSectionPage.vue`, `front/core/params/components/PromptSettingEditor.vue`, `front/core/params/components/SettingFieldControl.vue`, `front/core/params/pages/harnesses/[provider].vue`, `front/core/params/pages/index.vue`, `front/core/params/services/paramsService.ts`, `front/core/params/settingsTypes.ts`, `front/core/params/stores/paramsStore.ts` |
 | `core/team` | `core/api` | `front/core/team/components/TeamEditor.vue`, `front/core/team/services/teamService.ts` |
 | `core/team` | `core/authorize` | `front/core/team/components/TeamEditor.vue`, `front/core/team/components/TeamManager.vue`, `front/core/team/components/TeamMembersDialog.vue` |
-| `core/team` | `core/navigation` | `front/core/team/navigation.ts` |
 | `core/team` | `core/user` | `front/core/team/components/TeamEditor.vue`, `front/core/team/components/TeamHumanSummary.vue`, `front/core/team/userTeams.ts` |
-| `core/team` | `core/util` | `front/core/team/components/TeamEditor.vue`, `front/core/team/components/TeamManager.vue`, `front/core/team/components/TeamMembersDialog.vue`, `front/core/team/pages/index.vue` |
-| `core/user` | `core/api` | `front/core/user/services/authService.ts`, `front/core/user/services/helpService.ts`, `front/core/user/services/tokenService.ts`, `front/core/user/services/userService.ts`, `front/core/user/stores/authStore.ts`, `front/core/user/stores/helpStore.ts` |
-| `core/user` | `core/authorize` | `front/core/user/components/UserAdminAccess.vue`, `front/core/user/components/UserAdminForm.vue`, `front/core/user/components/UserMenu.vue`, `front/core/user/pages/users.vue` |
+| `core/team` | `core/util` | `front/core/team/components/TeamEditor.vue`, `front/core/team/components/TeamManager.vue`, `front/core/team/components/TeamMembersDialog.vue` |
+| `core/user` | `core/api` | `front/core/user/components/UserManager.vue`, `front/core/user/services/authService.ts`, `front/core/user/services/helpService.ts`, `front/core/user/services/tokenService.ts`, `front/core/user/services/userService.ts`, `front/core/user/stores/authStore.ts`, `front/core/user/stores/helpStore.ts` |
+| `core/user` | `core/authorize` | `front/core/user/access.ts`, `front/core/user/components/UserAdminAccess.vue`, `front/core/user/components/UserAdminForm.vue`, `front/core/user/components/UserManager.vue`, `front/core/user/components/UserMenu.vue`, `front/core/user/navigation.ts`, `front/core/user/pages/users.vue` |
 | `core/user` | `core/i18n` | `front/core/user/stores/authStore.ts`, `front/core/user/stores/tokenStore.ts` |
 | `core/user` | `core/navigation` | `front/core/user/navigation.ts`, `front/core/user/pages/tokens.vue`, `front/core/user/pages/users.vue` |
 | `core/user` | `core/settings` | `front/core/user/pages/login.vue`, `front/core/user/pages/register.vue` |
-| `core/user` | `core/util` | `front/core/user/components/AccountDeletionCard.vue`, `front/core/user/components/UserAdminAccess.vue`, `front/core/user/components/UserAdminForm.vue`, `front/core/user/components/UserAvatar.vue`, `front/core/user/components/UserMenu.vue`, `front/core/user/contextHelp.ts`, `front/core/user/index.ts`, `front/core/user/pages/tokens.vue`, `front/core/user/pages/users.vue`, `front/core/user/stores/tokenStore.ts` |
+| `core/user` | `core/util` | `front/core/user/components/AccountDeletionCard.vue`, `front/core/user/components/UserAdminAccess.vue`, `front/core/user/components/UserAdminForm.vue`, `front/core/user/components/UserAvatar.vue`, `front/core/user/components/UserManager.vue`, `front/core/user/components/UserMenu.vue`, `front/core/user/contextHelp.ts`, `front/core/user/index.ts`, `front/core/user/pages/tokens.vue`, `front/core/user/pages/users.vue`, `front/core/user/stores/tokenStore.ts` |
 | `core/util` | `core/api` | `front/core/util/components/ActionContextMenu.vue`, `front/core/util/components/RenameFileButton.vue`, `front/core/util/components/ResourceAttachments.vue`, `front/core/util/sessionResources.ts`, `front/core/util/sessionStore.ts` |
 | `core/websocket` | `core/api` | `front/core/websocket.ts` |
 
@@ -1317,35 +1316,35 @@ Aucune composante cyclique détectée.
 | GET | `/api/health/live` | `core.api` | `liveness_check` | non | `back/core/api.py:275` |
 | GET | `/api/health/ready` | `core.api` | `readiness_check` | non | `back/core/api.py:281` |
 | GET | `/api/openapi.json` | `core.api` | `get_public_openapi_endpoint` | non | `back/core/api.py:233` |
-| GET | `/auth/avatars/{avatar_key}` | `core.user` | `read_user_avatar` | non | `back/core/user/router.py:412` |
-| POST | `/auth/keep-alive` | `core.user` | `keep_alive` | oui | `back/core/user/router.py:385` |
-| POST | `/auth/login` | `core.user` | `login` | non | `back/core/user/router.py:210` |
-| POST | `/auth/login-json` | `core.user` | `login_json` | non | `back/core/user/router.py:234` |
-| POST | `/auth/logout` | `core.user` | `logout` | non | `back/core/user/router.py:327` |
-| DELETE | `/auth/me` | `core.user` | `delete_user_me` | oui | `back/core/user/router.py:478` |
-| GET | `/auth/me` | `core.user` | `read_users_me` | oui | `back/core/user/router.py:404` |
-| PUT | `/auth/me` | `core.user` | `update_user_me` | oui | `back/core/user/router.py:522` |
-| DELETE | `/auth/me/avatar` | `core.user` | `delete_user_avatar` | oui | `back/core/user/router.py:466` |
-| POST | `/auth/me/avatar` | `core.user` | `upload_user_avatar` | oui | `back/core/user/router.py:429` |
-| GET | `/auth/me/help-dismissals` | `core.user` | `list_help_dismissals` | oui | `back/core/user/router.py:498` |
-| PUT | `/auth/me/help-dismissals/{help_key}` | `core.user` | `dismiss_help` | oui | `back/core/user/router.py:511` |
-| GET | `/auth/me/tokens` | `core.user` | `list_my_tokens` | oui | `back/core/user/router.py:640` |
-| POST | `/auth/me/tokens` | `core.user` | `create_my_token` | oui | `back/core/user/router.py:656` |
-| DELETE | `/auth/me/tokens/{token_id}` | `core.user` | `delete_my_token` | oui | `back/core/user/router.py:699` |
-| PUT | `/auth/me/tokens/{token_id}` | `core.user` | `update_my_token` | oui | `back/core/user/router.py:677` |
-| POST | `/auth/mfa/confirm` | `core.user` | `confirm_mfa` | oui | `back/core/user/router.py:288` |
-| POST | `/auth/mfa/disable` | `core.user` | `disable_mfa` | oui | `back/core/user/router.py:301` |
-| POST | `/auth/mfa/recovery-codes` | `core.user` | `regenerate_mfa_recovery_codes` | oui | `back/core/user/router.py:314` |
-| POST | `/auth/mfa/setup` | `core.user` | `setup_mfa` | oui | `back/core/user/router.py:276` |
-| GET | `/auth/mfa/status` | `core.user` | `read_mfa_status` | oui | `back/core/user/router.py:263` |
-| POST | `/auth/refresh` | `core.user` | `refresh_session` | non | `back/core/user/router.py:345` |
-| POST | `/auth/register` | `core.user` | `register` | non | `back/core/user/router.py:135` |
-| GET | `/auth/registration-status` | `core.user` | `registration_status` | non | `back/core/user/router.py:123` |
-| GET | `/auth/users` | `core.user` | `list_users` | oui | `back/core/user/router.py:552` |
-| POST | `/auth/users` | `core.user` | `create_user_endpoint` | oui | `back/core/user/router.py:569` |
-| DELETE | `/auth/users/{user_id}` | `core.user` | `delete_user_endpoint` | oui | `back/core/user/router.py:624` |
-| GET | `/auth/users/{user_id}` | `core.user` | `read_user` | oui | `back/core/user/router.py:598` |
-| PUT | `/auth/users/{user_id}` | `core.user` | `update_user_endpoint` | oui | `back/core/user/router.py:607` |
+| GET | `/auth/avatars/{avatar_key}` | `core.user` | `read_user_avatar` | non | `back/core/user/router.py:413` |
+| POST | `/auth/keep-alive` | `core.user` | `keep_alive` | oui | `back/core/user/router.py:386` |
+| POST | `/auth/login` | `core.user` | `login` | non | `back/core/user/router.py:211` |
+| POST | `/auth/login-json` | `core.user` | `login_json` | non | `back/core/user/router.py:235` |
+| POST | `/auth/logout` | `core.user` | `logout` | non | `back/core/user/router.py:328` |
+| DELETE | `/auth/me` | `core.user` | `delete_user_me` | oui | `back/core/user/router.py:479` |
+| GET | `/auth/me` | `core.user` | `read_users_me` | oui | `back/core/user/router.py:405` |
+| PUT | `/auth/me` | `core.user` | `update_user_me` | oui | `back/core/user/router.py:523` |
+| DELETE | `/auth/me/avatar` | `core.user` | `delete_user_avatar` | oui | `back/core/user/router.py:467` |
+| POST | `/auth/me/avatar` | `core.user` | `upload_user_avatar` | oui | `back/core/user/router.py:430` |
+| GET | `/auth/me/help-dismissals` | `core.user` | `list_help_dismissals` | oui | `back/core/user/router.py:499` |
+| PUT | `/auth/me/help-dismissals/{help_key}` | `core.user` | `dismiss_help` | oui | `back/core/user/router.py:512` |
+| GET | `/auth/me/tokens` | `core.user` | `list_my_tokens` | oui | `back/core/user/router.py:660` |
+| POST | `/auth/me/tokens` | `core.user` | `create_my_token` | oui | `back/core/user/router.py:676` |
+| DELETE | `/auth/me/tokens/{token_id}` | `core.user` | `delete_my_token` | oui | `back/core/user/router.py:719` |
+| PUT | `/auth/me/tokens/{token_id}` | `core.user` | `update_my_token` | oui | `back/core/user/router.py:697` |
+| POST | `/auth/mfa/confirm` | `core.user` | `confirm_mfa` | oui | `back/core/user/router.py:289` |
+| POST | `/auth/mfa/disable` | `core.user` | `disable_mfa` | oui | `back/core/user/router.py:302` |
+| POST | `/auth/mfa/recovery-codes` | `core.user` | `regenerate_mfa_recovery_codes` | oui | `back/core/user/router.py:315` |
+| POST | `/auth/mfa/setup` | `core.user` | `setup_mfa` | oui | `back/core/user/router.py:277` |
+| GET | `/auth/mfa/status` | `core.user` | `read_mfa_status` | oui | `back/core/user/router.py:264` |
+| POST | `/auth/refresh` | `core.user` | `refresh_session` | non | `back/core/user/router.py:346` |
+| POST | `/auth/register` | `core.user` | `register` | non | `back/core/user/router.py:136` |
+| GET | `/auth/registration-status` | `core.user` | `registration_status` | non | `back/core/user/router.py:124` |
+| GET | `/auth/users` | `core.user` | `list_users` | oui | `back/core/user/router.py:553` |
+| POST | `/auth/users` | `core.user` | `create_user_endpoint` | oui | `back/core/user/router.py:589` |
+| DELETE | `/auth/users/{user_id}` | `core.user` | `delete_user_endpoint` | oui | `back/core/user/router.py:644` |
+| GET | `/auth/users/{user_id}` | `core.user` | `read_user` | oui | `back/core/user/router.py:618` |
+| PUT | `/auth/users/{user_id}` | `core.user` | `update_user_endpoint` | oui | `back/core/user/router.py:627` |
 | GET | `/authorize/assignment-user-options` | `core.authorize` | `assignment_user_options` | oui | `back/core/authorize/router.py:141` |
 | GET | `/authorize/assignments` | `core.authorize` | `list_assignments` | oui | `back/core/authorize/router.py:287` |
 | POST | `/authorize/assignments` | `core.authorize` | `create_assignment` | oui | `back/core/authorize/router.py:339` |
@@ -2842,7 +2841,7 @@ Aucune composante cyclique détectée.
 | `/user/login` | `core/user` | `front/core/user/pages/login.vue` |
 | `/user/register` | `core/user` | `front/core/user/pages/register.vue` |
 | `/user/tokens` | `core/user` | `front/core/user/pages/tokens.vue` |
-| `/user/users` | `core/user` | `front/core/user/pages/users.vue` |
+| `/users` | `core/user` | `front/core/user/pages/users.vue` |
 
 ## Configuration
 

@@ -2,8 +2,13 @@
 
 # Déléguer les droits par fonction
 
-Dans **Administrer → Rôles & autorisations** (`/authorize`), choisissez le rôle à modifier
-et attribuez les privilèges utiles. L'affectation utilisateur/rôle détermine le rôle actif ;
+Dans **Administrer → Utilisateurs & Droits** (`/users`), choisissez un rôle en haut de
+l’onglet **Rôles**. Tous les privilèges sont affichés par catégorie dans une liste
+défilante. Un clic sur une ligne ou son interrupteur enregistre immédiatement l’ajout
+ou le retrait du privilège pour ce rôle. L’onglet
+**Privilèges**, qui organise les catégories, est réservé au mode développement.
+Les privilèges du rôle Administrateur intégré sont affichés en lecture seule.
+L'affectation utilisateur/rôle détermine le rôle actif ;
 les catégories servent uniquement à ranger les privilèges. Elles n'accordent aucun droit.
 Vérifiez le rôle affiché dans le menu du compte avant d'examiner un refus d'accès.
 

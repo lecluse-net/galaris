@@ -1,4 +1,6 @@
 import type { NavigationTree } from '@/core/navigation'
+import { usePrivilegeStore } from '@/core/authorize'
+import { userAdministrationTabs, visibleUserAdministrationTabs } from './access'
 
 const navigation: NavigationTree = {
   admin: {
@@ -7,9 +9,10 @@ const navigation: NavigationTree = {
         label: 'nav.users',
         icon: 'people',
         order: 40,
-        to: '/user/users',
+        to: '/users',
         description: 'nav.users_desc',
-        privileges: ['READ_USER', 'CREATE_USER', 'UPDATE_USER', 'DELETE_USER'], // This module loads before authorize.
+        privileges: userAdministrationTabs.flatMap(tab => [...tab.privileges]),
+        visible: () => visibleUserAdministrationTabs(usePrivilegeStore().hasAnyPrivilege).length > 0,
       }
     }
   }

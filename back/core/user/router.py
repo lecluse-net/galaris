@@ -17,6 +17,7 @@ from .schemas import (
     UserAdminCreate,
     UserAdminUpdate,
     UserLogin,
+    UserListEntry,
     UserRegistration,
     RegistrationStatus,
     UserUpdate,
@@ -540,7 +541,7 @@ async def update_user_me(user_update: UserUpdate):
         raise HTTPException(status_code=400, detail=str(e))
 
 
-@router.get("/users", response_model=List[UserSchema])
+@router.get("/users", response_model=list[UserListEntry], response_model_exclude_unset=True)
 @authorize(
     privileges=[
         Privileges.READ_USER,
@@ -556,9 +557,28 @@ async def list_users(
     search: str | None = Query(default=None, max_length=200),
     sort_by: Literal["id", "email", "display_name", "is_active", "created_at"] = "id",
     descending: bool = False,
-):
-    response.headers["X-Total-Count"] = str(await user_service.count_users(search))
-    return await user_service.get_users(skip, limit, search, sort_by=sort_by, descending=descending, public_only=True)
+    include_access: bool = False,
+    role_id: int | None = Query(default=None, gt=0),
+    team_id: int | None = Query(default=None, gt=0),
+    is_active: bool | None = None,
+) -> list[UserModel] | list[UserListEntry]:
+    actor = await user_service.get_current_user()
+    for filter_id, required in (
+        (role_id, [Privileges.READ_ASSIGNMENT, Privileges.MANAGE_ASSIGNMENT]),
+        (team_id, [Privileges.TEAM_ACCESS]),
+    ):
+        if filter_id is not None and not await check_privilege(actor, required, get_db()):
+            raise HTTPException(status_code=403, detail=render_prompt(
+                await tr("authorize_api.errors.missing_privilege"), privileges=required,
+            ))
+    response.headers["X-Total-Count"] = str(await user_service.count_users(
+        search, role_id=role_id, team_id=team_id, is_active=is_active,
+    ))
+    users = await user_service.get_users(
+        skip, limit, search, sort_by=sort_by, descending=descending, public_only=True,
+        role_id=role_id, team_id=team_id, is_active=is_active,
+    )
+    return await user_service.user_list_access(users) if include_access else users
 
 
 @router.post(

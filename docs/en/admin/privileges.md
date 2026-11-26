@@ -2,8 +2,12 @@
 
 # Delegate privileges by function
 
-Under **Administer → Roles & permissions** (`/authorize`), select a role and grant the
-privileges it needs. A user/role assignment determines the active role; categories only
+Under **Administer → Users & Permissions** (`/users`), select a role at the top of
+the **Roles** tab. All privileges are displayed by category in a scrollable list. Clicking
+a row or its switch immediately saves the grant or removal for the selected role. The
+**Privileges** tab for organizing categories is available in development mode.
+The built-in Administrator role displays its privileges as read-only text.
+A user/role assignment determines the active role; categories only
 organize privileges and grant no access. Check the role shown in the account menu when
 investigating an access denial.
 

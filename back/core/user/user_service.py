@@ -12,6 +12,7 @@ from contextvars import ContextVar
 from contextlib import contextmanager
 from collections.abc import Generator, Sequence
 from sqlalchemy import select, func, delete as sqlalchemy_delete, text
+from sqlalchemy.sql.elements import ColumnElement
 from sqlalchemy.orm import load_only
 from sqlalchemy.exc import IntegrityError
 from typing import List, Literal, Optional
@@ -26,7 +27,7 @@ from core.i18n import render_prompt, tr
 from core.params import runtime_settings
 from .models import User
 from .lifecycle import apply_admin_user_settings, project_user_activation
-from .schemas import UserCreate, UserRegistration, UserUpdate
+from .schemas import UserCreate, UserListEntry, UserListRole, UserListTeam, UserRegistration, UserUpdate
 
 
 class RegistrationClosedError(Exception):
@@ -177,15 +178,40 @@ def set_current_user(user: Optional[User]) -> None:
     clear_cache()
 
 
+def _user_list_filters(
+    search: str | None, role_id: int | None, team_id: int | None, is_active: bool | None,
+) -> list[ColumnElement[bool]]:
+    filters: list[ColumnElement[bool]] = []
+    if search:
+        term = f"%{search}%"
+        filters.append(User.email.ilike(term) | User.display_name.ilike(term))
+    if role_id is not None:
+        from core.authorize import Assignment
+
+        filters.append(User.id.in_(select(Assignment.user_id).where(
+            Assignment.role_id == role_id, Assignment.deleted_at.is_(None),
+        )))
+    if team_id is not None:
+        from core.team import TeamModel, TeamUserModel
+
+        filters.append(User.id.in_(select(TeamUserModel.user_id)
+            .join(TeamModel, TeamModel.id == TeamUserModel.team_id)
+            .where(TeamUserModel.team_id == team_id, TeamModel.deleted_at.is_(None))))
+    if is_active is not None:
+        filters.append(User.is_active.is_(is_active))
+    return filters
+
+
 async def get_users(
     skip: int = 0, limit: int = 50, search: Optional[str] = None,
     *, sort_by: Literal["id", "email", "display_name", "is_active", "created_at"] = "id",
     descending: bool = False, active_only: bool = False,
     public_only: bool = False,
+    role_id: int | None = None, team_id: int | None = None, is_active: bool | None = None,
 ) -> List[User]:
-    """Return all users with optional search filtering."""
+    """Return a page of users matching the requested filters."""
     db = get_db()
-    query = select(User)
+    query = select(User).where(*_user_list_filters(search, role_id, team_id, is_active))
     if public_only:
         query = query.options(load_only(
             User.id, User.email, User.display_name, User.language, User.document_open_mode, User.document_library_mode,
@@ -195,23 +221,40 @@ async def get_users(
     if active_only:
         query = query.where(User.is_active.is_(True))
 
-    if search:
-        search_term = f"%{search}%"
-        query = query.where(
-            (User.email.ilike(search_term)) | (User.display_name.ilike(search_term))
-        )
-
     column = getattr(User, sort_by)
     query = query.order_by(column.desc() if descending else column.asc(), User.id).offset(skip).limit(limit)
     result = await db.execute(query)
     return list(result.scalars().all())
 
 
-async def count_users(search: str | None = None) -> int:
-    query = select(func.count(User.id))
-    if search:
-        query = query.where(User.email.ilike(f"%{search}%") | User.display_name.ilike(f"%{search}%"))
+async def count_users(
+    search: str | None = None, *,
+    role_id: int | None = None, team_id: int | None = None, is_active: bool | None = None,
+) -> int:
+    query = select(func.count(User.id)).where(*_user_list_filters(search, role_id, team_id, is_active))
     return int(await get_db().scalar(query) or 0)
+
+
+async def user_list_access(users: Sequence[User]) -> list[UserListEntry]:
+    from core.authorize import Privileges, assigned_roles_by_user, check_privilege
+
+    entries = [UserListEntry.model_validate(user) for user in users]
+    if not entries:
+        return entries
+    db = get_db()
+    actor = await get_current_user()
+    user_ids = [entry.id for entry in entries]
+    if await check_privilege(actor, [Privileges.READ_ASSIGNMENT, Privileges.MANAGE_ASSIGNMENT], db):
+        roles = await assigned_roles_by_user(user_ids)
+        for entry in entries:
+            entry.assignments = [UserListRole.model_validate(role) for role in roles.get(entry.id, [])]
+    if await check_privilege(actor, Privileges.TEAM_ACCESS, db):
+        from core.team import membership_teams_by_user
+
+        teams = await membership_teams_by_user(user_ids)
+        for entry in entries:
+            entry.teams = [UserListTeam.model_validate(team) for team in teams.get(entry.id, [])]
+    return entries
 
 
 async def get_user_by_id(user_id: int) -> Optional[User]:

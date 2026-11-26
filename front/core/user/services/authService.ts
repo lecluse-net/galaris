@@ -25,6 +25,11 @@ export interface User {
     created_at: string
 }
 
+export interface UserListEntry extends User {
+    assignments?: { id: number; code: string; display_name: string | null }[]
+    teams?: { id: number; name: string }[]
+}
+
 export interface UserCredentials {
     email: string
     password: string
@@ -225,8 +230,11 @@ export const authService = {
 
     // ==================== Admin Methods ====================
 
-    async getUsers(params: { skip?: number; limit?: number; search?: string; sort_by?: string; descending?: boolean } = {}): Promise<{ items: User[]; total: number }> {
-        const response: AxiosResponse<User[]> = await api.get('/auth/users', {
+    async getUsers(params: {
+        skip?: number; limit?: number; search?: string; sort_by?: string; descending?: boolean; include_access?: boolean
+        role_id?: number; team_id?: number; is_active?: boolean
+    } = {}): Promise<{ items: UserListEntry[]; total: number }> {
+        const response: AxiosResponse<UserListEntry[]> = await api.get('/auth/users', {
             params: { limit: 50, ...params }
         })
         return { items: response.data, total: Number(response.headers['x-total-count']) }

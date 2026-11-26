@@ -52,7 +52,8 @@ exchanges also follow their messaging connection's local scope.
 
 ## Manage membership
 
-Open **Teams**, or the **Teams** tab on the **Agents** page. The list shows human and AI
+Open **Administer → Users & Permissions → Teams** (`/users?tab=teams`), or the
+**Teams** tab on the **Agents** page. The list shows human and AI
 member counts, with names and avatars for small teams. Click a name or the edit button
 to open the large dialog. Humans appear on the left and agents on the right, with avatar
 selectors for adding members. The columns stack on mobile. Additions and removals take

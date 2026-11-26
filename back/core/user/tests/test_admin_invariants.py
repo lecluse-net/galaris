@@ -35,8 +35,12 @@ async def test_admin_creates_account_with_roles_and_teams_and_shares_the_profile
     admin, _ = await login(admin_credentials)
     async with get_db_session() as db:
         privileges = list(await db.scalars(select(Privilege).where(Privilege.code.in_(["CREATE_USER", "TEAM_ACCESS"]))))
+        reader_privileges = list(await db.scalars(select(Privilege).where(
+            Privilege.code.in_(["READ_USER", "READ_ASSIGNMENT"]),
+        )))
         creator_role = Role(code="synthetic-account-creator", privileges=privileges)
-        first_role, second_role = Role(code="synthetic-reader"), Role(code="synthetic-editor")
+        first_role = Role(code="synthetic-reader", privileges=reader_privileges)
+        second_role = Role(code="synthetic-editor")
         first_team, second_team = TeamModel(name="Research"), TeamModel(name="Support")
         db.add_all([creator_role, first_role, second_role, first_team, second_team])
         await db.flush()
@@ -69,6 +73,44 @@ async def test_admin_creates_account_with_roles_and_teams_and_shares_the_profile
     assert set(assignments) == set(role_ids)
     assert [role for role, item in assignments.items() if item["is_default"]] == [role_ids[1]]
 
+    async def listed_user(headers, *, include_access=True, email=credentials["email"]):
+        response = await client.get(users, headers=headers, params={
+            "search": email, "limit": 1, "include_access": include_access,
+        })
+        assert response.status_code == 200, response.text
+        assert response.headers["X-Total-Count"] == "1"
+        entry, = response.json()
+        assert entry["email"] == email
+        return entry
+
+    listed = await listed_user(admin)
+    assert {role["id"] for role in listed["assignments"]} == set(role_ids)
+    assert {team["id"] for team in listed["teams"]} == set(team_ids)
+    basic = await listed_user(admin, include_access=False)
+    assert basic == {key: value for key, value in listed.items() if key not in {"teams", "assignments"}}
+    team_reader = await listed_user(creator)
+    assert team_reader["teams"] == listed["teams"]
+    assert "assignments" not in team_reader
+    assert (await listed_user(creator, email=creator_credentials["email"]))["teams"] == []
+
+    second_account = await client.post(users, headers=admin, json={
+        "email": "membership-inactive@example.com", "password": password,
+        "role_ids": [role_ids[0]], "team_ids": [team_ids[0]], "is_active": False,
+    })
+    assert second_account.status_code == 201, second_account.text
+    inactive_id = second_account.json()["id"]
+    filters = {"search": "membership-", "role_id": role_ids[0], "team_id": team_ids[0], "limit": 1}
+    paginated = await client.get(users, headers=admin, params={**filters, "skip": 1})
+    assert paginated.status_code == 200, paginated.text
+    assert paginated.headers["X-Total-Count"] == "2"
+    assert [item["id"] for item in paginated.json()] == [inactive_id]
+    for is_active, expected_id in [(True, user_id), (False, inactive_id)]:
+        filtered = await client.get(users, headers=admin, params={**filters, "is_active": str(is_active).lower()})
+        assert filtered.status_code == 200, filtered.text
+        assert filtered.headers["X-Total-Count"] == "1"
+        assert [item["id"] for item in filtered.json()] == [expected_id]
+    assert (await client.get(users, headers=creator, params={"role_id": role_ids[0]})).status_code == 403
+
     def default_url(role_id):
         return f"/api/authorize/assignments/{assignments[role_id]['id']}/default"
 
@@ -77,6 +119,10 @@ async def test_admin_creates_account_with_roles_and_teams_and_shares_the_profile
     assert changed.status_code == 200, changed.text
     owner, claims = await login(credentials)
     assert claims["role_id"] == role_ids[0]
+    assignment_reader = await listed_user(owner)
+    assert assignment_reader["assignments"] == listed["assignments"]
+    assert "teams" not in assignment_reader
+    assert (await client.get(users, headers=owner, params={"team_id": team_ids[0]})).status_code == 403
     profile = await client.get(assignments_url, headers=owner)
     assert [entry["role_id"] for entry in profile.json() if entry["is_default"]] == [role_ids[0]]
     assert (await client.put(default_url(role_ids[1]), headers=owner)).status_code == 200

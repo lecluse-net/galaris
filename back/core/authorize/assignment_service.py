@@ -10,6 +10,21 @@ from core.i18n import tr
 from .models import Assignment, Role
 
 
+async def assigned_roles_by_user(user_ids: Sequence[int]) -> dict[int, list[Role]]:
+    if not user_ids:
+        return {}
+    rows = await get_db().execute(
+        select(Assignment.user_id, Role)
+        .join(Role, Role.id == Assignment.role_id)
+        .where(Assignment.user_id.in_(user_ids))
+        .order_by(Role.code, Role.id)
+    )
+    roles: dict[int, list[Role]] = {}
+    for user_id, role in rows:
+        roles.setdefault(user_id, []).append(role)
+    return roles
+
+
 async def assign_initial_roles(
     user_id: int, role_ids: Sequence[int], default_role_id: int | None,
 ) -> None:

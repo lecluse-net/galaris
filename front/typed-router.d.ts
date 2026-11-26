@@ -416,6 +416,13 @@ declare module 'vue-router/auto-routes' {
       { id: ParamValue<false> },
       | never
     >,
+    '//user/users': RouteRecordInfo<
+      '//user/users',
+      '/users',
+      Record<never, never>,
+      Record<never, never>,
+      | never
+    >,
     '//user/login': RouteRecordInfo<
       '//user/login',
       '/user/login',
@@ -433,13 +440,6 @@ declare module 'vue-router/auto-routes' {
     '//user/tokens': RouteRecordInfo<
       '//user/tokens',
       '/user/tokens',
-      Record<never, never>,
-      Record<never, never>,
-      | never
-    >,
-    '//user/users': RouteRecordInfo<
-      '//user/users',
-      '/user/users',
       Record<never, never>,
       Record<never, never>,
       | never
@@ -897,6 +897,14 @@ declare module 'vue-router/auto-routes' {
       pathParamNames:
         | 'id'
     }
+    'core/user/pages/users.vue': {
+      routes:
+        | '//user/users'
+      views:
+        | never
+      pathParamNames:
+        | never
+    }
     'core/user/pages/login.vue': {
       routes:
         | '//user/login'
@@ -916,14 +924,6 @@ declare module 'vue-router/auto-routes' {
     'core/user/pages/tokens.vue': {
       routes:
         | '//user/tokens'
-      views:
-        | never
-      pathParamNames:
-        | never
-    }
-    'core/user/pages/users.vue': {
-      routes:
-        | '//user/users'
       views:
         | never
       pathParamNames:

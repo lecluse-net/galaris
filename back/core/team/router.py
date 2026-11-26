@@ -22,8 +22,8 @@ async def search_humans(search: str = Query(default="", max_length=200), limit: 
 
 @router.get("/human-selection", response_model=list[HumanSelection])
 @authorize()
-async def human_selection() -> list[HumanSelection]:
-    return await service.human_selection()
+async def human_selection(self_only: bool = False) -> list[HumanSelection]:
+    return await service.human_selection(self_only=self_only)
 
 
 @router.post("", response_model=TeamInfo, status_code=201)

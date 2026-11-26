@@ -19,7 +19,8 @@ sections **Agents** et **Utilisateurs** dans chacune. **Moi** figure parmi les u
 de ses équipes. La recherche porte sur les propriétaires disponibles ; la pagination est
 indépendante pour chaque type dans chaque équipe. Les membres sans équipe ont leur section.
 
-Ouvrez **Équipes**, ou l’onglet **Équipes** de la page **Agents**. La liste affiche les
+Ouvrez **Administrer → Utilisateurs & Droits → Équipes** (`/users?tab=teams`), ou l’onglet
+**Équipes** de la page **Agents**. La liste affiche les
 effectifs humains et IA ; les petites équipes présentent aussi leurs membres avec avatars.
 Déplacez les lignes par leur poignée pour réordonner les équipes : la position est
 enregistrée dès le dépôt. La poignée fonctionne aussi au toucher et avec les flèches haut

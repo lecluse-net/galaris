@@ -425,15 +425,24 @@ application, preserving typed prices with keyboard use on desktop and mobile.
 `core/authorize/tests/test_default_lists.py` checks default category installation,
 adoption of existing organization, rollback and persistent renames, moves and deletions
 after synchronization, including HTTP denial for readers.
+It also checks catalogue access with `READ_ROLE` and durable grants and removals
+with `MANAGE_ROLE`.
 `front/browser-tests/privilege-lists.spec.mjs` covers translated and custom labels,
-editing without losing the key, and role groups, on mobile and desktop.
-`e2e/specs/privilege-categories.spec.mjs` checks installed categories,
-translated editing and persistent custom creation in the assembled application.
+editing categories without losing the key, development access to the **Privileges** tab,
+and recovery from a failed role grant.
+`e2e/specs/privilege-categories.spec.mjs` checks the redirect to **Users & Permissions**,
+installed categories and the hidden production **Privileges** tab. On mobile and desktop,
+it exercises scrolling under a fixed header and changes by row click or keyboard across reloads.
 `app/chat/tests/test_dbadmin.py` also checks that combined Chat and Authorize contributions
 recreate neither the former Chat category nor removed assignments. This replaces the
 former expectation of a separate Chat grouping with administrator-owned organization.
 
 ## Functional RBAC domains and role projection
+
+`core/user/tests/test_admin_invariants.py` checks combined user filters before pagination,
+filtered totals and authorization for membership filters.
+`front/browser-tests/user-administration.spec.mjs` exercises text search and all three
+filters on **Users**, with assignment editing in the account form.
 
 `core/authorize/tests/test_domain_authorization.py` exercises real routes with readers,
 operators, former broad grants alone and neighbouring grants: Contacts, indexing, Dashboard,

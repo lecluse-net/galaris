@@ -882,10 +882,6 @@
     },
     {
       "source": "core/team",
-      "target": "core/navigation"
-    },
-    {
-      "source": "core/team",
       "target": "core/user"
     },
     {

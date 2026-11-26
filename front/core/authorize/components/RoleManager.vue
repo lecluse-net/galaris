@@ -1,555 +1,339 @@
 <template>
   <div class="role-manager q-pa-md">
-    <div class="role-manager-actions row justify-end q-mb-md">
-      <q-btn v-if="canManage" color="primary" :label="$t('authorize.roles.new')" icon="add" @click="openCreateDialog" />
-    </div>
+    <PanelState v-if="loading" state="loading" />
+    <PanelState v-else-if="loadFailed" state="error" :message="t('authorize.roles.loadError')"
+      :retry-label="t('common.retry')" @retry="load" />
 
-    <!-- Table -->
-    <!-- Role List -->
-    <q-list bordered class="rounded-borders">
-      <div v-if="loading" class="row justify-center q-pa-md">
-          <q-spinner color="primary" size="2em" />
+    <template v-else>
+      <div class="role-toolbar">
+        <div class="role-buttons" role="group" :aria-label="t('authorize.tabRoles')">
+          <q-btn
+            v-for="role in roles"
+            :key="role.id"
+            :label="localizedAuthorizeLabel(role)"
+            :outline="role.id !== selectedRole?.id"
+            :aria-pressed="role.id === selectedRole?.id"
+            color="primary"
+            unelevated
+            no-caps
+            @click="selectedRoleId = role.id"
+          />
+        </div>
+
+        <q-btn v-if="canManage" color="primary" icon="add" :label="t('authorize.roles.new')"
+          :disable="saving" @click="openRoleDialog()" />
       </div>
 
-      <q-expansion-item
-        v-for="role in roles"
-        :key="role.id"
-        group="roles"
-        icon="security"
-        :label="localizedAuthorizeLabel(role)"
-        :caption="role.code"
-        header-class="text-primary"
-        class="role-item"
-      >
-        <template v-slot:header>
-          <q-item-section avatar>
-            <q-icon name="security" color="primary" />
-          </q-item-section>
+      <PanelState v-if="!selectedRole" state="empty" :message="t('authorize.roles.noRole')" />
+      <template v-else>
+        <div class="role-privilege-header q-my-md">
+          <h2 id="role-privileges-heading" class="text-h6 q-my-none">{{ t('authorize.roles.privilegesOf', { role: localizedAuthorizeLabel(selectedRole) }) }}</h2>
+          <div v-if="canManage" class="row no-wrap">
+            <q-btn flat round color="primary" icon="edit" :aria-label="t('authorize.roles.edit')"
+              :disable="saving" @click="openRoleDialog(selectedRole)">
+              <q-tooltip>{{ t('authorize.roles.edit') }}</q-tooltip>
+            </q-btn>
+            <q-btn flat round color="negative" icon="delete" :aria-label="t('common.delete')"
+              :disable="saving" @click="confirmDelete(selectedRole)">
+              <q-tooltip>{{ t('common.delete') }}</q-tooltip>
+            </q-btn>
+          </div>
+        </div>
 
-          <q-item-section class="min-width-0">
-            <q-item-label>{{ localizedAuthorizeLabel(role) }}</q-item-label>
-            <q-item-label caption>{{ role.code }}</q-item-label>
-          </q-item-section>
-
-          <q-item-section side>
-            <div class="role-header-actions">
-              <q-btn :aria-label="$t('common.edit')" v-if="canManage" flat round color="primary" icon="edit" size="sm" @click.stop="openEditDialog(role)">
-                <q-tooltip>{{ $t('common.edit') }}</q-tooltip>
-              </q-btn>
-              <q-btn :aria-label="$t('common.delete')" v-if="canManage" flat round color="negative" icon="delete" size="sm" @click.stop="confirmDelete(role)">
-                <q-tooltip>{{ $t('common.delete') }}</q-tooltip>
-              </q-btn>
-            </div>
-          </q-item-section>
-        </template>
-
-        <q-card>
-          <q-card-section>
-            <div class="text-subtitle2 q-mb-sm">{{ $t('authorize.roles.associatedPrivileges') }}</div>
-
-            <!-- Grouped Display -->
-            <div v-if="role.privileges.length > 0">
-                <div v-for="(group, listName) in groupPrivileges(role.privileges)" :key="listName" class="q-mb-md">
-                    <div class="text-caption text-weight-bold text-primary q-mb-xs">{{ listName }}</div>
-                    <div class="role-privilege-list">
-                        <q-chip
-                            v-for="priv in group"
-                            :key="priv.id"
-                            :removable="canManage"
-                            @remove="removePrivilege(role, priv)"
-                            color="primary"
-                            text-color="white"
-                            icon="vpn_key"
-                            size="0.75rem"
-                            class="role-privilege-chip"
-                        >
-                            {{ localizedAuthorizeLabel(priv) }}
-                            <q-tooltip>{{ priv.code }}</q-tooltip>
-                        </q-chip>
-                    </div>
-                </div>
-            </div>
-
-             <div v-else class="text-grey italic q-pa-sm">
-                {{ $t('authorize.roles.noPrivilege') }}
-            </div>
-
-            <div class="q-mt-md">
-                <q-btn
-                    v-if="canManage"
-                    outline
+        <PanelState v-if="!privilegeGroups.length" state="empty" :message="t('authorize.roles.noPrivilege')" />
+        <div v-else class="role-privilege-scroll" role="region" aria-labelledby="role-privileges-heading" tabindex="0" :aria-busy="saving">
+          <div class="role-privilege-columns">
+            <q-card v-for="group in privilegeGroups" :key="group.id ?? 'unclassified'" tag="section" flat bordered class="role-category">
+              <h3 class="role-category-title text-subtitle1 text-weight-medium q-my-none q-px-md q-py-sm">{{ group.label }}</h3>
+              <q-separator />
+              <q-list separator>
+                <q-item v-for="privilege in group.privileges" :key="privilege.id" class="role-privilege-item">
+                  <q-toggle
+                    v-if="!isAdministratorRole"
+                    class="role-privilege-toggle"
+                    :label="localizedAuthorizeLabel(privilege)"
+                    :model-value="selectedPrivilegeIds.has(privilege.id)"
+                    :disable="!canManage || saving"
                     color="primary"
-                    icon="add"
-                    :label="$t('authorize.roles.addPrivileges')"
-                    size="0.75rem"
-                    @click="openPrivilegesDialog(role)"
-                />
-            </div>
-          </q-card-section>
-        </q-card>
-      </q-expansion-item>
-    </q-list>
+                    left-label
+                    @update:model-value="togglePrivilege(selectedRole, privilege.id, $event)"
+                  />
+                  <q-item-section v-else class="role-privilege-text">
+                    <q-item-label>{{ localizedAuthorizeLabel(privilege) }}</q-item-label>
+                  </q-item-section>
+                </q-item>
+              </q-list>
+            </q-card>
+          </div>
+        </div>
+      </template>
+    </template>
 
-    <!-- Create/Edit Dialog -->
     <q-dialog v-model="showDialog">
       <q-card class="role-dialog galaris-dialog-card">
         <q-card-section class="galaris-dialog-title row items-center no-wrap">
           <q-icon name="security" size="sm" />
-          <div class="text-h6 ellipsis q-ml-sm">{{ isEdit ? $t('authorize.roles.edit') : $t('authorize.roles.new') }}</div>
+          <div class="text-h6 ellipsis q-ml-sm">{{ editedRoleId === null ? t('authorize.roles.new') : t('authorize.roles.edit') }}</div>
           <q-space />
-          <q-btn v-close-popup flat round dense icon="close" :aria-label="$t('common.close')" />
+          <q-btn v-close-popup flat round dense icon="close" :aria-label="t('common.close')" />
         </q-card-section>
 
-        <q-card-section class="q-pt-md galaris-dialog-body">
-          <q-form @submit="saveRole" class="q-gutter-md">
+        <q-card-section class="galaris-dialog-body">
+          <q-form :id="roleFormId" class="q-gutter-y-md" @submit="saveRole">
             <q-input
-              v-model="editedItem.code"
-              :label="$t('authorize.roles.code')"
-              :hint="$t('authorize.roles.codeHint')"
+              v-model="editedRole.code"
+              :label="t('authorize.roles.code')"
+              :hint="t('authorize.roles.codeHint')"
+              outlined
+              dense
               lazy-rules
-              :rules="[val => val && val.length > 0 || $t('authorize.roles.codeRequired')]"
+              :rules="[value => !!value?.trim() || t('authorize.roles.codeRequired')]"
               autofocus
             />
-            <q-input
-              v-model="editedItem.display_name"
-              :label="$t('authorize.roles.displayName')"
-            />
-            <div class="role-dialog-actions galaris-dialog-actions q-mt-md q-pa-md">
-              <q-btn outline :label="$t('common.cancel')" color="primary"  v-close-popup />
-              <q-btn v-if="canManage" :label="isEdit ? $t('common.save') : $t('common.create')" type="submit" color="primary" />
-            </div>
+            <q-input v-model="editedRole.display_name" :label="t('authorize.roles.displayName')" outlined dense />
           </q-form>
         </q-card-section>
-      </q-card>
-    </q-dialog>
-
-    <!-- Privileges Dialog -->
-    <q-dialog v-model="showPrivilegesDialog">
-      <q-card class="role-privileges-dialog galaris-dialog-card">
-        <q-card-section class="galaris-dialog-title row items-center no-wrap">
-          <q-icon name="vpn_key" size="sm" />
-          <div class="text-h6 ellipsis q-ml-sm">{{ $t('authorize.roles.privilegesOf', { role: currentRole ? localizedAuthorizeLabel(currentRole) : '' }) }}</div>
-          <q-space />
-          <q-btn v-close-popup flat round dense icon="close" :aria-label="$t('common.close')" />
-        </q-card-section>
-
-        <q-card-section class="q-pt-md galaris-dialog-body">
-            <div v-if="loadingPrivileges" class="row justify-center">
-                <q-spinner color="primary" size="2em" />
-            </div>
-            <div v-else>
-                <q-select
-                    v-model="selectedPrivileges"
-                    class="role-privilege-select"
-                    :options="filteredPrivileges"
-                    option-value="id"
-                    :option-label="localizedAuthorizeLabel"
-                    :label="$t('authorize.roles.associatedPrivileges')"
-                    multiple
-                    use-chips
-                    stack-label
-                    emit-value
-                    map-options
-                    use-input
-                    input-debounce="0"
-                    @filter="filterPrivileges"
-                >
-                    <template v-slot:option="scope">
-                        <template v-if="shouldShowHeader(scope.opt, scope.index)">
-                            <q-item-label header class="q-pt-sm text-weight-bold text-primary bg-grey-2">
-                                {{ getPrivilegeListName(scope.opt) }}
-                            </q-item-label>
-                        </template>
-
-                        <q-item v-bind="scope.itemProps">
-                            <q-item-section>
-                                <q-item-label>{{ localizedAuthorizeLabel(scope.opt) }}</q-item-label>
-                                <q-item-label caption v-if="scope.opt.display_name">{{ scope.opt.code }}</q-item-label>
-                            </q-item-section>
-                        </q-item>
-                    </template>
-                </q-select>
-            </div>
-        </q-card-section>
-
-        <q-card-section class="role-dialog-actions galaris-dialog-actions">
-            <q-btn outline  :label="$t('common.close')" color="primary" v-close-popup />
-            <q-btn outline v-if="canManage"  :label="$t('common.save')" color="primary" @click="savePrivileges" />
-        </q-card-section>
+        <q-separator />
+        <q-card-actions align="right" class="galaris-dialog-actions q-pa-md">
+          <q-btn v-close-popup outline color="primary" :label="t('common.cancel')" />
+          <q-btn v-if="canManage" color="primary" type="submit" :form="roleFormId"
+            :label="editedRoleId === null ? t('common.create') : t('common.save')" :loading="saving" />
+        </q-card-actions>
       </q-card>
     </q-dialog>
   </div>
 </template>
 
 <script setup lang="ts">
-import { showConfirmationDialog } from '@/core/util'
-import { computed, ref, onMounted } from 'vue'
+import { computed, onActivated, onMounted, ref, useId } from 'vue'
 import { useQuasar } from 'quasar'
 import { useI18n } from 'vue-i18n'
-import { authorizeService, type Role, type RoleWithPrivileges, type Privilege, type PrivilegeList } from '../services/authorize.service'
-import { usePrivilegeStore } from '../stores/privilegeStore'
-import { useAuthorizeStore } from '../stores/authorizeStore'
+import { apiErrorDetail, isCancelledRequest } from '@/core/api'
+import { PanelState, showConfirmationDialog } from '@/core/util'
 import { privileges } from '../definitions'
 import { localizedAuthorizeLabel, localizedPrivilegeListLabel } from '../presentation'
+import { authorizeService, type Privilege, type PrivilegeList, type RoleWithPrivileges } from '../services/authorize.service'
+import { useAuthorizeStore } from '../stores/authorizeStore'
+import { usePrivilegeStore } from '../stores/privilegeStore'
 
 const $q = useQuasar()
-const { t } = useI18n()
+const { t, locale } = useI18n()
+const roleFormId = useId()
+const administratorRoleCode = 'admin'
+const selectedRoleId = defineModel<number | null>('selectedRoleId', { required: true })
 const privilegeStore = usePrivilegeStore()
 const authorizeStore = useAuthorizeStore()
 const canManage = computed(() => privilegeStore.hasPrivilege(privileges.MANAGE_ROLE))
 
 const roles = ref<RoleWithPrivileges[]>([])
 const privilegeLists = ref<PrivilegeList[]>([])
-const loading = ref(false)
-
-// Dialog state
-const showDialog = ref(false)
-const isEdit = ref(false)
-const editedItem = ref({
-    id: 0,
-    code: '',
-    display_name: '' as string | undefined
-})
-
-// Privileges state
-const showPrivilegesDialog = ref(false)
-const currentRole = ref<Role | null>(null)
-
-// For the selector we now want grouped options.
-// Quasar q-select doesn't support grouping natively in a simple way for multiple selection with chips easily?
-// It supports 'optgroup-label' but that's for single select usually or native select.
-// For custom UI in q-select, we can just flatten the list but add headers? 
-// OR we can perform grouping logic inside the filter/render.
-// The requested layout uses one section per list.
-// Let's load the lists first.
-
 const allPrivileges = ref<Privilege[]>([])
-const filteredPrivileges = ref<Privilege[]>([])
-const selectedPrivileges = ref<number[]>([]) 
-const loadingPrivileges = ref(false)
+const loading = ref(false)
+const loadFailed = ref(false)
+const saving = ref(false)
+const selectedRole = computed(() => roles.value.find(role => role.id === selectedRoleId.value) ?? roles.value[0])
+const isAdministratorRole = computed(() => selectedRole.value?.code === administratorRoleCode)
+const selectedPrivilegeIds = computed(() => new Set(selectedRole.value?.privileges.map(privilege => privilege.id)))
 
-// Lifecycle
-onMounted(async () => {
-  await Promise.all([loadRoles(), loadPrivilegeLists()])
+const showDialog = ref(false)
+const editedRoleId = ref<number | null>(null)
+const editedRole = ref({ code: '', display_name: '' })
+
+const privilegeGroups = computed(() => {
+  const groups = new Map(privilegeLists.value.map(list => [
+    list.id, { id: list.id, label: localizedPrivilegeListLabel(list), privileges: [] as Privilege[] },
+  ]))
+  const unclassified = { id: null, label: t('authorize.roles.others'), privileges: [] as Privilege[] }
+  for (const privilege of allPrivileges.value) {
+    const listId = privilege.privilege_list_id
+    const group = listId === null ? unclassified : groups.get(listId) ?? unclassified
+    group.privileges.push(privilege)
+  }
+  const compare = new Intl.Collator(locale.value).compare
+  const populatedGroups = [...groups.values()]
+    .filter(group => group.privileges.length)
+    .sort((a, b) => compare(a.label, b.label))
+  const result = unclassified.privileges.length ? [...populatedGroups, unclassified] : populatedGroups
+  for (const group of result) {
+    group.privileges.sort((a, b) => compare(localizedAuthorizeLabel(a), localizedAuthorizeLabel(b)))
+  }
+  return result
 })
 
-async function loadPrivilegeLists() {
-    try {
-        privilegeLists.value = await authorizeService.listPrivilegeLists()
-    } catch (e) {
-        console.error("Error loading privilege lists", e)
-    }
-}
+onMounted(load)
+onActivated(load)
 
-function groupPrivileges(privileges: Privilege[]): Record<string, Privilege[]> {
-    const groups: Record<string, Privilege[]> = {}
-    
-    // We can use the privilege_list_id directly now.
-    // However, we need the DISPLAY NAME of the list.
-    // We have privilegeLists loaded.
-    
-    const listMap = new Map<number, string>()
-    for (const list of privilegeLists.value) {
-        listMap.set(list.id, localizedPrivilegeListLabel(list))
-    }
-    
-    for (const p of privileges) {
-        let listName = t('authorize.roles.others')
-        if (p.privilege_list_id && listMap.has(p.privilege_list_id)) {
-            listName = listMap.get(p.privilege_list_id)!
-        }
-        
-        if (!groups[listName]) {
-            groups[listName] = []
-        }
-        groups[listName].push(p)
-    }
-    
-    // Sort keys alphabetically?
-    const sortedKeys = Object.keys(groups).sort()
-    const sortedGroups: Record<string, Privilege[]> = {}
-    for (const key of sortedKeys) {
-        sortedGroups[key] = groups[key].sort((a, b) => {
-            const nameA = localizedAuthorizeLabel(a)
-            const nameB = localizedAuthorizeLabel(b)
-            return nameA.localeCompare(nameB)
-        })
-    }
-    
-    return sortedGroups
-}
-
-// Helper to get list name for a privilege
-function getPrivilegeListName(priv: Privilege): string {
-    if (priv.privilege_list_id) {
-         const list = privilegeLists.value.find(l => l.id === priv.privilege_list_id)
-         if (list) return localizedPrivilegeListLabel(list)
-    }
-    return t('authorize.roles.others')
-}
-
-function shouldShowHeader(opt: Privilege, index: number): boolean {
-    if (index === 0) return true
-    const prev = filteredPrivileges.value[index - 1]
-    return getPrivilegeListName(opt) !== getPrivilegeListName(prev)
-}
-
-function filterPrivileges (val: string, update: (fn: () => void) => void) {
-  update(() => {
-    // 1. Determine available privileges (All - Current Role's)
-    let available: Privilege[]
-    
-    // We need current role privileges. They were fetched in openPrivilegesDialog but not stored in a way accessible here easily 
-    // without re-fetching or using the 'filteredPrivileges' initial state?
-    // Actually, 'filteredPrivileges' is initialized in openPrivilegesDialog with the correct list (All - Assigned).
-    // so we should filter *that* list? No, q-select filter function expects to rebuild the list from source.
-    if (!currentRole.value) {
-        available = allPrivileges.value
-    } else {
-        const role = roles.value.find(r => r.id === currentRole.value?.id)
-        const currentIds = role ? role.privileges.map(p => p.id) : []
-        available = allPrivileges.value.filter(p => !currentIds.includes(p.id))
-    }
-    
-    // 2. Filter by search term
-    let filtered = available
-    if (val !== '') {
-        const needle = val.toLowerCase()
-        filtered = available.filter(v =>
-            v.code.toLowerCase().indexOf(needle) > -1
-            || localizedAuthorizeLabel(v).toLowerCase().indexOf(needle) > -1
-        )
-    }
-    
-    // 3. Sort by List Name then Display Name
-    filtered.sort((a, b) => {
-        const listA = getPrivilegeListName(a)
-        const listB = getPrivilegeListName(b)
-        if (listA !== listB) return listA.localeCompare(listB)
-        
-        const nameA = localizedAuthorizeLabel(a)
-        const nameB = localizedAuthorizeLabel(b)
-        return nameA.localeCompare(nameB)
-    })
-    
-    filteredPrivileges.value = filtered
-  })
-}
-
-async function loadRoles() {
+async function load() {
+  if (loading.value || saving.value) return
   loading.value = true
+  loadFailed.value = false
   try {
-    roles.value = await authorizeService.listRoles()
+    const [loadedRoles, loadedLists, loadedPrivileges] = await Promise.all([
+      authorizeService.listRoles(),
+      authorizeService.listPrivilegeLists(),
+      authorizeService.listPrivileges(),
+    ])
+    roles.value = loadedRoles
+    privilegeLists.value = loadedLists
+    allPrivileges.value = loadedPrivileges
   } catch (error) {
-    console.error(error)
-    $q.notify({
-      color: 'negative',
-      message: t('authorize.roles.loadError'),
-      icon: 'report_problem'
-    })
+    if (!isCancelledRequest(error)) loadFailed.value = true
   } finally {
     loading.value = false
   }
 }
 
-// Create/Edit Logic
-function openCreateDialog() {
-  isEdit.value = false
-  editedItem.value = { id: 0, code: '', display_name: '' }
+function openRoleDialog(role?: RoleWithPrivileges) {
+  editedRoleId.value = role?.id ?? null
+  editedRole.value = { code: role?.code ?? '', display_name: role?.display_name ?? '' }
   showDialog.value = true
 }
 
-function openEditDialog(item: Role) {
-  isEdit.value = true
-  editedItem.value = { 
-      id: item.id, 
-      code: item.code, 
-      display_name: item.display_name || '' 
+function notifyError(error: unknown, fallback: string) {
+  if (!isCancelledRequest(error)) {
+    $q.notify({ color: 'negative', message: apiErrorDetail(error) ?? t(fallback) })
   }
-  showDialog.value = true
 }
 
 async function saveRole() {
-  if (!canManage.value) return
+  if (!canManage.value || saving.value) return
+  saving.value = true
+  const id = editedRoleId.value
   try {
-    if (isEdit.value) {
-      await authorizeService.updateRole(editedItem.value.id, {
-        code: editedItem.value.code,
-        display_name: editedItem.value.display_name
-      })
-      $q.notify({ color: 'positive', message: t('authorize.roles.updated') })
-    } else {
-      await authorizeService.createRole({
-        code: editedItem.value.code,
-        display_name: editedItem.value.display_name
-      })
+    if (id === null) {
+      const created = await authorizeService.createRole(editedRole.value)
+      roles.value.push({ ...created, privileges: [] })
+      selectedRoleId.value = created.id
       $q.notify({ color: 'positive', message: t('authorize.roles.created') })
+    } else {
+      const updated = await authorizeService.updateRole(id, editedRole.value)
+      roles.value = roles.value.map(role => role.id === id ? { ...role, ...updated } : role)
+      $q.notify({ color: 'positive', message: t('authorize.roles.updated') })
     }
     showDialog.value = false
-    await loadRoles()
   } catch (error) {
-    console.error(error)
-    $q.notify({ color: 'negative', message: t('authorize.roles.saveError'), icon: 'report_problem' })
+    notifyError(error, 'authorize.roles.saveError')
+  } finally {
+    saving.value = false
   }
 }
 
-function confirmDelete(item: Role) {
+function confirmDelete(role: RoleWithPrivileges) {
   showConfirmationDialog({
     title: t('common.confirm'),
-    message: t('authorize.roles.deleteConfirm', { code: item.code }),
-    cancel: true
+    message: t('authorize.roles.deleteConfirm', { code: role.code }),
+    cancel: true,
   }).onOk(async () => {
+    if (!canManage.value || saving.value) return
+    saving.value = true
     try {
-      await authorizeService.deleteRole(item.id)
+      await authorizeService.deleteRole(role.id)
+      roles.value = roles.value.filter(item => item.id !== role.id)
       $q.notify({ color: 'positive', message: t('authorize.roles.deleted') })
-      await loadRoles()
     } catch (error) {
-       console.error(error)
-      $q.notify({ color: 'negative', message: t('authorize.roles.deleteError'), icon: 'report_problem' })
+      notifyError(error, 'authorize.roles.deleteError')
+    } finally {
+      saving.value = false
     }
   })
 }
 
-// Privileges Logic
-async function removePrivilege(role: RoleWithPrivileges, privilege: Privilege) {
-    if (!canManage.value) return
-    if (!role) return
-
-    showConfirmationDialog({
-        title: t('authorize.roles.removePrivilegeTitle'),
-        message: t('authorize.roles.removePrivilegeConfirm', {
-            priv: localizedAuthorizeLabel(privilege),
-            role: localizedAuthorizeLabel(role),
-        }),
-        cancel: true
-    }).onOk(async () => {
-        try {
-            await authorizeService.removePrivilegesFromRole(role.id, [privilege.id])
-            $q.notify({ color: 'positive', message: t('authorize.roles.privilegeRemoved') })
-            // Refresh roles to update the list
-            await loadRoles()
-            // Refresh current user privileges if the modified role is the active role
-            if (authorizeStore.activeRole?.id === role.id) {
-                await privilegeStore.refreshPrivileges()
-            }
-        } catch (error) {
-            console.error(error)
-            $q.notify({ color: 'negative', message: t('authorize.roles.privilegeRemoveError'), icon: 'report_problem' })
-        }
-    })
-}
-
-// Dialog Logic
-async function openPrivilegesDialog(role: Role) {
-    currentRole.value = role
-    showPrivilegesDialog.value = true
-    loadingPrivileges.value = true
-    selectedPrivileges.value = [] // Reset selection for "Add" mode
-    
-    try {
-        // 1. Get all privileges (to populate dropdown)
-        if (allPrivileges.value.length === 0) {
-            allPrivileges.value = await authorizeService.listPrivileges()
-        }
-        
-        // 2. Get current role privileges to filter them out
-        const roleWithPrivs = await authorizeService.getRole(role.id)
-        const currentIds = roleWithPrivs.privileges.map(p => p.id)
-        
-        // Filter: Options = All - Current
-        filteredPrivileges.value = allPrivileges.value.filter(p => !currentIds.includes(p.id))
-        
-    } catch (error) {
-        console.error(error)
-        $q.notify({ color: 'negative', message: t('authorize.roles.privilegesLoadError') })
-    } finally {
-        loadingPrivileges.value = false
-    }
-}
-
-async function savePrivileges() {
-    if (!canManage.value) return
-    if (!currentRole.value) return
-    if (selectedPrivileges.value.length === 0) {
-        showPrivilegesDialog.value = false
-        return
-    }
-    
-    try {
-        await authorizeService.addPrivilegesToRole(currentRole.value.id, selectedPrivileges.value)
-        $q.notify({ color: 'positive', message: t('authorize.roles.privilegesAdded') })
-        showPrivilegesDialog.value = false
-        await loadRoles()
-        // Refresh current user privileges if the modified role is the active role
-        if (authorizeStore.activeRole?.id === currentRole.value.id) {
-            await privilegeStore.refreshPrivileges()
-        }
-    } catch (error) {
-        console.error(error)
-        $q.notify({ color: 'negative', message: t('authorize.roles.privilegesAddError') })
-    }
+async function togglePrivilege(role: RoleWithPrivileges, privilegeId: number, enabled: boolean) {
+  if (role.code === administratorRoleCode || !canManage.value || saving.value) return
+  saving.value = true
+  try {
+    const updated = enabled
+      ? await authorizeService.addPrivilegesToRole(role.id, [privilegeId])
+      : await authorizeService.removePrivilegesFromRole(role.id, [privilegeId])
+    roles.value = roles.value.map(item => item.id === role.id ? updated : item)
+    if (authorizeStore.activeRole?.id === role.id) await privilegeStore.refreshPrivileges()
+  } catch (error) {
+    notifyError(error, 'authorize.roles.privilegeSaveError')
+  } finally {
+    saving.value = false
+  }
 }
 </script>
 
 <style scoped>
-.text-caption,
-.role-dialog :deep(.q-field__bottom) {
-  font-size: 0.8125rem;
+.role-manager {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
 }
 
-.role-header-actions,
-.role-privilege-list,
-.role-dialog-actions {
+.role-toolbar,
+.role-buttons,
+.role-privilege-header {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 8px;
-  flex-wrap: wrap;
 }
 
-.role-dialog-actions {
-  justify-content: flex-end;
+.role-toolbar,
+.role-privilege-header {
+  flex: none;
+  justify-content: space-between;
 }
 
-.role-privilege-chip {
-  max-width: 100%;
-  height: auto;
-  min-height: 24px;
-}
-
-.role-privilege-chip :deep(.q-chip__content),
-.role-privilege-select :deep(.q-chip__content) {
+.role-buttons {
+  flex: 1 1 280px;
   min-width: 0;
-  white-space: normal;
+}
+
+.role-buttons .q-btn,
+.role-privilege-header h2,
+.role-category-title,
+.role-privilege-toggle,
+.role-privilege-text {
+  max-width: 100%;
   overflow-wrap: anywhere;
 }
 
-.role-dialog {
-  width: 420px;
-  max-width: calc(100vw - 32px);
+.role-privilege-scroll {
+  flex: 1 1 0;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
+  scrollbar-gutter: stable;
 }
 
-.role-privileges-dialog {
-  width: 620px;
-  max-width: calc(100vw - 32px);
+.role-category {
+  break-inside: avoid;
+  margin-bottom: 16px;
 }
 
-.min-width-0 {
+.role-category-title {
+  background: var(--solaire-blue-light);
+}
+
+.body--dark .role-category-title {
+  background: var(--solaire-blue-dark);
+}
+
+.role-privilege-item {
+  padding: 0;
+}
+
+.role-privilege-toggle {
+  display: flex;
+  flex: 1;
   min-width: 0;
+  min-height: 44px;
+  justify-content: space-between;
+  padding: 2px 8px 2px 16px;
 }
 
-@media (max-width: 1023px) {
-  .role-privilege-list {
-    display: grid;
-    grid-template-columns: 1fr;
-  }
+.role-privilege-text {
+  min-height: 44px;
+  padding: 2px 16px;
+}
 
-  .role-privilege-chip {
-    width: 100%;
-    margin: 0;
-  }
-
-  .role-privilege-chip :deep(.q-chip__content) {
-    justify-content: flex-start;
+@media (min-width: 1024px) {
+  .role-privilege-columns {
+    columns: 280px;
+    column-gap: 16px;
   }
 }
 
@@ -557,21 +341,10 @@ async function savePrivileges() {
   .role-manager {
     padding: 8px;
   }
+}
 
-  .role-manager-actions .q-btn,
-  .role-dialog-actions .q-btn {
-    width: 100%;
-  }
-
-  .role-header-actions {
-    display: grid;
-    grid-template-columns: repeat(2, auto);
-    gap: 2px;
-  }
-
-  .role-dialog-actions {
-    display: grid;
-    grid-template-columns: 1fr;
-  }
+.role-dialog {
+  width: 420px;
+  max-width: calc(100vw - 32px);
 }
 </style>
