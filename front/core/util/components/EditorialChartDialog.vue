@@ -31,7 +31,7 @@
         </div>
       </q-card-section>
       <q-separator />
-      <q-card-actions align="right" class="galaris-dialog-actions q-pa-md">
+      <q-card-actions align="right" class="galaris-dialog-actions">
         <q-btn outline color="primary" v-close-popup :label="t('common.cancel')" />
         <q-btn color="primary" :label="t('richEditor.apply')" :disable="!preview" @click="apply" />
       </q-card-actions>

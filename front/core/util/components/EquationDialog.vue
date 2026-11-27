@@ -11,7 +11,7 @@
         <div v-if="invalid" role="alert">{{ t('richEditor.equation.invalid') }}</div>
         <div ref="keyboardHost" class="equation-keyboard" />
       </q-card-section>
-      <q-card-actions align="right">
+      <q-card-actions align="right" class="galaris-dialog-actions">
         <q-btn v-close-popup outline color="primary" :label="t('common.cancel')" />
         <q-btn color="primary" :label="t('richEditor.apply')" :disable="!field || !draft.trim() || invalid" @click="emit('apply', draft)" />
       </q-card-actions>

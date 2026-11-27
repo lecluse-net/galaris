@@ -35,12 +35,13 @@
       <q-card class="external-harnesses__dialog galaris-dialog-card">
         <DialogHeader :title="selected?.name ?? t('harnesses.catalog.addApi')" :close-label="t('common.close')" />
         <div class="galaris-dialog-body">
-          <HarnessEditor v-if="editing" :key="editorSession" :harness-id="selected?.id ?? 'new'" embedded
+          <HarnessEditor v-if="editing" :key="editorSession" :harness-id="selected?.id ?? 'new'" :footer-target="editorFooter" embedded
             @close="editing = false" @done="editing = false" @mutation="trackMutation" />
           <q-card-section v-if="editing && selected">
             <HarnessExecutionSettings :key="editorSession" :provider-code="selected.provider_code" />
           </q-card-section>
         </div>
+        <div ref="editor-footer" class="col-auto" />
       </q-card>
     </q-dialog>
   </section>
@@ -48,7 +49,7 @@
 
 <script setup lang="ts">
 import { DialogHeader } from '@/core/util'
-import { computed, ref } from 'vue'
+import { computed, ref, useTemplateRef } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { privileges, usePrivilegeStore } from '@/core/authorize'
 import { harnessBrand } from '../branding'
@@ -60,6 +61,7 @@ const props = defineProps<{ entries: HarnessCatalogEntry[] }>()
 const emit = defineEmits<{ updated: [entry: HarnessCatalogEntry]; removed: [id: string] }>()
 const { t } = useI18n()
 const privilegeStore = usePrivilegeStore()
+const editorFooter = useTemplateRef<HTMLDivElement>('editor-footer')
 const canEdit = computed(() => privilegeStore.hasPrivilege(privileges.HARNESS_CONFIG_EDIT))
 const canChangeExisting = computed(() => canEdit.value && privilegeStore.hasPrivilege(privileges.AGENT_MANAGE_ALL))
 const search = ref<string | null>('')

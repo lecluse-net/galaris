@@ -58,7 +58,7 @@
         </q-form>
       </q-card-section>
 
-      <q-card-actions align="right" class="q-pa-md galaris-dialog-actions">
+      <q-card-actions align="right" class="galaris-dialog-actions">
         <!-- eslint-disable-next-line galaris/ui-conventions -- Restore the borderless task-form cancellation. -->
         <q-btn flat :label="$t('common.cancel')" color="grey" v-close-popup />
         <q-btn

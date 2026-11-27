@@ -358,7 +358,7 @@
             </q-radio>
           </div>
         </q-card-section>
-        <q-card-actions align="right">
+        <q-card-actions align="right" class="galaris-dialog-actions">
           <q-btn v-close-popup outline color="primary" :label="t('common.cancel')" />
           <q-btn color="primary" :label="t('richEditor.apply')" @click="applyTheme" />
         </q-card-actions>
@@ -373,7 +373,7 @@
           <q-btn class="q-mt-md" outline color="primary" :label="t('documents.mindmapThemes.defaultBackground')"
             :disable="!backgroundDraft" @click="backgroundDraft = undefined" />
         </q-card-section>
-        <q-card-actions align="right">
+        <q-card-actions align="right" class="galaris-dialog-actions">
           <q-btn v-close-popup outline color="primary" :label="t('common.cancel')" />
           <q-btn color="primary" :label="t('richEditor.apply')" @click="applyBackground" />
         </q-card-actions>
@@ -388,7 +388,7 @@
             <q-input v-model="linkDraft.url" outlined autofocus :label="t('richEditor.uri')" />
             <q-input v-model="linkDraft.title" outlined :maxlength="titleLength" :label="t('richEditor.linkText')" />
           </q-card-section>
-          <q-card-actions align="right">
+          <q-card-actions align="right" class="galaris-dialog-actions">
             <q-btn outline color="primary" v-close-popup :label="t('common.cancel')" />
             <q-btn type="submit" color="primary" :disable="!linkUri" :label="t('documents.mindmap.link')" />
           </q-card-actions>
@@ -399,43 +399,43 @@
       @update:model-value="connectorNodeId = undefined">
       <q-card class="galaris-dialog-card" style="width: 520px; max-width: 95vw">
         <DialogHeader :title="t('documents.mindmapConnectors.title')" :close-label="t('common.close')" />
-        <q-card-section v-if="connectorNode" class="galaris-dialog-body q-gutter-sm">
-          <q-form v-if="connectorTargetNode && !readonly" class="q-gutter-sm" @submit="saveConnector">
+        <q-form v-if="connectorNode && connectorTargetNode && !readonly" class="galaris-dialog-form" @submit="saveConnector">
+          <q-card-section class="galaris-dialog-body q-gutter-y-sm">
             <div class="text-subtitle1">{{ nodeLabel(connectorNode) }} → {{ nodeLabel(connectorTargetNode) }}</div>
             <q-input v-model="connectorLabel" dense outlined autofocus :maxlength="maxConnectorLabelLength"
               :label="t('documents.mindmapConnectors.label')" />
-            <div class="row justify-end q-gutter-sm">
-              <q-btn v-if="connectorEdit" color="negative" :label="t('documents.mindmapConnectors.remove')"
-                @click="connectorRemoval = connectorEdit" />
-              <q-btn type="submit" color="primary" :disable="!canSaveConnector"
-                :label="t(connectorEdit ? 'documents.mindmapConnectors.rename' : 'documents.mindmapConnectors.add')" />
-            </div>
-          </q-form>
-          <template v-else>
-            <div class="text-subtitle1">{{ nodeLabel(connectorNode) }}</div>
-            <q-list v-if="currentConnectors.length" separator>
-              <q-item v-for="({ connector, other }, index) in currentConnectors" :key="connectorKey(connector)">
-                <q-item-section>
-                  <q-item-label>{{ connector.label }}</q-item-label>
-                  <q-item-label caption>
-                    {{ t(connector.source === connectorNode.id ? 'documents.mindmapConnectors.toNode' : 'documents.mindmapConnectors.fromNode', { node: nodeLabel(other) }) }}
-                  </q-item-label>
-                </q-item-section>
-                <q-item-section side>
-                  <div class="row no-wrap">
-                    <q-btn flat round dense color="primary" icon="arrow_forward"
-                      :data-autofocus="index === 0 || undefined"
-                      :aria-label="t('documents.mindmapConnectors.jumpTo', { node: nodeLabel(other) })" @click="jumpToConnector(other.id)" />
-                    <q-btn v-if="!readonly" flat round dense color="primary" icon="edit"
-                      :aria-label="t('documents.mindmapConnectors.renameNamed', { label: connector.label })" @click="editConnector(connector)" />
-                    <q-btn v-if="!readonly" flat round dense color="negative" icon="delete"
-                      :aria-label="t('documents.mindmapConnectors.removeNamed', { label: connector.label })" @click="connectorRemoval = connector" />
-                  </div>
-                </q-item-section>
-              </q-item>
-            </q-list>
-            <div v-else>{{ t(readonly ? 'documents.mindmapConnectors.empty' : 'documents.mindmapConnectors.selectTwo') }}</div>
-          </template>
+          </q-card-section>
+          <q-card-actions align="right" class="galaris-dialog-actions">
+            <q-btn v-if="connectorEdit" color="negative" :label="t('documents.mindmapConnectors.remove')"
+              @click="connectorRemoval = connectorEdit" />
+            <q-btn type="submit" color="primary" :disable="!canSaveConnector"
+              :label="t(connectorEdit ? 'documents.mindmapConnectors.rename' : 'documents.mindmapConnectors.add')" />
+          </q-card-actions>
+        </q-form>
+        <q-card-section v-else-if="connectorNode" class="galaris-dialog-body q-gutter-sm">
+          <div class="text-subtitle1">{{ nodeLabel(connectorNode) }}</div>
+          <q-list v-if="currentConnectors.length" separator>
+            <q-item v-for="({ connector, other }, index) in currentConnectors" :key="connectorKey(connector)">
+              <q-item-section>
+                <q-item-label>{{ connector.label }}</q-item-label>
+                <q-item-label caption>
+                  {{ t(connector.source === connectorNode.id ? 'documents.mindmapConnectors.toNode' : 'documents.mindmapConnectors.fromNode', { node: nodeLabel(other) }) }}
+                </q-item-label>
+              </q-item-section>
+              <q-item-section side>
+                <div class="row no-wrap">
+                  <q-btn flat round dense color="primary" icon="arrow_forward"
+                    :data-autofocus="index === 0 || undefined"
+                    :aria-label="t('documents.mindmapConnectors.jumpTo', { node: nodeLabel(other) })" @click="jumpToConnector(other.id)" />
+                  <q-btn v-if="!readonly" flat round dense color="primary" icon="edit"
+                    :aria-label="t('documents.mindmapConnectors.renameNamed', { label: connector.label })" @click="editConnector(connector)" />
+                  <q-btn v-if="!readonly" flat round dense color="negative" icon="delete"
+                    :aria-label="t('documents.mindmapConnectors.removeNamed', { label: connector.label })" @click="connectorRemoval = connector" />
+                </div>
+              </q-item-section>
+            </q-item>
+          </q-list>
+          <div v-else>{{ t(readonly ? 'documents.mindmapConnectors.empty' : 'documents.mindmapConnectors.selectTwo') }}</div>
         </q-card-section>
       </q-card>
     </q-dialog>
@@ -446,7 +446,7 @@
         <q-card-section class="galaris-dialog-body">
           {{ t('documents.mindmapConnectors.confirmRemove', { label: connectorRemoval?.label ?? '' }) }}
         </q-card-section>
-        <q-card-actions align="right">
+        <q-card-actions align="right" class="galaris-dialog-actions">
           <q-btn v-close-popup outline color="primary" :label="t('common.cancel')" />
           <q-btn data-autofocus color="negative" :label="t('documents.mindmapConnectors.remove')" @click="removeConnector" />
         </q-card-actions>
@@ -459,7 +459,7 @@
         <q-card-section class="galaris-dialog-body">
           {{ selectionRoots.length > 1 ? t('documents.mindmapSelection.confirmRemove', { count: selectionRoots.length }) : t('documents.mindmap.confirmRemove') }}
         </q-card-section>
-        <q-card-actions align="right">
+        <q-card-actions align="right" class="galaris-dialog-actions">
           <q-btn v-close-popup outline color="primary" :label="t('common.cancel')" />
           <q-btn data-autofocus color="negative" :label="removeLabel" @click="removeBranches" />
         </q-card-actions>
@@ -470,7 +470,7 @@
       <q-card class="galaris-dialog-card" style="width: 480px; max-width: 95vw">
         <DialogHeader :title="t('documents.mindmapValue.remove')" :close-label="t('common.close')" />
         <q-card-section class="galaris-dialog-body">{{ t('documents.mindmapValue.confirmRemove') }}</q-card-section>
-        <q-card-actions align="right">
+        <q-card-actions align="right" class="galaris-dialog-actions">
           <q-btn v-close-popup outline color="primary" :label="t('common.cancel')" />
           <q-btn data-autofocus color="negative" :label="t('documents.mindmapValue.remove')" @click="confirmValueRemoval" />
         </q-card-actions>

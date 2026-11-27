@@ -66,7 +66,7 @@ make service-logs</pre>
         </div>
         <div v-if="error" role="alert" class="q-mt-md">{{ error }}</div>
           </q-card-section>
-          <q-card-actions align="right"><q-btn outline color="primary" v-close-popup  :label="t('common.close')" /></q-card-actions>
+          <q-card-actions align="right" class="galaris-dialog-actions"><q-btn outline color="primary" v-close-popup  :label="t('common.close')" /></q-card-actions>
         </q-card>
       </q-dialog>
     </template>

@@ -7,7 +7,7 @@
         <div v-else-if="errorMessage" role="alert">{{ errorMessage }}</div>
         <div v-else-if="file">{{ file.name }}</div>
       </q-card-section>
-      <q-card-actions align="right">
+      <q-card-actions align="right" class="galaris-dialog-actions">
         <q-btn color="primary" v-close-popup outline :label="t('common.cancel')" />
         <q-btn v-if="errorMessage && !file" color="primary" outline :label="t('common.retry')" @click="prepare" />
         <q-btn v-else color="primary" :disable="!file" :loading="sharing"

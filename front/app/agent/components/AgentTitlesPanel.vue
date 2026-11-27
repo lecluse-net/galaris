@@ -45,8 +45,8 @@
     <q-dialog v-model="showTitleDialog">
       <q-card class="galaris-dialog-card" style="min-width: 400px">
         <DialogHeader :title="isTitleEdit ? $t('agent.editTitleDialog') : $t('agent.addTitleDialog')" :close-label="$t('common.close')" />
-        <q-card-section class="q-pt-md galaris-dialog-body">
-          <q-form class="q-gutter-md" @submit="onTitleSubmit">
+        <q-form class="galaris-dialog-form" @submit="onTitleSubmit">
+          <q-card-section class="galaris-dialog-body q-gutter-y-md">
             <q-input
               :model-value="titleLabel(titleForm.label, $t)"
               @update:model-value="titleForm.label = String($event ?? '')"
@@ -65,18 +65,18 @@
               map-options
               :rules="[value => !!value || $t('agent.genderRule')]"
             />
-            <div class="galaris-dialog-actions row justify-end q-mt-md q-gutter-sm q-pa-md">
-              <q-btn outline :label="$t('common.cancel')" color="grey"  v-close-popup />
-              <q-btn
-                v-if="canEditGlobalCatalog"
-                :label="isTitleEdit ? $t('common.edit') : $t('common.create')"
-                type="submit"
-                color="primary"
-                :loading="agentStore.loading"
-              />
-            </div>
-          </q-form>
-        </q-card-section>
+          </q-card-section>
+          <q-card-actions align="right" class="galaris-dialog-actions">
+            <q-btn outline :label="$t('common.cancel')" color="grey"  v-close-popup />
+            <q-btn
+              v-if="canEditGlobalCatalog"
+              :label="isTitleEdit ? $t('common.edit') : $t('common.create')"
+              type="submit"
+              color="primary"
+              :loading="agentStore.loading"
+            />
+          </q-card-actions>
+        </q-form>
       </q-card>
     </q-dialog>
 

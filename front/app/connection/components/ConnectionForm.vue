@@ -1,5 +1,5 @@
 <template>
-  <q-form @submit="onSubmit" class="q-gutter-md">
+  <q-form :id="formId" @submit="onSubmit" class="q-gutter-md">
     <div class="row no-wrap" style="gap: 16px">
       <div class="col">
         <AgentSelect
@@ -238,30 +238,33 @@
       </q-card-section>
     </q-card>
 
-    <div class="connection-form-actions row items-center q-mt-md">
+  </q-form>
+
+  <Teleport :to="footerTarget ?? 'body'" :disabled="!footerTarget">
+    <q-card-actions align="right" class="galaris-dialog-actions">
       <q-toggle
         v-if="!isSystemConnection && (selectedTool?.code !== 'console' || consoleTarget === 'external')"
         v-model="form.active"
         :label="t('connection.activeConnection')"
         color="positive"
+        class="connection-active-toggle"
       />
       <q-space />
-      <div class="connection-form-buttons row items-center q-gutter-sm">
-        <slot name="actions" />
-        <q-btn :label="t('common.cancel')" color="grey-6" v-close-popup @click="$emit('cancel')" />
-        <q-btn
-          v-if="canEdit"
-          :label="selectedTool?.code === 'console' && consoleTarget === 'embedded'
-            ? t('connection.console.useEmbedded')
-            : isEdit ? t('common.edit') : t('common.create')"
-          type="submit"
-          color="primary"
-          :loading="loading || consoleAction === 'embedded'"
-          :disable="!isValidForm || consoleAction !== null"
-        />
-      </div>
-    </div>
-  </q-form>
+      <slot name="actions" />
+      <q-btn :label="t('common.cancel')" color="grey-6" v-close-popup @click="$emit('cancel')" />
+      <q-btn
+        v-if="canEdit"
+        :label="selectedTool?.code === 'console' && consoleTarget === 'embedded'
+          ? t('connection.console.useEmbedded')
+          : isEdit ? t('common.edit') : t('common.create')"
+        :form="formId"
+        type="submit"
+        color="primary"
+        :loading="loading || consoleAction === 'embedded'"
+        :disable="!isValidForm || consoleAction !== null"
+      />
+    </q-card-actions>
+  </Teleport>
 
   <q-dialog data-confirmation v-model="showHostKeyConfirmation" @hide="clearPendingHostKey">
     <q-card class="host-key-confirmation-dialog galaris-dialog-card">
@@ -311,7 +314,7 @@
         />
       </q-card-section>
       <q-separator />
-      <q-card-actions align="right" class="q-pa-md galaris-dialog-actions">
+      <q-card-actions align="right" class="galaris-dialog-actions">
         <q-btn outline v-close-popup  color="grey-7" :label="t('common.cancel')" />
         <q-btn data-autofocus
           color="primary"
@@ -383,7 +386,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onBeforeUnmount, watch } from 'vue'
+import { ref, computed, onBeforeUnmount, useId, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useQuasar } from 'quasar'
 import { connectionParamLabel, connectionParamMessageKey, connectionParamOptions, sortedConnectionParamEntries } from '@/app/services/facade'
@@ -484,6 +487,7 @@ const props = defineProps<{
   tools: Service[]
   defaultAgentId?: number | null
   defaultToolId?: number | null
+  footerTarget?: HTMLElement | null
   persistForAction?: (payload: ConnectionSubmitPayload) => Promise<ConnectionActionResult>
 }>()
 
@@ -492,6 +496,7 @@ const emit = defineEmits<{
   configured: []
   cancel: []
 }>()
+const formId = useId()
 
 const form = ref({
   id: null as number | null,
@@ -1120,8 +1125,7 @@ body.body--dark .schema-params-row { border-bottom-color: #2e3238; }
 .param-desc { font-size: 12px; margin-top: 4px; }
 
 @media (max-width: 1023px) {
-  .connection-form-actions { gap: 12px; }
-  .connection-form-buttons { width: 100%; justify-content: flex-end; }
+  .connection-active-toggle { width: 100%; }
   .schema-params-header { display: none; }
   .schema-params-row { gap: 8px; }
   .col-param, .col-value { width: 100%; min-width: 0; }

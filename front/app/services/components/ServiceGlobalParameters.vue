@@ -56,7 +56,7 @@
         </div>
       </q-card-section>
 
-      <q-card-actions align="right" class="q-pa-md galaris-dialog-actions">
+      <q-card-actions align="right" class="galaris-dialog-actions">
         <q-btn outline color="primary"  :label="$t('common.cancel')" v-close-popup />
         <q-btn color="primary" :label="$t('common.save')" :aria-label="$t('common.save')" :loading="savingGlobalParams" :disable="savingGlobalParams || loading || Boolean(loadError) || !canEdit" @click="saveGlobalParams" />
       </q-card-actions>

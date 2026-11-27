@@ -189,7 +189,7 @@
         </q-card-section>
 
         <q-separator />
-        <q-card-actions align="right" class="q-px-lg q-py-md galaris-dialog-actions">
+        <q-card-actions align="right" class="galaris-dialog-actions">
           <q-btn outline color="primary" :label="t('common.close')" v-close-popup />
           <template v-if="selected?.status === 'pending_approval' && selected.can_review && canReview">
             <q-btn

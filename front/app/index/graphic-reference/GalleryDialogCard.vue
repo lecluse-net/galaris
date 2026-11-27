@@ -6,7 +6,7 @@
       <q-input v-model="name" outlined dense :label="t('graphicReference.name')" />
     </q-card-section>
     <q-separator />
-    <q-card-actions align="right" class="galaris-dialog-actions q-pa-md">
+    <q-card-actions align="right" class="galaris-dialog-actions">
       <q-btn outline color="primary" :label="t('graphicReference.cancel')" @click="emit('close')" />
       <q-btn color="primary" :label="t('graphicReference.save')" @click="emit('save')" />
     </q-card-actions>

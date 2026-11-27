@@ -26,7 +26,7 @@
       <q-btn color="primary" outline icon="download" :label="t('harnesses.release.sourceZip', { version: release.version })" :loading="downloading" @click="download" />
       <p class="text-caption q-mt-sm q-mb-none">{{ t('harnesses.release.sourceHint') }}</p>
           </q-card-section>
-          <q-card-actions align="right"><q-btn outline color="primary" v-close-popup  :label="t('common.close')" /></q-card-actions>
+          <q-card-actions align="right" class="galaris-dialog-actions"><q-btn outline color="primary" v-close-popup  :label="t('common.close')" /></q-card-actions>
         </q-card>
       </q-dialog>
     </template>

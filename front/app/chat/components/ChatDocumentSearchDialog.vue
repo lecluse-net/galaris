@@ -26,7 +26,7 @@
           </q-list>
         </div>
       </div>
-      <q-card-actions align="right">
+      <q-card-actions align="right" class="galaris-dialog-actions">
         <q-select v-model="pageSize" dense outlined :options="[10, 20, 50, 100, 500]" :label="t('chat.documentsPerPage')" />
         <q-pagination v-model="page" :max="Math.max(1, Math.ceil(total / pageSize))" :max-pages="5" :disable="loading" />
       </q-card-actions>

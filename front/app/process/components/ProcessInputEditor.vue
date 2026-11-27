@@ -2,8 +2,8 @@
   <q-dialog :model-value="true" @update:model-value="emit('close')">
     <q-card class="galaris-dialog-card input-editor">
       <DialogHeader :title="t('nativeProcesses.inputs.edit', { name: variable.label || variable.name })" :close-label="t('common.close')" :close-popup="false" @close="emit('close')" />
-      <q-form @submit="save">
-        <q-card-section class="q-gutter-y-md">
+      <q-form class="galaris-dialog-form" @submit="save">
+        <q-card-section class="galaris-dialog-body q-gutter-y-md">
           <div>{{ variable.description }}</div>
           <q-banner v-if="error" role="alert">{{ error }}</q-banner>
           <q-checkbox v-if="variable.nullable" v-model="explicitNull" :disable="busy" :label="t('nativeProcesses.inputs.explicitNull')" />
@@ -16,7 +16,7 @@
               :label="t('nativeProcesses.inputs.upload')"><template #prepend><q-icon name="attach_file" /></template></q-file>
           </template>
         </q-card-section>
-        <q-card-actions align="right">
+        <q-card-actions align="right" class="galaris-dialog-actions">
           <q-btn outline color="primary" :label="t('common.cancel')" @click="emit('close')" />
           <q-btn type="submit" color="primary" :loading="busy" :label="t('nativeProcesses.inputs.save')" />
         </q-card-actions>

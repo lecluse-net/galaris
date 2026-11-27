@@ -58,7 +58,7 @@
         <q-card-section v-if="detailError" role="alert">{{ t('permissions.error') }}
           <q-btn v-if="detailId" outline color="primary" :label="t('permissions.retry')" @click="open(detailId)" />
         </q-card-section>
-        <q-card-actions align="right">
+        <q-card-actions align="right" class="galaris-dialog-actions">
           <q-btn v-close-popup outline color="primary" :label="t('permissions.cancel')" />
           <q-btn v-if="selected?.can_cancel && canCancel" color="primary" :label="t('permissions.cancelAction')"
             :loading="answering" @click="cancel" />

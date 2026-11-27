@@ -423,7 +423,7 @@
         </q-card-section>
         <template v-if="showAgentForm">
           <q-separator />
-          <q-card-actions align="right" class="galaris-dialog-actions q-pa-md">
+          <q-card-actions align="right" class="galaris-dialog-actions">
             <q-btn v-close-popup outline color="primary" :label="$t('common.cancel')" />
             <q-btn
               v-if="canSaveAgent"
@@ -435,6 +435,9 @@
             />
           </q-card-actions>
         </template>
+        <q-card-actions v-else-if="isAgentEdit && agentDialogTab === 'mcp' && canManageMcp" align="right" class="galaris-dialog-actions">
+          <q-btn outline :label="$t('common.close')" color="grey" v-close-popup />
+        </q-card-actions>
       </q-card>
     </q-dialog>
 
@@ -460,7 +463,7 @@
             class="q-mb-none q-mt-md">{{ $t('agent.harness.changeConfirmNextStep') }}</p>
         </q-card-section>
         <q-separator />
-        <q-card-actions align="right" class="q-pa-md galaris-dialog-actions">
+        <q-card-actions align="right" class="galaris-dialog-actions">
           <q-btn outline
 
             color="grey-7"
@@ -531,7 +534,7 @@
             @close="blockingTaskId = null" />
         </q-card-section>
         <q-separator />
-        <q-card-actions align="right" class="q-pa-md galaris-dialog-actions">
+        <q-card-actions align="right" class="galaris-dialog-actions">
           <q-btn outline
 
             color="grey-7"
@@ -574,7 +577,7 @@
           />
         </q-card-section>
 
-        <q-card-actions align="right" class="q-pa-md galaris-dialog-actions">
+        <q-card-actions align="right" class="galaris-dialog-actions">
           <q-btn outline :label="$t(canEditRichText ? 'common.cancel' : 'common.close')" color="grey" v-close-popup />
           <q-btn
             v-if="canEditRichText"

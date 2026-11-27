@@ -14,7 +14,7 @@
         {{ t('harnesses.catalog.loadError') }}
         <template #action><q-btn outline color="primary"  :label="t('common.retry')" @click="load" /></template>
       </q-banner>
-      <q-form v-else class="q-pa-lg q-gutter-lg" @submit.prevent="save">
+      <q-form v-else :id="formId" class="q-pa-lg q-gutter-lg" @submit.prevent="save">
         <q-banner v-if="entry?.provider_code === 'deepseek_harness'" rounded class="bg-solaire-orange-light text-dark">
           <template #avatar><q-icon name="science" color="warning" /></template>
           <div class="text-subtitle1 text-weight-bold">{{ t('harnesses.catalog.experimental') }}</div>
@@ -165,28 +165,17 @@
           {{ entry.last_error }}
         </q-banner>
 
-        <div class="row items-center q-gutter-sm" :class="{ 'galaris-dialog-actions q-pa-md': embedded }">
-          <q-space />
-          <q-btn outline color="primary" v-if="embedded"  :label="t('common.cancel')" @click="emit('close')" />
-          <q-btn
-            v-if="!isNew && isOpenAi && canEdit"
-
-            color="negative"
-            icon="delete"
-            :label="t('harnesses.catalog.delete')"
-            :disable="busy"
-            @click="deleteDialog = true"
-          />
-          <q-btn
-            v-if="canEdit && isOpenAi"
-            type="submit"
-            color="primary"
-            icon="save"
-            :label="t('common.save')"
-            :loading="saving"
-            :disable="!canSave || busy"
-          />
-        </div>
+        <Teleport :to="footerTarget ?? 'body'" :disabled="!embedded || !footerTarget">
+          <component :is="embedded ? QCardActions : 'div'" :align="embedded ? 'right' : undefined"
+            :class="embedded ? 'galaris-dialog-actions' : 'row items-center q-gutter-sm'">
+            <q-space v-if="!embedded" />
+            <q-btn v-if="embedded" outline color="primary" :label="t('common.cancel')" @click="emit('close')" />
+            <q-btn v-if="!isNew && isOpenAi && canEdit" color="negative" icon="delete"
+              :label="t('harnesses.catalog.delete')" :disable="busy" @click="deleteDialog = true" />
+            <q-btn v-if="canEdit && isOpenAi" :form="formId" type="submit" color="primary" icon="save"
+              :label="t('common.save')" :loading="saving" :disable="!canSave || busy" />
+          </component>
+        </Teleport>
       </q-form>
       <HarnessProviderSettings
         v-if="!loading && !loadFailed && entry && !isOpenAi"
@@ -204,7 +193,7 @@
             count: entry?.assigned_agents ?? 0,
           }) }}
         </q-card-section>
-        <q-card-actions align="right" class="q-pa-md galaris-dialog-actions">
+        <q-card-actions align="right" class="galaris-dialog-actions">
           <q-btn outline v-close-popup  color="grey-7" :label="t('common.cancel')" />
           <q-btn data-autofocus
             color="warning"
@@ -225,7 +214,7 @@
             count: entry?.assigned_agents ?? 0,
           }) }}
         </q-card-section>
-        <q-card-actions align="right" class="q-pa-md galaris-dialog-actions">
+        <q-card-actions align="right" class="galaris-dialog-actions">
           <q-btn outline v-close-popup  color="grey-7" :label="t('common.cancel')" />
           <q-btn data-autofocus
             color="negative"
@@ -244,8 +233,8 @@
 
 <script setup lang="ts">
 import { DialogHeader } from '@/core/util'
-import { computed, onBeforeUnmount, reactive, ref, watch } from 'vue'
-import { useQuasar } from 'quasar'
+import { computed, onBeforeUnmount, reactive, ref, useId, watch } from 'vue'
+import { QCardActions, useQuasar } from 'quasar'
 import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
 
@@ -259,7 +248,8 @@ import {
   type HarnessCatalogUpdate,
 } from '../services/harnessService'
 
-const props = defineProps<{ harnessId?: string; embedded?: boolean }>()
+const props = defineProps<{ harnessId?: string; embedded?: boolean; footerTarget?: HTMLElement | null }>()
+const formId = useId()
 const emit = defineEmits<{
   close: []
   done: []

@@ -35,5 +35,4 @@ function label(name: string) { const key = `evaluation.contract.fields.${name}`;
 .capture-confirmation { width: 800px; max-width: 95vw; }
 .difference-values { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr)); gap: 12px; }
 pre { white-space: pre-wrap; overflow-wrap: anywhere; max-height: 220px; overflow: auto; }
-.q-card__actions { flex-wrap: wrap; gap: 8px; }
 </style>

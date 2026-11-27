@@ -103,9 +103,6 @@
       </template>
     </q-table>
 
-    <div class="galaris-dialog-actions row justify-end q-mt-md q-pa-md">
-      <q-btn outline :label="$t('common.close')" color="grey"  v-close-popup />
-    </div>
   </div>
   <q-dialog v-model="showCreateMcpTokenDialog">
     <q-card class="galaris-dialog-card" style="min-width: 400px">

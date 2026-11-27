@@ -135,7 +135,7 @@
           </q-form>
         </q-card-section>
         <q-separator />
-        <q-card-actions align="right" class="galaris-dialog-actions q-pa-md">
+        <q-card-actions align="right" class="galaris-dialog-actions">
           <q-btn v-close-popup outline color="primary" :label="$t('common.cancel')" />
           <q-btn v-if="canManage" color="primary" type="submit" :form="listFormId"
             :label="isEdit ? $t('common.save') : $t('common.create')" />

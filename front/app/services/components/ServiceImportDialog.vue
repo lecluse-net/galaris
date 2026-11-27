@@ -30,7 +30,7 @@
         {{ error }}
       </q-card-section>
 
-      <q-card-actions align="right" class="q-pa-md galaris-dialog-actions">
+      <q-card-actions align="right" class="galaris-dialog-actions">
         <q-btn outline color="primary" :label="t('common.cancel')" v-close-popup />
         <q-btn v-if="conflict !== null" outline color="primary" :label="t('services.changeFile')"
                :disable="sendingThisFile" @click="backToFile" />

@@ -506,8 +506,7 @@ function onObservedEvent(event: Parameters<typeof onDocumentMemoryUpdate>[0]): v
 .memory-links-section { min-width: 0; overflow-wrap: anywhere; }
 .memory-section-title { display: flex; align-items: center; gap: 8px; font-size: 0.875rem; font-weight: 600; margin-bottom: 8px; }
 .memory-section-title > .q-icon { color: var(--solaire-blue-accent); font-size: 18px; }
-.memory-detail-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: center; gap: 8px; }
-.memory-detail-actions :deep(.q-btn) { margin: 0; flex: 0 0 auto; width: auto; max-width: none; white-space: nowrap; }
+.memory-detail-actions :deep(.q-btn) { flex: 0 0 auto; width: auto; max-width: none; white-space: nowrap; }
 .memory-detail-actions :deep(.q-btn__content) { flex-wrap: nowrap; white-space: nowrap; }
 .memory-detail-dream { display: contents; }
 .memory-detail-dream :deep(.row.q-gutter-sm) { display: contents; }

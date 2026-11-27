@@ -81,7 +81,7 @@
             :label="t('evaluation.capture.datasetName')"
           />
         </q-card-section>
-        <q-card-actions align="right" class="q-px-md q-pb-md galaris-dialog-actions">
+        <q-card-actions align="right" class="galaris-dialog-actions">
           <q-btn outline color="primary" v-close-popup  :label="t('common.cancel')" />
           <q-btn
             type="submit"
@@ -265,5 +265,4 @@ function notifyError(action: string, error: unknown): void {
 }
 .dataset-dialog, .create-dataset-dialog { box-sizing: border-box; min-width: 0; }
 .galaris-dialog-title > .col, .galaris-dialog-title > .text-h6 { min-width: 0; overflow-wrap: anywhere; }
-.dataset-dialog :deep(.q-card__actions), .create-dataset-dialog :deep(.q-card__actions) { flex-wrap: wrap; gap: 8px; }
 </style>

@@ -90,7 +90,7 @@
         </div>
       </q-card-section>
 
-      <q-card-actions align="right" class="q-pa-md galaris-dialog-actions">
+      <q-card-actions align="right" class="galaris-dialog-actions">
         <q-btn outline color="primary"  :label="$t('common.close')" v-close-popup />
         <q-btn
           v-if="canEdit"

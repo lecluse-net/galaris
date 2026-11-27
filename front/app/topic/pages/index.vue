@@ -263,7 +263,7 @@
           />
         </q-card-section>
         <q-separator />
-        <q-card-actions align="right" class="q-pa-md galaris-dialog-actions">
+        <q-card-actions align="right" class="galaris-dialog-actions">
           <q-btn outline color="primary" v-close-popup  :label="t('topic.cancel')" />
           <q-btn color="primary" icon="merge" :label="t('topic.confirm')" :disable="!mergeTargetId" :loading="saving" @click="confirmMerge" />
         </q-card-actions>
@@ -331,7 +331,7 @@
           </q-card>
         </q-card-section>
         <q-separator />
-        <q-card-actions align="right" class="q-pa-md galaris-dialog-actions">
+        <q-card-actions align="right" class="galaris-dialog-actions">
           <q-btn outline color="primary" v-close-popup  :label="t('topic.cancel')" />
           <q-btn color="primary" icon="call_split" :label="t('topic.confirm')" :disable="!canSubmitSplit" :loading="saving" @click="confirmSplit" />
         </q-card-actions>
@@ -343,7 +343,7 @@
         <DialogHeader :title="t('topic.deleteTitle', { title: activeTopic?.title || '' })" :close-label="t('topic.cancel')" />
         <q-card-section class="galaris-dialog-body">{{ t('topic.deleteHelp') }}</q-card-section>
         <q-separator />
-        <q-card-actions align="right" class="q-pa-md galaris-dialog-actions">
+        <q-card-actions align="right" class="galaris-dialog-actions">
           <q-btn outline color="primary" v-close-popup  :label="t('topic.cancel')" />
           <q-btn data-autofocus color="negative" icon="delete" :label="t('topic.delete')" :loading="saving" @click="confirmDelete" />
         </q-card-actions>

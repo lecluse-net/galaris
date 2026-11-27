@@ -323,7 +323,8 @@ immutable. Consult the `galaris-process-services` skill.
 - Every modal with buttons at the bottom must group them in a single standard footer.
   Use `<q-card-actions align="right" class="galaris-dialog-actions">` below and outside
   the scrollable `galaris-dialog-body`. Place Cancel before the primary action when both
-  are present. Reuse the shared footer styling from the Graphic reference.
+  are present. Use the shared New event footer spacing shown in the Graphic reference
+  and leave footer margins and padding to the shared stylesheet.
 - Use a real dialog for every confirmation. Use the shared confirmation dialog or mark a
   custom `q-dialog` with `data-confirmation` and its single primary `q-btn` with
   `data-autofocus`. Focus that action when the dialog opens, including for destructive

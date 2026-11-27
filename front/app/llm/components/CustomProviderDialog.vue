@@ -95,7 +95,7 @@
 
         <q-separator />
 
-        <q-card-actions align="right" class="q-pa-md galaris-dialog-actions">
+        <q-card-actions align="right" class="galaris-dialog-actions">
           <q-btn outline color="primary"  :label="t('common.cancel')" @click="open = false" />
           <q-btn
             v-if="canEdit"

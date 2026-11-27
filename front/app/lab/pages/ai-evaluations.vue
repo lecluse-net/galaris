@@ -213,7 +213,7 @@
         <DialogHeader :title="t('evaluation.removeTask')" :close-label="t('common.close')" />
         <q-separator />
         <q-card-section class="galaris-dialog-body">{{ t('evaluation.removeTaskConfirm') }}</q-card-section>
-        <q-card-actions align="right" class="q-px-md q-pb-md galaris-dialog-actions">
+        <q-card-actions align="right" class="galaris-dialog-actions">
           <q-btn outline color="primary" v-close-popup  :label="t('common.cancel')" />
           <q-btn data-autofocus
             color="negative"
@@ -485,7 +485,6 @@ body.body--dark .context-label { color: #bdbdbd; }
 .candidate-dialog { width: min(900px, calc(100vw - 24px)); max-width: calc(100vw - 24px); }
 .confirm-dialog, .candidate-dialog { box-sizing: border-box; min-width: 0; }
 .galaris-dialog-title > .col, .galaris-dialog-title > .text-h6 { min-width: 0; overflow-wrap: anywhere; }
-.confirm-dialog :deep(.q-card__actions), .candidate-dialog :deep(.q-card__actions) { flex-wrap: wrap; gap: 8px; }
 .candidate-scroll { height: min(620px, 72vh); }
 @media (max-width: 900px) {
   .task-list-controls { grid-template-columns: 1fr; }

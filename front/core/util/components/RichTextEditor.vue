@@ -120,7 +120,7 @@
             <tbody><tr v-for="shortcut in keyboardShortcuts" :key="shortcut.label + shortcut.keys"><td>{{ shortcut.label }}</td><td class="text-right"><kbd>{{ shortcut.keys }}</kbd></td></tr></tbody>
           </q-markup-table>
         </q-card-section>
-        <q-card-actions v-if="dialog !== 'help'" align="right"><q-btn color="primary" v-close-popup outline :label="t('common.cancel')" /><q-btn color="primary" :label="t('richEditor.apply')" :disable="readonly" @click="applyDialog" /></q-card-actions>
+        <q-card-actions v-if="dialog !== 'help'" align="right" class="galaris-dialog-actions"><q-btn color="primary" v-close-popup outline :label="t('common.cancel')" /><q-btn color="primary" :label="t('richEditor.apply')" :disable="readonly" @click="applyDialog" /></q-card-actions>
       </q-card>
     </q-dialog>
     <DocumentPdfShareDialog v-model="shareOpen" :title="documentTitle" :url="documentUrl" :create-file="createShareFile" />

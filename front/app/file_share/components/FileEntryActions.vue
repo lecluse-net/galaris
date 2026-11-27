@@ -22,7 +22,7 @@
           <p>{{ t(entry.is_collection ? 'files.deleteDirectory' : 'files.deleteFile', { name: entry.name }) }}</p>
           <q-banner v-if="error" role="alert">{{ error }}<p class="q-mb-none q-mt-sm">{{ t('files.deleteError') }}</p></q-banner>
         </q-card-section>
-        <q-card-actions align="right">
+        <q-card-actions align="right" class="galaris-dialog-actions">
           <q-btn color="primary" v-close-popup outline :label="t('common.cancel')" />
           <q-btn data-autofocus color="negative" :label="t('common.delete')" :loading="busy" :disable="!canDelete" @click="remove" />
         </q-card-actions>

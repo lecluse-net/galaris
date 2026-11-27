@@ -28,7 +28,7 @@
         <q-card-section>{{ selected && scopeLabel(selected) }} · {{ selected?.capability_name }}</q-card-section>
         <q-card-section>{{ t('permissions.runtimeRevokeExplanation') }}</q-card-section>
         <q-card-section v-if="revokeError" role="alert">{{ t('permissions.error') }}</q-card-section>
-        <q-card-actions align="right">
+        <q-card-actions align="right" class="galaris-dialog-actions">
           <q-btn color="primary" v-close-popup outline :label="t('permissions.cancel')" />
           <q-btn data-autofocus color="negative" :label="t('permissions.revokeRuntimePermission')" :loading="revoking" @click="revoke" />
         </q-card-actions>

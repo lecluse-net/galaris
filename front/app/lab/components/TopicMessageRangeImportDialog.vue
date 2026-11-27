@@ -116,7 +116,7 @@
       </div>
 
       <q-separator />
-      <q-card-actions align="right" class="q-px-md galaris-dialog-actions">
+      <q-card-actions align="right" class="galaris-dialog-actions">
         <q-btn color="primary" v-close-popup outline :label="t('evaluation.close')" />
         <q-btn
           color="solaire-iris"
@@ -304,7 +304,6 @@ function notifyError(error: unknown): void {
 .message-row--assistant .message-bubble { border-radius: 16px 4px 16px 16px; background: rgba(103, 58, 183, 0.07); }
 .message-text { margin-top: 10px; white-space: pre-wrap; overflow-wrap: anywhere; }
 .message-gap { align-self: center; margin: 2px 0 8px; color: #757575; font-size: 0.75rem; }
-.range-dialog :deep(.q-card__actions) { flex-wrap: wrap; gap: 8px; }
 @media (max-width: 699px) {
   .filters { grid-template-columns: 1fr; }
   .message-bubble { width: 96%; }

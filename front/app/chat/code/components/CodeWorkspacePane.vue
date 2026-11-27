@@ -19,7 +19,7 @@
       <q-card style="max-width: 560px">
         <DialogHeader :title="t('code.reloadTitle')" :close-label="t('common.close')" />
         <q-card-section>{{ t('code.reloadWarning') }}</q-card-section>
-        <q-card-actions align="right">
+        <q-card-actions align="right" class="galaris-dialog-actions">
           <q-btn outline color="primary"  :label="t('common.cancel')" v-close-popup />
           <q-btn data-autofocus outline color="primary"  :label="t('code.reloadConfirm')" @click="reload" />
         </q-card-actions>

@@ -46,11 +46,18 @@
     flex-shrink: 0;
 }
 
-/* Share the job-description footer surface across modal action bars. */
+/* Use the New event footer's spacing for all modal actions. */
 .galaris-dialog-actions,
 :is(.galaris-dialog-card, .galaris-dialog-form) > .q-card__actions,
 .q-dialog__inner > .q-card > .q-card__actions {
+    flex-shrink: 0;
+    padding: 8px;
+    row-gap: 8px;
     background: var(--solaire-gray-light);
+
+    @media (max-width: 1023.98px) {
+        padding: 4px;
+    }
 }
 
 .body--dark {
@@ -126,6 +133,12 @@
 
 /* Match Quasar's maximized dialog treatment whenever the layout is mobile. */
 @media (max-width: 1023.98px) {
+    /* Fullscreen dialogs need their footer actions reachable while a toast is visible. */
+    body:has(.q-dialog__inner .galaris-dialog-actions) .q-notifications__list--bottom {
+        top: 56px;
+        bottom: auto;
+    }
+
     .q-dialog__inner {
         padding: 0 !important;
     }

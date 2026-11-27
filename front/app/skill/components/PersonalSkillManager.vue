@@ -117,7 +117,7 @@
             </template>
           </template>
         </q-card-section>
-        <q-card-actions v-if="canEdit" align="right" class="no-wrap">
+        <q-card-actions v-if="canEdit" align="right" class="galaris-dialog-actions no-wrap">
           <template v-if="editing || labelChanged">
             <q-btn outline color="primary" :label="t('skills.cancel')" :disable="saving" @click="cancelEditing" />
             <q-btn color="primary" :label="t('skills.save')" :loading="saving" :disable="!labelDraft.trim() || detailLoading" @click="saveChanges" />
@@ -161,7 +161,7 @@
           <q-input v-if="action !== 'delete'" v-model="newCode" outlined :label="t('skills.code')" :disable="saving" />
           <q-banner v-if="mutationError" role="alert">{{ mutationError }}</q-banner>
         </q-card-section>
-        <q-card-actions align="right">
+        <q-card-actions align="right" class="galaris-dialog-actions">
           <q-btn v-close-popup outline color="primary" :label="t('skills.cancel')" :disable="saving" />
           <q-btn data-autofocus :color="action === 'delete' ? 'negative' : 'primary'" :label="t(confirmationTitle)" :loading="saving" :disable="action !== 'delete' && !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(newCode)" @click="confirmMutation" />
         </q-card-actions>

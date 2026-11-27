@@ -417,7 +417,7 @@
           </q-tab-panels>
         </div>
         <q-separator />
-        <q-card-actions align="right" class="q-px-md q-py-sm galaris-dialog-actions">
+        <q-card-actions align="right" class="galaris-dialog-actions">
           <q-btn outline color="primary"  :label="t('skills.cancel')" v-close-popup />
           <q-btn
             v-if="canEdit"

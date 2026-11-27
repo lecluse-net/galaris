@@ -21,7 +21,7 @@
           <q-banner v-if="error" class="q-mt-md" role="alert">{{ error }}</q-banner>
         </q-card-section>
         <q-separator />
-        <q-card-actions align="right" class="galaris-dialog-actions q-pa-md">
+        <q-card-actions align="right" class="galaris-dialog-actions">
           <q-btn outline color="primary" :label="t('common.cancel')" v-close-popup />
           <q-btn color="primary" icon="auto_awesome" type="submit" :label="t('agent.generateAvatar')" :loading="loading" :disable="loading" />
         </q-card-actions>

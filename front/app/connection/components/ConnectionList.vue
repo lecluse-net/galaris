@@ -280,19 +280,19 @@
               :default-agent-id="managedFilterAgent"
               :default-tool-id="filterTool"
               :persist-for-action="persistForAction"
+              :footer-target="connectionFooter"
               @submit="onSubmit"
               @configured="onEmbeddedConfigured"
               @cancel="showDialog = false"
             >
               <template #actions>
-                <div v-if="currentConnection && canTestConnection(currentConnection)">
-                  <ConnectionTestButton :connection-id="currentConnection.id" />
-                </div>
+                <ConnectionTestButton v-if="currentConnection && canTestConnection(currentConnection)" :connection-id="currentConnection.id" />
               </template>
             </ConnectionForm>
             </div>
           </q-card-section>
         </div>
+        <div v-show="connectionTab === 'settings'" ref="connection-footer" class="col-auto" />
       </q-card>
     </q-dialog>
 
@@ -315,7 +315,7 @@
 import { DialogHeader } from '@/core/util'
 import { storeRequests } from '@/core/util/facade'
 import { isAxiosError } from 'axios'
-import { reactive, ref, computed, onMounted, onActivated, onDeactivated, onBeforeUnmount, watch } from 'vue'
+import { reactive, ref, computed, onMounted, onActivated, onDeactivated, onBeforeUnmount, useTemplateRef, watch } from 'vue'
 import type { QTableProps } from 'quasar'
 import { useQuasar } from 'quasar'
 import { useConnectionStore, type Connection } from '../stores/connectionStore'
@@ -366,6 +366,7 @@ const privilegeStore = usePrivilegeStore()
 const canEdit = computed(() => privilegeStore.hasPrivilege(privileges.CONNECTION_EDIT))
 const canTest = computed(() => canEdit.value || privilegeStore.hasPrivilege(privileges.CONNECTION_ACCESS))
 const connectionTab = ref('settings')
+const connectionFooter = useTemplateRef<HTMLDivElement>('connection-footer')
 const readOnlyConnection = computed(() => currentConnection.value?.managed === false ? currentConnection.value : null)
 const showSettings = computed(() => !currentConnection.value || !isSystemTool(currentConnection.value.service_id)
   || canEditSettings(currentConnection.value))

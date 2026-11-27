@@ -379,7 +379,7 @@
           </q-form>
         </q-card-section>
 
-        <q-card-actions align="right" class="q-pa-md galaris-dialog-actions">
+        <q-card-actions align="right" class="galaris-dialog-actions">
           <q-btn v-if="editingTool?.can_edit" outline color="primary" icon="download" :label="$t('services.exportYaml')" @click="exportTool(editingTool)" />
           <q-btn color="primary" outline :label="$t('common.cancel')" v-close-popup />
           <q-btn v-if="canEdit" color="primary" :label="editingTool ? $t('common.save') : $t('common.create')" :loading="saving" :disable="missingCreationCapability" @click="saveTool()" />
@@ -391,7 +391,7 @@
       <q-card class="galaris-dialog-card" style="width: min(560px, 95vw); max-width: 95vw">
         <DialogHeader :title="$t('services.changeMcpAuthTitle')" :close-label="$t('common.close')" />
         <q-card-section class="galaris-dialog-body">{{ $t('services.changeMcpAuthWarning') }}</q-card-section>
-        <q-card-actions align="right" class="q-pa-md galaris-dialog-actions">
+        <q-card-actions align="right" class="galaris-dialog-actions">
           <q-btn color="primary" outline :label="$t('common.cancel')" v-close-popup />
           <q-btn data-autofocus color="negative" :label="$t('services.changeMcpAuthConfirm')" @click="confirmMcpAuthChange" />
         </q-card-actions>
@@ -404,7 +404,7 @@
         <q-card-section class="galaris-dialog-body">
           {{ $t('services.deleteProtocolConfirm', { name: capabilityLabels(pendingProtocolDelete, capabilityDefinitions, t).protocol }) }}
         </q-card-section>
-        <q-card-actions align="right" class="q-pa-md galaris-dialog-actions">
+        <q-card-actions align="right" class="galaris-dialog-actions">
           <q-btn color="primary" outline :label="$t('common.cancel')" v-close-popup />
           <q-btn data-autofocus color="negative" :label="$t('common.delete')" @click="confirmProtocolRemoval" />
         </q-card-actions>
@@ -421,7 +421,7 @@
           </ul>
           <p class="q-mb-none">{{ $t('services.deleteUsedParamHint') }}</p>
         </q-card-section>
-        <q-card-actions align="right" class="q-pa-md galaris-dialog-actions">
+        <q-card-actions align="right" class="galaris-dialog-actions">
           <q-btn color="primary" outline :label="$t('common.cancel')" v-close-popup />
           <q-btn data-autofocus color="negative" :label="$t('common.delete')" @click="confirmRemoveConnParam" />
         </q-card-actions>

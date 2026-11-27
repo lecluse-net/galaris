@@ -9,7 +9,7 @@
       <q-banner v-else-if="error" role="alert" class="q-ma-md">{{ error }}<template #action><q-btn outline color="primary" :label="t('agenda.retry')" @click="load" /></template></q-banner>
       <template v-else-if="feed">
         <q-card-section>{{ t('agenda.timezone') }} : {{ feed.timezone }}<div v-if="!feed.writable" class="text-caption">{{ t('agenda.readOnly') }}</div></q-card-section>
-        <q-card-actions align="right"><q-btn color="primary" icon="open_in_new" :label="t('agenda.openCalendar')" :to="{ path: '/calendar', query: { calendar_id: feed.id, agent_id: feed.agent_id } }" @click="emit('close')" /></q-card-actions>
+        <q-card-actions align="right" class="galaris-dialog-actions"><q-btn color="primary" icon="open_in_new" :label="t('agenda.openCalendar')" :to="{ path: '/calendar', query: { calendar_id: feed.id, agent_id: feed.agent_id } }" @click="emit('close')" /></q-card-actions>
       </template>
     </q-card>
   </q-dialog>

@@ -12,7 +12,7 @@
             maxlength="500" :error="Boolean(validationError)" :error-message="validationError" />
           <q-banner v-if="error" class="q-mt-sm" role="alert">{{ error }}</q-banner>
         </q-card-section>
-        <q-card-actions align="right">
+        <q-card-actions align="right" class="galaris-dialog-actions">
           <q-btn color="primary" v-close-popup outline :label="t('common.cancel')" />
           <q-btn color="primary" type="submit" :label="t('fileRename.save')" :loading="saving"
             :disable="Boolean(validationError) || draft.trim() === name" />

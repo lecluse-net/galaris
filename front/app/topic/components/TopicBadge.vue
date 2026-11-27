@@ -146,7 +146,7 @@
 
           <q-separator />
 
-          <q-card-actions align="right" class="q-pa-md galaris-dialog-actions">
+          <q-card-actions align="right" class="galaris-dialog-actions">
             <q-btn
               v-if="canOpenTopic"
               outline

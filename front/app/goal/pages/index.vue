@@ -646,7 +646,7 @@
             />
           </q-card-section>
           <q-separator />
-          <q-card-actions align="right" class="q-pa-md galaris-dialog-actions">
+          <q-card-actions align="right" class="galaris-dialog-actions">
             <q-btn outline color="primary" :label="t('common.cancel')" v-close-popup />
             <q-btn
               color="primary"
@@ -1037,7 +1037,7 @@
               />
             </q-card-section>
             <q-separator />
-            <q-card-actions align="right" class="q-pa-sm galaris-dialog-actions">
+            <q-card-actions align="right" class="galaris-dialog-actions">
               <q-btn outline color="primary" :label="t('common.cancel')" @click="cancelGoalEdit" />
               <q-btn
                 color="primary"

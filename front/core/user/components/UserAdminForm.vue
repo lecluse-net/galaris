@@ -61,7 +61,7 @@
       <UserAdminAccess v-model="access" :user-id="user?.id" :disabled="loading" :refresh-user-list="refreshUserList" />
     </q-card-section>
 
-    <q-card-actions align="right" class="galaris-dialog-actions q-pa-md">
+    <q-card-actions align="right" class="galaris-dialog-actions">
       <q-btn v-close-popup outline color="primary" :label="$t('common.cancel')" />
       <q-btn
         v-if="canSubmit" color="primary" type="submit" :form="accountFormId"

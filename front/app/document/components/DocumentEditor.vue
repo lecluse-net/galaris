@@ -267,7 +267,7 @@
         <q-card-section v-if="deletionError" role="alert" class="text-negative">
           {{ deletionError }}
         </q-card-section>
-        <q-card-actions align="right">
+        <q-card-actions align="right" class="galaris-dialog-actions">
           <q-btn outline color="primary" v-close-popup  :label="t('common.cancel')" />
           <q-btn data-autofocus color="negative" :label="t('documents.deleteDocument')" :loading="deletingDocument" :disable="!canDeleteDocument" @click="deleteDocument" />
         </q-card-actions>

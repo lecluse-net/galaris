@@ -65,7 +65,7 @@
         <q-separator />
         <q-card-section v-if="saveError" class="q-pb-none" role="alert">{{ t('team.saveError') }}</q-card-section>
       </div>
-      <q-card-actions align="right" class="q-pa-md galaris-dialog-actions">
+      <q-card-actions align="right" class="galaris-dialog-actions">
         <q-btn outline color="primary" :label="t(canEdit || canMembers ? 'common.cancel' : 'common.close')" @click="emit('close')" />
         <q-btn v-if="canEdit || canMembers" color="primary" type="submit" :label="t('common.save')"
           :loading="saving" :disable="loading || loadError" />

@@ -66,7 +66,7 @@
           <div class="q-mt-sm">{{ t('harnesses.manager.finalCheck') }}</div>
         </q-banner>
       </q-card-section>
-          <q-card-actions align="right"><q-btn outline color="primary" v-close-popup  :label="t('common.close')" /></q-card-actions>
+          <q-card-actions align="right" class="galaris-dialog-actions"><q-btn outline color="primary" v-close-popup  :label="t('common.close')" /></q-card-actions>
         </q-card>
       </q-dialog>
   </q-card>

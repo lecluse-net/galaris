@@ -19,7 +19,7 @@
           <q-select v-if="operation === 'move'" v-model="keyword" outlined emit-value map-options use-input input-debounce="0" :options="moveKeywords" :label="t('documents.keywords')" :display-value="keyword === undefined ? t('documents.classification.keepKeywords') : keyword === null ? t('documents.library.withoutTag') : keyword" :disable="saving" @new-value="(value, done) => done(value.trim(), 'add-unique')" />
           <q-banner v-if="failure" role="alert">{{ failure }}</q-banner>
         </q-card-section>
-        <q-card-actions align="right">
+        <q-card-actions align="right" class="galaris-dialog-actions">
           <q-btn v-close-popup outline color="primary" :label="t('common.cancel')" :disable="saving" />
           <q-btn type="submit" :data-autofocus="operation.startsWith('delete') || undefined" :color="operation.startsWith('delete') ? 'negative' : 'primary'" :label="t('common.confirm')" :disable="!valid" :loading="saving" />
         </q-card-actions>
