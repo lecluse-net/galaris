@@ -302,12 +302,13 @@ immutable. Consult the `galaris-process-services` skill.
   colors or approximate Quasar shades as a reference, or reintroduce discarded colors.
   Any palette change must be reflected in this shared reference.
 - Keep components and pages focused; place API calls in services and shared state in Pinia.
-- Use standard Quasar `QBtn` components and their native styles for action buttons. Buttons
-  with a visible text label must have a clearly visible boundary: use the default filled style
-  or `outline`, not `flat`, unless explicitly requested. Icon-only action buttons use `flat`
-  with no border unless explicitly requested, and retain an accessible label. Labeled deletion
-  buttons use the default filled style with `color="negative"`; icon-only deletion actions use
-  `flat` with `color="negative"`. Do not recreate button styling with custom CSS or HTML buttons.
+- Use a single native Quasar `QBtn` style for standard action buttons. Use the default
+  filled style with its subtle shadow and a clearly visible edge. Vary only `color` to suit
+  the action, including `negative` for delete. Omit `outline`, `flat`, and `unelevated` on
+  these buttons. Card-level actions, such as those on agent and service cards, may use the
+  lighter `flat`, borderless style. Icon-only controls, including table row actions, retain
+  `flat`, no border, and an accessible label. Use `negative` for icon-only delete actions.
+  Do not recreate button styling with custom CSS or HTML buttons.
 - Routes are derived from `pages/`; do not maintain a second route table.
 - `mobile` mode means exclusively a viewport width below 1024 CSS px (`$q.screen.lt.md`);
   `desktop` mode starts at 1024 px, regardless of orientation or device type.

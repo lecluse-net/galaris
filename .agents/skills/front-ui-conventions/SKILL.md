@@ -86,10 +86,12 @@ Voir `docs/fr/dev/document-apps.md` pour les règles de CSP, révisions et révo
 
 ### Conserver les interactions et les styles natifs
 
-- Pour les boutons d'action Quasar, préciser la couleur : `primary` pour les actions
-  ordinaires, `negative` pour supprimer. `outline` choisit une forme, pas une couleur :
-  sans `color`, le bouton hérite du texte et devient noir sur fond blanc. Conserver les
-  styles natifs `QBtn` et vérifier leur rendu ; ne pas corriger cette omission par du CSS.
+- Appliquer la règle des boutons d’action d’[`AGENTS.md`](../../../AGENTS.md#frontend).
+  Pour les boutons d’action standard, utiliser le `QBtn` natif rempli avec sa légère ombre
+  et faire varier uniquement `color` (`primary` pour une action ordinaire, `negative` pour
+  supprimer). Les actions dans les cartes, notamment Agents et Services, peuvent être
+  `flat` et sans bordure. Dans la dernière colonne des tableaux, conserver les actions
+  sous forme d’icônes `flat`, sans bordure et avec un libellé accessible.
 - Afficher explicitement chargement, état vide et erreur.
 - Préserver clavier, focus, libellés accessibles et comportement responsive.
 - Confirmer une action destructive et ne mettre à jour l’état optimiste que si son rollback
