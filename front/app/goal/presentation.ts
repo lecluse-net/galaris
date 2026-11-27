@@ -1,4 +1,5 @@
 import { useI18n } from 'vue-i18n'
+import { formatDollars } from '@/core/util/facade'
 import { UNIT_SECONDS, type DurationUnit } from './durations'
 import type { Goal, GoalStatus } from './types'
 
@@ -13,13 +14,7 @@ export function statusColor(status: GoalStatus): string {
 export function useGoalFormatting(timezone: () => string | undefined) {
   const { t, locale } = useI18n()
   function formatCost(value: number): string {
-    return new Intl.NumberFormat(locale.value, {
-      style: 'currency',
-      currency: 'USD',
-      currencyDisplay: 'narrowSymbol',
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 6,
-    }).format(value || 0)
+    return formatDollars(value || 0, locale.value, { minimumFractionDigits: 2, maximumFractionDigits: 6 })
   }
 
   function formatDate(value: string | null): string {

@@ -1,6 +1,6 @@
 const costMessages = {
   fr: {
-    title: 'Bilan des coûts', recorded: 'Montant enregistré (USD)', total: 'Total calculable (USD)', inference: 'Valeur d’inférence (USD)',
+    title: 'Bilan des coûts', recorded: 'Montant enregistré', total: 'Total calculable', inference: 'Valeur d’inférence',
     quality: { exact: 'Déclaré / abonnement', estimated: 'Estimé sur les tarifs figés', partial: 'Partiel', unknown: 'Inconnu' },
     coverage: '{calls} appels · {estimated_calls} estimés · {unknown_calls} sans coût connu · {running_calls} en cours · {failed_calls} en échec ou interrompus · {subscription_calls} sur abonnement.',
     help: 'Un montant enregistré peut être incomplet. — signifie inconnu. Sur abonnement, la facturation par appel est nulle ; la valeur d’inférence reste séparée.',
@@ -9,7 +9,7 @@ const costMessages = {
     error: 'Impossible de charger les coûts.', byPurpose: 'Coûts par usage',
   },
   en: {
-    title: 'Cost accounting', recorded: 'Recorded amount (USD)', total: 'Computable total (USD)', inference: 'Inference value (USD)',
+    title: 'Cost accounting', recorded: 'Recorded amount', total: 'Computable total', inference: 'Inference value',
     quality: { exact: 'Reported / subscription', estimated: 'Estimated using frozen rates', partial: 'Partial', unknown: 'Unknown' },
     coverage: '{calls} calls · {estimated_calls} estimated · {unknown_calls} with unknown cost · {running_calls} running · {failed_calls} failed or interrupted · {subscription_calls} on subscription.',
     help: 'Recorded amounts may be incomplete. — means unknown. Subscription billing per call is zero; inference value remains separate.',
@@ -18,7 +18,7 @@ const costMessages = {
     error: 'Unable to load costs.', byPurpose: 'Costs by purpose',
   },
   zh: {
-    title: '费用核算', recorded: '已记录金额（美元）', total: '可计算总额（美元）', inference: '推理价值（美元）',
+    title: '费用核算', recorded: '已记录金额', total: '可计算总额', inference: '推理价值',
     quality: { exact: '供应商报告 / 订阅', estimated: '按固定费率估算', partial: '部分', unknown: '未知' },
     coverage: '{calls} 次调用 · {estimated_calls} 次估算 · {unknown_calls} 次费用未知 · {running_calls} 次进行中 · {failed_calls} 次失败或中断 · {subscription_calls} 次订阅调用。',
     help: '已记录金额可能不完整。— 表示未知。订阅的单次计费为零，推理价值单独列出。',

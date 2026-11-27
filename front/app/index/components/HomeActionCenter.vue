@@ -309,6 +309,7 @@
 import { navigationIcon } from '@/core/navigation'
 import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { formatDollars } from '@/core/util/facade'
 import { privileges, usePrivilegeStore } from '@/core/authorize'
 import { useAuthStore } from '@/core/user'
 import { PageHeader, ResourceDetailDialog, useResourceDetail } from '@/core/util'
@@ -421,13 +422,7 @@ function formatDate(value: string): string {
 }
 
 function formatCurrency(value: number): string {
-  return Intl.NumberFormat(locale.value, {
-    style: 'currency',
-    currency: 'USD',
-    currencyDisplay: 'narrowSymbol',
-    minimumFractionDigits: 2,
-    maximumFractionDigits: value < 1 ? 4 : 2,
-  }).format(value)
+  return formatDollars(value, locale.value, { minimumFractionDigits: 2, maximumFractionDigits: value < 1 ? 4 : 2 })
 }
 
 function formatCompact(value: number): string {

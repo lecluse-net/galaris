@@ -88,6 +88,7 @@
 <script setup lang="ts">
 import { watch } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { formatDollars } from '@/core/util/facade'
 import { taskResourceUri } from '@/app/task'
 import { CodeEditor, ResourceDetailDialog, useResourceDetail } from '@/core/util'
 import type { ProcessAnalysis, ProcessLLMCall, ProcessRun } from '../services/processService'
@@ -118,7 +119,7 @@ function refreshRun(): void { emit('refresh') }
 function pretty(value: unknown): string { return JSON.stringify(value ?? null, null, 2) }
 function formatDate(value: string | null): string { return value ? new Intl.DateTimeFormat(locale.value, { dateStyle: 'short', timeStyle: 'medium' }).format(new Date(value)) : '—' }
 function formatDuration(value: number): string { return `${value.toFixed(2)} s` }
-function formatCost(value: number): string { return new Intl.NumberFormat(locale.value, { style: 'currency', currency: 'USD', currencyDisplay: 'narrowSymbol', maximumFractionDigits: 4 }).format(value) }
+function formatCost(value: number): string { return formatDollars(value, locale.value, { maximumFractionDigits: 4 }) }
 function formatTokenCount(value: number): string { return new Intl.NumberFormat(locale.value).format(value) }
 function tokenSummary(call: ProcessLLMCall): string {
   return t('processes.tokenSummary', {

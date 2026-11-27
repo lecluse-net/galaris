@@ -52,7 +52,7 @@
 import { onActivated, onBeforeUnmount, onDeactivated, onMounted, ref, watch } from 'vue'
 import { useInterval } from 'quasar'
 import { useI18n } from 'vue-i18n'
-import { solaireCss } from '@/core/util'
+import { formatDollars, solaireCss } from '@/core/util/facade'
 import llmProviderService, { type ProviderQuota, type ProviderQuotaWindow } from '../services/llmProviderService'
 
 const props = defineProps<{ providerId: number; refreshKey?: string | null; unavailableHint?: string }>()
@@ -95,7 +95,8 @@ function formatDate(value: string): string {
 }
 
 function formatAmount(value: number, unit: ProviderQuotaWindow['unit']): string {
-  if (unit === 'USD' || unit === 'CNY') {
+  if (unit === 'USD') return formatDollars(value, locale.value, { maximumFractionDigits: 4 })
+  if (unit === 'CNY') {
     return new Intl.NumberFormat(locale.value, {
       style: 'currency', currency: unit, currencyDisplay: 'code', maximumFractionDigits: 4,
     }).format(value)

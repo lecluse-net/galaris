@@ -16,7 +16,7 @@
       <p v-if="report.restricted">{{ t('task.costs.restricted') }}</p>
       <h4>{{ t('task.costs.byPurpose') }}</h4>
       <dl v-for="(summary, purpose) in report.by_purpose" :key="purpose">
-        <dt>{{ te('llmCalls.purposes.' + purpose) ? t('llmCalls.purposes.' + purpose) : purpose }}</dt><dd>{{ format(summary.recorded_cost) }} USD · {{ t('task.costs.quality.' + summary.quality) }}</dd>
+        <dt>{{ te('llmCalls.purposes.' + purpose) ? t('llmCalls.purposes.' + purpose) : purpose }}</dt><dd>{{ format(summary.recorded_cost) }} · {{ t('task.costs.quality.' + summary.quality) }}</dd>
       </dl>
       <p class="text-caption">{{ t('task.costs.help') }}</p>
     </template>
@@ -26,6 +26,7 @@
 import { ref, watch, onBeforeUnmount } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { apiErrorDetail } from '@/core/api'
+import { formatDollars } from '@/core/util/facade'
 import { taskService, type TaskCostReport } from '../services/taskService'
 const props = defineProps<{ taskId: string }>()
 const { t, te, locale } = useI18n()
@@ -49,7 +50,7 @@ async function load() {
   }
 }
 function format(value: number | null) {
-  return value == null ? '—' : value.toLocaleString(locale.value, { maximumFractionDigits: 10 })
+  return value == null ? '—' : formatDollars(value, locale.value, { minimumFractionDigits: 0, maximumFractionDigits: 10 })
 }
 watch(() => props.taskId, load, { immediate: true })
 </script>

@@ -133,7 +133,7 @@ for (const width of [1440, 390]) {
       limit: null, remaining: null, used_percent: null, window_seconds: null, resets_at: null }] }
     await page.getByRole('button', { name: 'Refresh limits' }).click()
     await expect(page.getByText(/Usage and budget for the configured API key/)).toBeVisible()
-    await expect(page.getByText(/Used: USD\s+2.50/)).toBeVisible()
+    await expect(page.getByText('Used: $2.50', { exact: true })).toBeVisible()
     await expect(page.getByRole('progressbar')).toHaveCount(0)
     await expect(page.getByText(/^Limit:/)).toHaveCount(0)
     response = { ...response, scope: 'account', windows: [
@@ -141,7 +141,7 @@ for (const width of [1440, 390]) {
       { name: 'balance', unit: 'CNY', remaining: 12.3, used_percent: null },
     ] }
     await page.getByRole('button', { name: 'Refresh limits' }).click()
-    await expect(page.getByText(/Remaining: USD\s+0.00/)).toBeVisible()
+    await expect(page.getByText('Remaining: $0.00', { exact: true })).toBeVisible()
     await expect(page.getByText(/Remaining: CNY\s+12.30/)).toBeVisible()
     await expect(page.getByRole('progressbar')).toHaveCount(0)
   })

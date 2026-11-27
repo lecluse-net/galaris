@@ -108,6 +108,7 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, shallowRef, useTemplateRef, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { formatDollars } from '@/core/util/facade'
 import { isAxiosError } from 'axios'
 import { copyToClipboard, useQuasar, type QTableColumn } from 'quasar'
 import { showConfirmationDialog } from '@/core/util'
@@ -166,7 +167,7 @@ const columns = computed<QTableColumn[]>(() => [
   { name: 'cost', label: t('nativeProcesses.inclusiveCost'), field: 'id', align: 'right' },
   { name: 'inference', label: t('nativeProcesses.inferenceCost'), field: 'id', align: 'right' },
 ])
-function cost(value: number | null | undefined): string { return value == null ? t('nativeProcesses.unknown') : new Intl.NumberFormat(locale.value, { style: 'currency', currency: 'USD', currencyDisplay: 'narrowSymbol', maximumFractionDigits: 6 }).format(value) }
+function cost(value: number | null | undefined): string { return value == null ? t('nativeProcesses.unknown') : formatDollars(value, locale.value, { maximumFractionDigits: 6 }) }
 function formatDate(value: string): string { return new Date(value).toLocaleString(locale.value) }
 async function copyRunUrl(): Promise<void> {
   try { await copyToClipboard(runUrl.value); $q.notify({ type: 'positive', message: t('common.copied'), timeout: 1500 }) }

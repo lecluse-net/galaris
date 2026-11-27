@@ -321,6 +321,7 @@ import { DialogHeader } from '@/core/util'
 import { computed, ref, useTemplateRef, watch } from 'vue'
 import type { QScrollArea } from 'quasar'
 import { useI18n } from 'vue-i18n'
+import { formatDollars } from '@/core/util/facade'
 import { privileges, usePrivilegeStore } from '@/core/authorize'
 import type { LLMModelInfo, LLMWithProvider, ProviderCatalogItem } from '../services/llmProviderService'
 import { providerResourceCategories, providerResourceCapability, type ProviderResourceCategory } from '../providerUi'
@@ -447,12 +448,7 @@ function hasPrice(value: unknown): boolean {
 
 function formatPrice(value: unknown): string {
   const amount = typeof value === 'number' ? value : Number(value)
-  return `${new Intl.NumberFormat(locale.value, {
-    style: 'currency',
-    currency: 'USD',
-    currencyDisplay: 'narrowSymbol',
-    maximumFractionDigits: 6,
-  }).format(amount)} / 1M`
+  return `${formatDollars(amount, locale.value, { maximumFractionDigits: 6 })} / 1M`
 }
 
 function formatContext(value: number): string {
@@ -487,12 +483,7 @@ function additionalPricing(pricing: Record<string, unknown>): { key: string; lab
 }
 
 function formatCurrency(value: number): string {
-  return new Intl.NumberFormat(locale.value, {
-    style: 'currency',
-    currency: 'USD',
-    currencyDisplay: 'narrowSymbol',
-    maximumFractionDigits: 8,
-  }).format(value)
+  return formatDollars(value, locale.value, { maximumFractionDigits: 8 })
 }
 
 function modalityBadges(model: LLMModelInfo): { key: string; label: string; color: string; tip: string }[] {

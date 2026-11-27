@@ -44,7 +44,7 @@
           <article v-for="item in result.items" :key="item.left_result_id" class="comparison-case q-my-md q-pa-md">
             <h3>{{ item.name || t('evaluation.comparison.unnamed') }} · {{ t('evaluation.insights.attempt', { number: item.repetition }) }}</h3>
             <p v-if="item.pairing !== 'matched'" class="comparison-notice q-pa-sm">{{ t('evaluation.comparison.pairing.' + item.pairing) }}</p>
-            <p v-else>{{ t('evaluation.comparison.deltas', { score: delta(item.score_delta, 1), cost: delta(item.cost_delta, 6), duration: delta(item.duration_delta, 2) }) }}</p>
+            <p v-else>{{ t('evaluation.comparison.deltas', { score: delta(item.score_delta, 1), cost: cost(item.cost_delta, 'exceptZero'), duration: delta(item.duration_delta, 2) }) }}</p>
             <p v-if="item.introduced_critical" class="comparison-error">{{ t('evaluation.comparison.newCritical') }}</p>
             <p v-if="item.pass_to_fail" class="comparison-error">{{ t('evaluation.comparison.passToFail') }}</p>
             <p v-for="(change, code) in item.dimension_deltas" :key="code">{{ t('evaluation.comparison.dimensionDelta', { code, delta: delta(change, 1) }) }}</p>
@@ -54,7 +54,7 @@
               <section v-for="side in (['left', 'right'] as const)" :key="side">
                 <h4>{{ t('evaluation.comparison.' + (side === 'left' ? 'before' : 'after')) }}</h4>
                 <template v-if="side === 'left' || item.pairing === 'matched'">
-                  <p>{{ t('evaluation.comparison.metrics', { score: number(item[`${side}_score`], 1), cost: number(item[`${side}_cost`], 6), duration: number(item[`${side}_duration`], 2) }) }}</p>
+                  <p>{{ t('evaluation.comparison.metrics', { score: number(item[`${side}_score`], 1), cost: cost(item[`${side}_cost`]), duration: number(item[`${side}_duration`], 2) }) }}</p>
                   <p>{{ t('evaluation.comparison.firstOutput', { seconds: number(item[`${side}_first_output_seconds`], 2) }) }}</p>
                   <p>{{ item[`${side}_verdict`] ? t('evaluation.contract.status.' + item[`${side}_verdict`]) : t('evaluation.comparison.unjudged') }}</p>
                   <p v-if="item[`${side}_error`]" class="comparison-error">{{ item[`${side}_error`] }}</p>
@@ -83,6 +83,7 @@
 import { DialogHeader } from '@/core/util'
 import { computed, nextTick, onBeforeUnmount, reactive, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { formatDollars } from '@/core/util/facade'
 import { apiErrorDetail } from '@/core/api'
 import { solaireCss as solaire } from '@/core/util'
 import { labWorkbenchService as api, type ComparisonAxis, type ComparisonFilter, type LabDataset, type LabKey, type LabRun, type RunComparison } from '../services/labWorkbenchService'
@@ -113,6 +114,9 @@ const counts = computed(() => {
 })
 function number(value: number | null, digits: number) { return value == null ? '—' : value.toLocaleString(locale.value, { minimumFractionDigits: digits, maximumFractionDigits: digits }) }
 function delta(value: number | null, digits: number) { return value == null ? '—' : (value > 0 ? '+' : '') + number(value, digits) }
+function cost(value: number | null, signDisplay: Intl.NumberFormatOptions['signDisplay'] = 'auto'): string {
+  return value == null ? '—' : formatDollars(value, locale.value, { minimumFractionDigits: 6, maximumFractionDigits: 6, signDisplay })
+}
 function runLabel(run: LabRun) { return `${new Date(run.created_at).toLocaleString(locale.value)} · ${String(run.llm_snapshot.label ?? run.llm_snapshot.model ?? '—')} · ${t('evaluation.contract.status.' + run.status)} · ${run.id.slice(0, 8)}` }
 function invalidate() { generation++; controller?.abort(); controller = undefined; result.value = null; error.value = ''; loading.value = false; offset.value = 0 }
 async function loadRuns(side: Side) {

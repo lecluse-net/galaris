@@ -243,8 +243,8 @@ du Lab ne remplace pas l'enveloppe tâche complète, ses compétences ni les eff
 | Appels d'outils enregistrés, traces partielles incluses | 241 | 200 |
 | Recherches et découvertes de catalogue | 99 | 50 |
 | Deux documents complets et distincts, faits et audiences conservés | 6/6 | 6/6 |
-| Coût enregistré des 72 observations (USD) | 0,08857 | 0,11379 |
-| Coût par réussite complète (USD) | 0,002768 | 0,002474 |
+| Coût enregistré des 72 observations ($) | 0,08857 | 0,11379 |
+| Coût par réussite complète ($) | 0,002768 | 0,002474 |
 
 Le gain est de 19,4 points, avec 17 passages échec → réussite et trois régressions,
 toutes dues au budget d'appels. Les demandes de décision humaine restent problématiques :
@@ -257,8 +257,8 @@ compteurs ne constituent pas à eux seuls une preuve de qualité sémantique.
 Le coût brut augmente de 28,5 %, alors que le coût par réussite baisse de 10,6 %.
 La médiane de durée passe de 4,64 à 4,37 secondes ; le premier événement de 0,97 à
 1,04 seconde. Ces temps incluent réseau et fournisseur, sans preuve d'optimisation locale.
-Le total enregistré, réglages et campagnes antérieures inclus, est de 0,59409 USD sur
-un plafond autorisé de 4 USD. Ces phases antérieures sont exclues du tableau final.
+Le total enregistré, réglages et campagnes antérieures inclus, est de 0,59409 $ sur
+un plafond autorisé de 4 $. Ces phases antérieures sont exclues du tableau final.
 
 Les versions initiales du banc ont permis de corriger des schémas d'arguments absents,
 des réponses consommées par la mauvaise cible et l'impossibilité de relire une écriture.
@@ -288,7 +288,7 @@ des deux campagnes ne se cumulent pas : la référence est réexécutée et rest
 | Décision humaine, cas français initial | 1/3 | 0/3 |
 | Deux livrables nécessaires, faits et audiences conservés | 6/6 | 6/6 |
 | Nouveaux contrôles de décision | 16/18 | 18/18 |
-| Coût enregistré, corpus initial (USD) | 0,09221 | 0,12337 |
+| Coût enregistré, corpus initial ($) | 0,09221 | 0,12337 |
 
 Deux des trois paires historiquement régressées réussissent désormais ; le cas français
 reste ouvert : la question correcte arrive après trop de recherches. Sur les 90 paires,
@@ -297,12 +297,12 @@ indisponibles et une vérification de tâche conservent aussi des dépassements 
 La revue des écritures vérifie faits, incertitudes et contribution concurrente ; les
 contrôles de décision préservent la lecture du préalable et évitent de redemander un choix enregistré.
 
-Sur les 90 observations par version, coût brut 0,10620 → 0,13767 USD et médiane de durée
+Sur les 90 observations par version, coût brut 0,10620 → 0,13767 $ et médiane de durée
 4,22 → 4,26 secondes : aucun gain de coût brut ou de latence n'est établi. Les essais de
 placement tardif et de rappel en français sont écartés ; seul le prompt mesuré dans cette
 comparaison est conservé. Les empreintes du code et du banc ont été revérifiées. Les coûts
-persistés correspondent aux rapports, y compris les erreurs et essais écartés : **0,39719 USD**
-pour cette reprise, **0,99128 USD** cumulés sur le plafond de 4 USD. Les traces synthétiques
+persistés correspondent aux rapports, y compris les erreurs et essais écartés : **0,39719 $**
+pour cette reprise, **0,99128 $** cumulés sur le plafond de 4 $. Les traces synthétiques
 et le bilan sont sous `artifacts/outcome-regressions/`. Ce résultat partiel ne constitue
 pas une qualification de production ni un test sur des cas de réserve.
 
@@ -331,7 +331,7 @@ campagnes sont concurrentes : leurs durées ne prouvent pas une optimisation loc
 Les cas se recoupent entre groupes ; ces 296 observations ne représentent pas 296 cas distincts.
 Aucune régression appariée ni appel interdit du candidat n'est observé dans cette qualification.
 Les deux livrables complets restent présents dans les six essais concernés. Pour le blocage
-humain, les appels enregistrés passent de **97 à 26**, coût enregistré de **0,03845 à 0,02482 USD**.
+humain, les appels enregistrés passent de **97 à 26**, coût enregistré de **0,03845 à 0,02482 $**.
 Les 22 cas du corpus initial sans contexte explicite de cycle conservent exactement leur
 requête et leur prompt système ; les consignes communes de l'exécuteur sont inchangées.
 
@@ -351,8 +351,8 @@ aux vraies Tasks, l'attente, les rappels et la reprise après réponse.
 Les prototypes qui introduisaient une question après refus de droits, une inspection Process
 omise ou une inspection superflue avant question ont été écartés. Les coûts des interruptions
 et du jeu initial sans URI sont inclus dans le bilan local sous `artifacts/goal-cycle-decisions/`.
-Le coût enregistré de cette reprise est **1,62600 USD**, soit **2,61728 USD cumulés** sur
-le plafond autorisé de **4 USD**. Les rapports terminés correspondent aux coûts persistés ;
+Le coût enregistré de cette reprise est **1,62600 $**, soit **2,61728 $ cumulés** sur
+le plafond autorisé de **4 $**. Les rapports terminés correspondent aux coûts persistés ;
 les appels annulés restent comptabilisés et aucun appel corrélé ne reste en cours.
 Ces corpus ont servi au réglage. À cette étape, réserve indépendante, profils variés,
 autres harnais, dispatcher complet et parcours réels restaient à qualifier.

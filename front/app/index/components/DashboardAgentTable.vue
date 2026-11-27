@@ -82,6 +82,7 @@
 import { computed, onBeforeUnmount, reactive, watch } from 'vue'
 import { type QTableColumn } from 'quasar'
 import { useI18n } from 'vue-i18n'
+import { formatDollars } from '@/core/util/facade'
 import { agentService } from '@/app/agent/facade'
 import type { AgentUsage } from '../services/dashboardService'
 
@@ -151,13 +152,7 @@ function formatCompact(value: number): string {
 }
 
 function formatCurrency(value: number): string {
-  return Intl.NumberFormat(locale.value, {
-    style: 'currency',
-    currency: 'USD',
-    currencyDisplay: 'narrowSymbol',
-    minimumFractionDigits: 2,
-    maximumFractionDigits: value < 1 ? 4 : 2,
-  }).format(value)
+  return formatDollars(value, locale.value, { minimumFractionDigits: 2, maximumFractionDigits: value < 1 ? 4 : 2 })
 }
 
 function formatPercent(value: number): string {

@@ -9,7 +9,7 @@
           <p>{{ t('evaluation.comparison.costs.successes', { successes: comparison.economics[side].benchmark_successes, observations: comparison.economics[side].observations, unverified: comparison.economics[side].unverified, failed: comparison.economics[side].failed_candidates }) }}</p>
           <dl v-for="stage in stages" :key="stage">
             <dt>{{ t('evaluation.comparison.costs.' + stage) }}</dt>
-            <dd>{{ format(comparison.economics[side][stage].recorded_cost) }} USD · {{ t('evaluation.comparison.costs.quality.' + comparison.economics[side][stage].quality) }}</dd>
+            <dd>{{ format(comparison.economics[side][stage].recorded_cost) }} · {{ t('evaluation.comparison.costs.quality.' + comparison.economics[side][stage].quality) }}</dd>
             <dd>{{ t('evaluation.comparison.costs.coverage', { ...comparison.economics[side][stage] }) }}</dd>
           </dl>
           <dl><dt>{{ t('evaluation.comparison.costs.perSuccess') }}</dt><dd>{{ format(comparison.economics[side].cost_per_success) }}</dd></dl>
@@ -22,13 +22,14 @@
 </template>
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n'
+import { formatDollars } from '@/core/util/facade'
 import type { RunComparison } from '../services/labWorkbenchService'
 defineProps<{ comparison: RunComparison }>()
 const { t, locale } = useI18n()
 const sides = ['left', 'right'] as const
 const stages = ['candidate', 'judge'] as const
 function format(value: number | null) {
-  return value == null ? '—' : value.toLocaleString(locale.value, { maximumFractionDigits: 10 })
+  return value == null ? '—' : formatDollars(value, locale.value, { minimumFractionDigits: 0, maximumFractionDigits: 10 })
 }
 </script>
 <style scoped>

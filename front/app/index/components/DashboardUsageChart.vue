@@ -70,6 +70,7 @@
 <script setup lang="ts">
 import { computed, useId } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { formatDollars } from '@/core/util/facade'
 import type { DailyLlmUsage } from '../services/dashboardService'
 
 const chartId = useId()
@@ -222,13 +223,7 @@ const bars = computed(() => dayValues.value.map((day, dayIndex) => {
 
 function formatMetric(value: number): string {
   if (props.metric === 'cost') {
-    return new Intl.NumberFormat(locale.value, {
-      style: 'currency',
-      currency: 'USD',
-      currencyDisplay: 'narrowSymbol',
-      minimumFractionDigits: value < 0.1 ? 4 : 2,
-      maximumFractionDigits: value < 0.1 ? 4 : 2,
-    }).format(value)
+    return formatDollars(value, locale.value, { minimumFractionDigits: value < 0.1 ? 4 : 2, maximumFractionDigits: value < 0.1 ? 4 : 2 })
   }
   return new Intl.NumberFormat(locale.value, { maximumFractionDigits: 0 }).format(value)
 }

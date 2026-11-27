@@ -270,7 +270,7 @@ affiche les réussites sur le nombre prévu, les jugements disponibles, la moyen
 les extrêmes et l'écart-type des notes disponibles. Une panne du juge ne vaut jamais zéro.
 Ces mesures décrivent les répétitions des mêmes items, pas la qualité sur des cas nouveaux.
 
-Le budget facultatif en USD couvre le candidat et les juges, y compris les rejugements.
+Le budget facultatif en dollars couvre le candidat et les juges, y compris les rejugements.
 Lorsque les coûts enregistrés atteignent ce montant, aucune nouvelle évaluation n'est
 lancée. L'évaluation en cours peut le dépasser, et les coûts non remontés par un
 fournisseur ne sont pas mesurables. Les résultats sont conservés ; pour utiliser un autre

@@ -507,6 +507,7 @@ import { DialogHeader } from '@/core/util'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useQuasar } from 'quasar'
 import { useI18n } from 'vue-i18n'
+import { formatDollars } from '@/core/util/facade'
 import { privileges, usePrivilegeStore } from '@/core/authorize'
 import { solaireCss } from '@/core/util'
 import { useLLMProviderStore } from '../stores/llmProviderStore'
@@ -1151,12 +1152,7 @@ function hasPrice(value: unknown): boolean {
 }
 
 function formatPrice(value: unknown): string {
-  return new Intl.NumberFormat(locale.value, {
-    style: 'currency',
-    currency: 'USD',
-    currencyDisplay: 'narrowSymbol',
-    maximumFractionDigits: 6,
-  }).format(Number(value))
+  return formatDollars(Number(value), locale.value, { maximumFractionDigits: 6 })
 }
 
 function hasContext(value: unknown): boolean {

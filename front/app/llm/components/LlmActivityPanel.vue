@@ -118,6 +118,7 @@
 import { showConfirmationDialog } from '@/core/util'
 import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { formatDollars } from '@/core/util/facade'
 import { useQuasar, type QTableColumn, type QTableProps } from 'quasar'
 import { websocket } from '@/core/websocket'
 import { usePrivilegeStore, privileges } from '@/core/authorize'
@@ -411,12 +412,7 @@ function taskColor(call: LLMCall): LlmTaskColor {
 }
 
 function formatCost(cost: number): string {
-  return new Intl.NumberFormat(locale.value, {
-    style: 'currency',
-    currency: 'USD',
-    currencyDisplay: 'narrowSymbol',
-    minimumFractionDigits: 4,
-  }).format(cost || 0)
+  return formatDollars(cost || 0, locale.value, { minimumFractionDigits: 4 })
 }
 </script>
 

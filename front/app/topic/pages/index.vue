@@ -359,6 +359,7 @@ import { navigationIcon } from '@/core/navigation'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
+import { formatDollars } from '@/core/util/facade'
 import { useQuasar, type QTableColumn, type QTableProps } from 'quasar'
 import { privileges } from '@/core/authorize'
 import { usePrivilegeStore } from '@/core/authorize/facade'
@@ -512,13 +513,7 @@ function formatMonth(month: string): string {
 }
 
 function formatCurrency(value: number): string {
-  return Intl.NumberFormat(locale.value, {
-    style: 'currency',
-    currency: 'USD',
-    currencyDisplay: 'narrowSymbol',
-    minimumFractionDigits: 2,
-    maximumFractionDigits: value < 1 ? 4 : 2,
-  }).format(value)
+  return formatDollars(value, locale.value, { minimumFractionDigits: 2, maximumFractionDigits: value < 1 ? 4 : 2 })
 }
 
 function onMonthChange(month: string | null): void {

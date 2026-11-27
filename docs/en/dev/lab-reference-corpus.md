@@ -233,8 +233,8 @@ the complete Task envelope, loaded skills or real business effects.
 | Recorded tool calls, including partial traces | 241 | 200 |
 | Searches and catalog discovery | 99 | 50 |
 | Two complete distinct documents, facts and audiences preserved | 6/6 | 6/6 |
-| Recorded cost of 72 observations (USD) | 0.08857 | 0.11379 |
-| Cost per complete success (USD) | 0.002768 | 0.002474 |
+| Recorded cost of 72 observations ($) | 0.08857 | 0.11379 |
+| Cost per complete success ($) | 0.002768 | 0.002474 |
 
 The gain is 19.4 percentage points, with 17 fail-to-pass transitions and three regressions,
 all due to call budgets. Human-decision requests remain problematic: 3/6 to 1/6 for all
@@ -246,8 +246,8 @@ were also reviewed: counters alone do not establish semantic quality.
 Total cost increases by 28.5%, while cost per success decreases by 10.6%.
 Median duration changes from 4.64 to 4.37 seconds; first event from 0.97 to 1.04 seconds.
 These timings include network and provider latency and do not establish a local optimization.
-The recorded total, including tuning and earlier campaigns, is USD 0.59409 against an
-authorized USD 4 cap. Those earlier phases are excluded from the final table.
+The recorded total, including tuning and earlier campaigns, is $0.59409 against an
+authorized $4 cap. Those earlier phases are excluded from the final table.
 
 Initial harness versions exposed missing argument schemas, responses consumed by the wrong
 target and unavailable verification of writes. The document case now supplies complete
@@ -277,7 +277,7 @@ not pooled: the baseline is run again and remains variable.
 | Human decision, original French case | 1/3 | 0/3 |
 | Two necessary deliverables, facts and audiences preserved | 6/6 | 6/6 |
 | New decision controls | 16/18 | 18/18 |
-| Recorded cost, original corpus (USD) | 0.09221 | 0.12337 |
+| Recorded cost, original corpus ($) | 0.09221 | 0.12337 |
 
 Two of the three historically regressed pairs now pass; the French case remains open:
 the correct question follows too many searches. Across the 90 pairs, 16 change from fail
@@ -286,12 +286,12 @@ check also retain call-budget failures. Reviewing writes checks facts, uncertain
 concurrent contributions; decision controls preserve prerequisite reads and avoid asking
 again about an already recorded choice.
 
-Across 90 observations per version, total cost is USD 0.10620 → 0.13767 and median duration
+Across 90 observations per version, total cost is $0.10620 → 0.13767 and median duration
 4.22 → 4.26 seconds: no gross-cost or latency improvement is established. Late placement
 and a French reminder were discarded; only the prompt measured in this comparison is
 retained. Source and harness hashes were checked again. Persisted costs match reports,
-including errors and discarded trials: **USD 0.39719** for this follow-up, **USD 0.99128**
-cumulatively against the USD 4 cap. Synthetic traces and summaries are under
+including errors and discarded trials: **$0.39719** for this follow-up, **$0.99128**
+cumulatively against the $4 cap. Synthetic traces and summaries are under
 `artifacts/outcome-regressions/`. This partial result is neither production qualification
 nor a held-out evaluation.
 
@@ -320,7 +320,7 @@ durations do not establish a local optimization.
 Cases overlap between groups; these 296 observations are not 296 distinct cases. No paired
 regression or candidate-forbidden call is observed in this qualification. Both complete
 deliverables remain present in all six relevant trials. Human-blocker recorded calls change
-from **97 to 26**, recorded cost from **USD 0.03845 to 0.02482**. The original corpus's 22 cases
+from **97 to 26**, recorded cost from **$0.03845 to 0.02482**. The original corpus's 22 cases
 without explicit cycle context retain byte-identical requests and system prompts; common
 executor instructions remain unchanged.
 
@@ -340,8 +340,8 @@ resumption after a reply.
 Prototypes that asked after access denial, omitted Process inspection or inspected a Process
 before an unrelated question were discarded. Interruption costs and the initial corpus missing
 source URIs are included in local evidence under `artifacts/goal-cycle-decisions/`. These
-follow-up runs cost **USD 1.62600**, bringing the recorded total to **USD 2.61728** against
-the authorized **USD 4** cap. Completed reports reconcile with persisted costs; cancelled
+follow-up runs cost **$1.62600**, bringing the recorded total to **$2.61728** against
+the authorized **$4** cap. Completed reports reconcile with persisted costs; cancelled
 calls remain counted and no correlated call is still running. These
 corpora were used for tuning. At that stage, independent holdouts, varied profiles, other
 harnesses, the full dispatcher and real application journeys still required qualification.

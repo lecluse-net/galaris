@@ -44,6 +44,7 @@
 <script setup lang="ts">
 import { computed, shallowRef, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { formatDollars } from '@/core/util/facade'
 import { defineAsyncView } from '@/core/util'
 import ProcessRunStatusBadge from './ProcessRunStatusBadge.vue'
 import type { NativeRun, NativeMetrics } from '../services/nativeProcessService'
@@ -53,9 +54,7 @@ const emit = defineEmits<{ close: [] }>()
 const { t, locale } = useI18n()
 const loadedRun = shallowRef<NativeRun | null>(null)
 const loadedMetrics = shallowRef<NativeMetrics | null>(null)
-const totalCost = computed(() => loadedMetrics.value?.inclusive.cost == null ? t('nativeProcesses.unknown') : new Intl.NumberFormat(locale.value, {
-  style: 'currency', currency: 'USD', currencyDisplay: 'narrowSymbol', maximumFractionDigits: 6,
-}).format(loadedMetrics.value.inclusive.cost))
+const totalCost = computed(() => loadedMetrics.value?.inclusive.cost == null ? t('nativeProcesses.unknown') : formatDollars(loadedMetrics.value.inclusive.cost, locale.value, { maximumFractionDigits: 6 }))
 const costAmount = computed(() => loadedMetrics.value?.inclusive.cost == null ? t('nativeProcesses.unknown') : new Intl.NumberFormat(locale.value, {
   minimumFractionDigits: 2, maximumFractionDigits: 6,
 }).format(loadedMetrics.value.inclusive.cost))

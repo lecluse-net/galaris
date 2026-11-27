@@ -358,6 +358,7 @@
 import { navigationIcon } from '@/core/navigation'
 import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { formatDollars } from '@/core/util/facade'
 import { privileges, usePrivilegeStore } from '@/core/authorize'
 import { PageHeader } from '@/core/util'
 import { useDashboardStore } from '../stores/dashboardStore'
@@ -527,13 +528,7 @@ function formatMonth(month: string): string {
 }
 
 function formatCurrency(value: number): string {
-  return Intl.NumberFormat(locale.value, {
-    style: 'currency',
-    currency: 'USD',
-    currencyDisplay: 'narrowSymbol',
-    minimumFractionDigits: 2,
-    maximumFractionDigits: value < 1 ? 4 : 2,
-  }).format(value)
+  return formatDollars(value, locale.value, { minimumFractionDigits: 2, maximumFractionDigits: value < 1 ? 4 : 2 })
 }
 
 function hasDistinctApiCost(billedCost: number, apiCost: number): boolean {

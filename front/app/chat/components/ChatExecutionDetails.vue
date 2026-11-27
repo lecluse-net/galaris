@@ -49,6 +49,7 @@
 <script setup lang="ts">
 import { computed, ref, useTemplateRef, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { formatDollars } from '@/core/util/facade'
 import { StatusBadge } from '@/core/util'
 
 const props = withDefaults(defineProps<{
@@ -120,7 +121,7 @@ function toolPresentation(name: string): Pick<ToolSummary, 'icon' | 'tone'> {
   return { icon: 'build_circle', tone: 'default' }
 }
 function formatDuration(seconds: number): string { return seconds < 1 ? `${Math.round(seconds * 1_000)} ms` : `${seconds.toFixed(1)} s` }
-function formatCost(cost: number): string { return new Intl.NumberFormat(undefined, { style: 'currency', currency: 'USD', currencyDisplay: 'narrowSymbol', maximumFractionDigits: 4 }).format(cost) }
+function formatCost(cost: number): string { return formatDollars(cost, undefined, { maximumFractionDigits: 4 }) }
 
 </script>
 

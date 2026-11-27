@@ -806,7 +806,7 @@ export default {
           loadError: '无法加载实时活动。', taskFallback: '正在处理任务…', callFallback: '正在准备回复…', toolRunning: '正在运行工具：{name}', tool: '工具：{name}',
           unknownTool: '未命名工具', agentNumber: '智能体 #{id}',
         },
-        vsPrevious: '较上月', tokens: 'Token', dollars: '费用（美元）', dailyTokens: '各 LLM 每日用量', dailyCost: '各 LLM 每日支出',
+        vsPrevious: '较上月', tokens: 'Token', dollars: '费用（$）', dailyTokens: '各 LLM 每日用量', dailyCost: '各 LLM 每日支出',
         usageSubtitle: '将鼠标悬停在柱形上可查看每日和各模型明细。', usageChartAria: '按模型分组的每日语言模型用量图', modelBreakdown: '模型明细',
         modelChartAria: '显示各语言模型用量分布的饼图', shareOfTokens: '本月用量占比', shareOfCost: '本月支出占比', modelCount: '{count} 个模型',
         modelsUsed: '本月使用了 {count} 个模型', modelTotalTokens: '分析的总量', modelTotalCost: '分析的总支出', multipleProviders: '多个服务商',

@@ -23809,6 +23809,7 @@
           "front/app/goal/components/GoalProcessRunButton.vue",
           "front/app/goal/components/GoalRecurrenceEditor.vue",
           "front/app/goal/pages/index.vue",
+          "front/app/goal/presentation.ts",
           "front/app/goal/richContent.ts"
         ],
         "source": "app/goal",
@@ -24079,7 +24080,9 @@
         "files": [
           "front/app/index/components/AgentPreview.vue",
           "front/app/index/components/AgentWorkspace.vue",
+          "front/app/index/components/DashboardAgentTable.vue",
           "front/app/index/components/DashboardLiveActivity.vue",
+          "front/app/index/components/DashboardUsageChart.vue",
           "front/app/index/components/HomeActionCenter.vue",
           "front/app/index/components/HomeAgentProfile.vue",
           "front/app/index/components/HomeConnected.vue",
@@ -24155,6 +24158,7 @@
         "files": [
           "front/app/lab/components/LabCaptureConfirmation.vue",
           "front/app/lab/components/LabComparisonDialog.vue",
+          "front/app/lab/components/LabCostComparison.vue",
           "front/app/lab/components/LabDatasetCaptureDialog.vue",
           "front/app/lab/components/LabHumanReviewDialog.vue",
           "front/app/lab/components/LabResultsPanel.vue",
@@ -24766,6 +24770,7 @@
           "front/app/task/components/ExecutionResult.vue",
           "front/app/task/components/MemoryItemCard.vue",
           "front/app/task/components/PlannerResult.vue",
+          "front/app/task/components/TaskCosts.vue",
           "front/app/task/components/TaskDetail.vue",
           "front/app/task/components/TaskFormDialog.vue",
           "front/app/task/components/TaskRowMenu.vue",

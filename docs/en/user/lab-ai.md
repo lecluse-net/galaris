@@ -244,7 +244,7 @@ Choose 1–20 repetitions per item. Stability shows passes out of planned repeti
 available judgments, mean, range and standard deviation of available scores. A missing
 judgment is never scored zero. These statistics describe repeated items, not generalization.
 
-An optional USD budget covers candidates and all judgment campaigns. No new evaluation
+An optional budget in dollars covers candidates and all judgment campaigns. No new evaluation
 starts once recorded costs reach the budget. An ongoing evaluation may exceed it;
 costs not reported by a provider cannot be measured. Saved results remain available.
 Create a new benchmark to use another budget. Optional Markdown analysis is billed separately.
