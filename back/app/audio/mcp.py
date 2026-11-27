@@ -396,6 +396,7 @@ async def transcribe_audio_file(
                         filename=f"{source_stem}-part-{chunk.index:04d}.mp3",
                         mime_type="audio/mpeg",
                         language=language,
+                        task_id=ctx.task_id,
                     )
                     transcript_characters += len(transcript)
                     if is_long:

@@ -19,6 +19,8 @@ from app.llm.facade import (
 )
 from app.llm.models import LLMCall, LLMInference
 from app.llm.structured_service import StructuredOutputRetry
+from app.llm.subscription_policy import llm_execution_scope
+from core.user.models import User
 from tests import test_inference_lifecycle as lifecycle
 
 runtime = lifecycle.runtime
@@ -91,7 +93,11 @@ async def test_structured_validation_retries_keep_stream_transcript_and_cost(
         await db.commit()
     mode.update(structured=True, outputs=['{"count":0}', '{"count":2}', '{"count":3}'])
     request = request_for(llm, output_contract, mode=output_mode)
-    result = await execution.run_structured(request, Decision)
+    user = User(email=f"budget-{uuid4()}@example.test", hashed_password="unused")
+    db.add(user)
+    await db.commit()
+    with llm_execution_scope(requester_user_id=user.id):
+        result = await execution.run_structured(request, Decision)
     assert result.output == Decision(count=3)
     key = await db.scalar(select(LLMInference.id))
     snapshot = await read_inference(key)
@@ -123,6 +129,7 @@ async def test_structured_validation_retries_keep_stream_transcript_and_cost(
         assert result.messages[-1].parts[0].part_kind == "tool-return"
     calls = list(await db.scalars(select(LLMCall)))
     assert len(calls) == 3
+    assert {call.user_id for call in calls} == {user.id}
     assert {call.reasoning_effort for call in calls} == {"low"}
     assert result.cost == snapshot.cost == pytest.approx(sum(call.cost for call in calls))
     assert terminal.usage.requests == 3

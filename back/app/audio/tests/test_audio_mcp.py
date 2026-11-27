@@ -1,4 +1,5 @@
 from pathlib import Path
+from uuid import UUID
 import wave
 
 import av
@@ -278,6 +279,7 @@ async def test_audio_transcribe_materializes_only_bounded_temporary_files(
         filename: str,
         mime_type: str,
         language: str,
+        task_id: UUID | None,
     ) -> str:
         transcribed_paths.append(path)
         with av.open(str(path)) as container:

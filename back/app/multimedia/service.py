@@ -84,7 +84,7 @@ async def _analyze(ctx: McpToolContext, operation: MediaOperation, uri: str, pro
                     raise ValueError("Supplied subtitles must be an SRT or WebVTT file.")
                 subtitles_format = "srt" if extension == ".srt" else "webvtt"
             transcript = await prepare_video_transcript(
-                path, Path(directory), agent_id=ctx.agent_id,
+                path, Path(directory), agent_id=ctx.agent_id, task_id=ctx.task_id,
                 has_audio=any(stream.get("codec_type") == "audio" for stream in probe.get("streams", [])),
                 tracks=[SubtitleTrack(int(stream["index"]), str(stream.get("codec_name", "")),
                                       str(stream.get("tags", {}).get("language", "")),

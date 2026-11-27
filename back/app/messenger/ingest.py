@@ -221,7 +221,7 @@ async def transcribe_audio_for_conversation(
     if not audio_files:
         return False
 
-    from app.llm import llm_service, model_usages, supports_native_input, transcription_service
+    from app.llm import llm_execution_scope, llm_service, model_usages, supports_native_input, transcription_service
     from app.messenger.facade import get_messenger
 
     conversation_llm = await llm_service.get_profile_llm_for_agent_id(
@@ -248,7 +248,11 @@ async def transcribe_audio_for_conversation(
     messenger = await get_messenger(message.connection_id)
     prepared = 0
     for file in pending:
-        transcript = await _transcribe(messenger, file, agent_id=agent_id)
+        with llm_execution_scope(
+            source_kind="message", source_id=str(message.id),
+            requester_user_id=message.requester_user_id, messenger_origin=True,
+        ):
+            transcript = await _transcribe(messenger, file, agent_id=agent_id)
         if not transcript or not transcript.strip():
             continue
         transcripts[str(file.id)] = transcript.strip()[:_MAX_TEXT_CHARS]

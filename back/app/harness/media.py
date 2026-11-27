@@ -227,6 +227,6 @@ async def _analyze_input(path: Path, mime: str, name: str, ctx: ResourceContext)
     if mime.startswith("audio/"):
         from app.llm import transcription_service
         return await transcription_service.transcribe_audio_file(path, filename=name,
-            mime_type=mime, agent_id=ctx.agent_id, language=ctx.language or "")
+            mime_type=mime, agent_id=ctx.agent_id, language=ctx.language or "", task_id=ctx.task_id)
     from app.llm.facade import analyze_input_video
     return await analyze_input_video(path, mime, agent_id=ctx.agent_id, task_id=ctx.task_id)

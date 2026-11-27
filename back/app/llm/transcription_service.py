@@ -6,6 +6,7 @@ import asyncio
 from collections.abc import Awaitable, Callable
 from dataclasses import replace
 from pathlib import Path
+from uuid import UUID
 
 import httpx
 import anyio
@@ -162,6 +163,7 @@ async def transcribe_audio_file(
     mime_type: str = "application/octet-stream",
     language: str = "",
     agent_id: int | None = None,
+    task_id: UUID | None = None,
 ) -> str:
     """Transcribe a file, streaming multipart uploads from disk when supported."""
 
@@ -173,6 +175,7 @@ async def transcribe_audio_file(
         mime_type=mime_type,
         language=language,
         agent_id=agent_id,
+        task_id=task_id,
         timeout=900.0,
     )
 
@@ -185,6 +188,7 @@ async def _transcribe_audio_source(
     language: str,
     agent_id: int | None,
     timeout: float,
+    task_id: UUID | None = None,
     user_id: int | None = None,
     voice_dialogue: bool = False,
 ) -> str:
@@ -204,7 +208,7 @@ async def _transcribe_audio_source(
         voice_dialogue=voice_dialogue,
         purpose=LLMCallPurpose.AUDIO_TRANSCRIPTION,
         requester_user_id=user_id,
-        task_id=None,
+        task_id=task_id,
         agent_run_id=None,
         agent_id=agent_id,
         llm_id=resource.id,

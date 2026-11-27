@@ -129,7 +129,10 @@ async def test_simple_if_uses_selected_model_without_task_and_reuses_completed_i
     assert metrics["direct"]["calls"] == 1
     assert metrics["occurrences"][str(occurrence.id)]["direct"]["calls"] == 1
     assert metrics["nodes"]["check"]["calls"] == 1
-    assert (await db.scalar(select(LLMCall))).task_id is None
+    call = await db.scalar(select(LLMCall).where(LLMCall.process_run_id == run_id))
+    assert call is not None
+    assert call.task_id is None
+    assert call.user_id == agent.user_id
     await process_service.refresh_run(run_id)
     assert len(calls) + len(text_calls) == 1
 

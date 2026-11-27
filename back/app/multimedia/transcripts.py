@@ -8,6 +8,7 @@ import json
 from pathlib import Path
 import re
 from typing import Literal
+from uuid import UUID
 
 from app.audio import normalize_for_transcription_chunks_isolated
 from app.llm import transcription_service
@@ -91,7 +92,7 @@ def _captions(text: str, source: Literal["external_subtitles", "embedded_subtitl
 async def prepare_video_transcript(
     source: Path, directory: Path, *, agent_id: int, has_audio: bool,
     tracks: list[SubtitleTrack], subtitles_path: Path | None = None,
-    subtitles_format: str = "", language: str = "",
+    subtitles_format: str = "", language: str = "", task_id: UUID | None = None,
 ) -> VideoTranscript:
     """Prefer supplied captions, then embedded text, then a dedicated STT resource.
 
@@ -125,7 +126,8 @@ async def prepare_video_transcript(
             chunks = await normalize_for_transcription_chunks_isolated(source, directory / "audio")
             for chunk in chunks:
                 text = await transcription_service.transcribe_audio_file(
-                    chunk.path, filename=chunk.path.name, mime_type="audio/mpeg", agent_id=agent_id, language=language,
+                    chunk.path, filename=chunk.path.name, mime_type="audio/mpeg",
+                    agent_id=agent_id, language=language, task_id=task_id,
                 )
                 if not text.strip():
                     warnings.append("An audio segment returned no speech text; coverage may be incomplete.")

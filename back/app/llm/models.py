@@ -179,6 +179,8 @@ class LLMCall(HistoryMixin, Base):
         nullable=True,
         index=True,
     )
+    # Budget attribution at admission. This never grants access to the call.
+    user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), index=True)
     correlation_ref: Mapped[Optional[str]] = mapped_column(
         String(300), nullable=True, index=True
     )

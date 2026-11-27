@@ -21,6 +21,7 @@ from core.params import Param, Params, params_service
 from .profile_models import LlmProfile
 from .profile_service import DEFAULT_PROFILE_LABEL
 from .profile_codes import profile_code
+from .user_attribution import backfill_call_users, call_users_backfilled
 from .initial_configuration import (
     initial_configuration_complete,
     initialize_configuration,
@@ -168,6 +169,14 @@ async def _transfer_call_costs(session: AsyncSession, _transitions: SchemaTransi
     """))
 
 
+async def _backfill_call_users(session: AsyncSession, _transitions: SchemaTransitionSet) -> None:
+    await backfill_call_users(session)
+
+
+async def _call_users_complete(session: AsyncSession, _transitions: SchemaTransitionSet) -> bool:
+    return await call_users_backfilled(session)
+
+
 def register_dbadmin(registry: DbAdminRegistry) -> None:
     registry.register_data_source(DATA_SOURCE)
     registry.register_action(DbAdminAction(
@@ -185,4 +194,13 @@ def register_dbadmin(registry: DbAdminRegistry) -> None:
         checksum="historized-physical-call-costs-v1", predicate=_retires_call_costs,
         handler=_transfer_call_costs, postcondition=_call_costs_transferred,
         requires_schema=frozenset({"llm_calls.deleted_at"}),
+    ))
+    registry.register_action(DbAdminAction(
+        key="app.llm.attribute_call_users", phase=DbAdminPhase.AFTER_DATASET,
+        checksum="call-user-provenance-v1",
+        predicate=lambda delta: delta.column_added("llm_calls", "user_id"),
+        handler=_backfill_call_users, postcondition=_call_users_complete,
+        requires_schema=frozenset({"llm_calls.user_id", "lab_evaluation_runs", "multimedia_generations",
+                                   "conversation_task_links", "deep_sessions", "voice_sessions", "dream_receipts",
+                                   "contact_discovery_jobs"}),
     ))

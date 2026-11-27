@@ -1029,22 +1029,23 @@ class AgentVoiceEngine:
                 )
 
     async def _transcribe(self, utterance: SpeechUtterance) -> str:
-        from app.llm import transcription_service
+        from app.llm import llm_execution_scope, transcription_service
 
         wav = pcm_to_wav(
             utterance.pcm,
             sample_rate=utterance.sample_rate,
             channels=utterance.channels,
         )
-        async with get_db_session():
-            return await transcription_service.transcribe_audio(
-                wav,
-                filename=f"call-turn-{self._turn_index}.wav",
-                mime_type="audio/wav",
-                language=self._language,
-                agent_id=self._agent_id,
-                voice_dialogue=True,
-            )
+        with llm_execution_scope(source_kind="voice_session", source_id=str(self._session_id), messenger_origin=True):
+            async with get_db_session():
+                return await transcription_service.transcribe_audio(
+                    wav,
+                    filename=f"call-turn-{self._turn_index}.wav",
+                    mime_type="audio/wav",
+                    language=self._language,
+                    agent_id=self._agent_id,
+                    voice_dialogue=True,
+                )
 
     async def _start_transcription_progress(self) -> None:
         room_id = self._conversation_room_id
