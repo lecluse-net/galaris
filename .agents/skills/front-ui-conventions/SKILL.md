@@ -104,8 +104,11 @@ Voir `docs/fr/dev/document-apps.md` pour les règles de CSP, révisions et révo
   droite (`flat`, `round`, `dense`, `v-close-popup` et libellé accessible).
 - Laisser systématiquement le clic sur l’arrière-plan fermer la modale. Ne jamais utiliser
   `persistent`, `no-backdrop-dismiss` ni une option équivalente.
-- Reprendre les dimensions, espacements, séparateurs et actions des modales voisines. Mettre
-  les actions Annuler puis Valider dans le pied de modale.
+- Regrouper tous les boutons placés en bas d’une modale dans un seul pied standard
+  `<q-card-actions align="right" class="galaris-dialog-actions">`, sous le corps
+  défilant `galaris-dialog-body`. Suivre la Référence graphique pour le pied et placer
+  Annuler avant l’action principale lorsqu’ils sont tous deux présents. Si un `q-form`
+  englobe le corps et le pied, lui donner la classe partagée `galaris-dialog-form`.
 - Préférer un `q-dialog` applicatif explicite au plugin Dialog lorsque le plugin ne permet pas
   d’afficher la barre de titre et le bouton de fermeture normalisés.
 

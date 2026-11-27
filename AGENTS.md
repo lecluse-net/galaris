@@ -320,6 +320,10 @@ immutable. Consult the `galaris-process-services` skill.
   `no-backdrop-dismiss`, or an equivalent option on a Quasar dialog.
 - Open a modal over the page or dialog that triggered it. Keep the underlying view and its
   state mounted so dismissing the modal returns the user to the same context.
+- Every modal with buttons at the bottom must group them in a single standard footer.
+  Use `<q-card-actions align="right" class="galaris-dialog-actions">` below and outside
+  the scrollable `galaris-dialog-body`. Place Cancel before the primary action when both
+  are present. Reuse the shared footer styling from the Graphic reference.
 - Use a real dialog for every confirmation. Use the shared confirmation dialog or mark a
   custom `q-dialog` with `data-confirmation` and its single primary `q-btn` with
   `data-autofocus`. Focus that action when the dialog opens, including for destructive
