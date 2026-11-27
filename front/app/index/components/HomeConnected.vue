@@ -9,7 +9,6 @@
         <!--
           UX INVARIANT — character anchoring:
           Keep the current-month selector immediately after the page title.
-          Never move this block to the right-aligned #actions slot.
         -->
         <template #title-after>
           <div class="dashboard-controls">
@@ -28,18 +27,13 @@
             >
               <template #prepend><q-icon name="calendar_month" /></template>
             </q-select>
-            <q-btn
-              round
-              flat
-              color="primary"
-              icon="refresh"
-              :loading="dashboardStore.loading"
-              :aria-label="t('index.dashboard.refresh')"
-              @click="refreshDashboard"
-            >
-              <q-tooltip>{{ t('index.dashboard.refresh') }}</q-tooltip>
-            </q-btn>
           </div>
+        </template>
+        <template #actions>
+          <q-btn round flat color="primary" icon="refresh" :loading="dashboardStore.loading"
+            :aria-label="t('index.dashboard.refresh')" @click="refreshDashboard">
+            <q-tooltip>{{ t('index.dashboard.refresh') }}</q-tooltip>
+          </q-btn>
         </template>
       </PageHeader>
 

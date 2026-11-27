@@ -1,7 +1,7 @@
 <template>
   <q-page class="documents-page q-py-md q-pl-md" :class="{ 'viewport-page--desktop': !$q.screen.lt.md }" :inert="documentFullscreen">
     <PageHeader help-key="documents" :help-text="$t('contextHelpPages.documents')" :icon="navigationIcon('description')" :title="t('nav.documents')" :description="t('nav.documents_desc')">
-      <template #title-after>
+      <template #actions>
         <div class="row items-center q-gutter-xs">
           <q-btn v-if="!$q.screen.lt.md" flat round :icon="libraryOpen ? fullDocumentIcon : libraryDocumentIcon" :aria-label="t('documents.toggleLibrary')" :aria-expanded="libraryOpen" @click="libraryOpen = !libraryOpen"><q-tooltip>{{ t('documents.toggleLibrary') }}</q-tooltip></q-btn>
           <q-btn v-if="canAccessChat && selectedDocumentId && !$q.screen.lt.md" flat round icon="forum" :aria-label="t('documents.conversation')" :aria-expanded="chatOpen" :color="chatOpen ? 'primary' : undefined" @click="chatOpen = !chatOpen"><q-tooltip>{{ t('documents.conversation') }}</q-tooltip></q-btn>

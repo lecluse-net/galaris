@@ -1,7 +1,7 @@
 <template>
   <q-page class="q-pa-md">
     <PageHeader help-key="topics" :help-text="$t('contextHelpPages.topics')" :icon="navigationIcon('folder_copy')" :title="t('nav.topics')" :description="t('nav.topics_desc')">
-      <template #title-after>
+      <template #actions>
         <div class="topic-controls">
           <q-select
             :model-value="selectedMonth"

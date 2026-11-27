@@ -1,7 +1,7 @@
 <template>
   <q-page class="q-pa-md">
     <PageHeader :icon="navigationIcon('contacts')" :title="t('nav.contacts')" :description="t('nav.contacts_desc')">
-      <template #title-after>
+      <template #actions>
         <q-btn
           round
           flat

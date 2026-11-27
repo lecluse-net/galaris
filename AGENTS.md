@@ -292,6 +292,9 @@ immutable. Consult the `galaris-process-services` skill.
 
 ### Frontend
 
+- Reserve the upper-right corner of every page title area for the signed-in user menu.
+  Place page action buttons in a separate row below the title or next to the content they
+  act on. Use the shared PageHeader actions slot for the row below the title.
 - For every UI change or new screen, use **Developers → Graphic reference**
   (`/graphic-reference`, available in development) as the visual reference. Reuse its real
   components and patterns rather than copying an inconsistent neighboring page. Follow the
@@ -302,6 +305,8 @@ immutable. Consult the `galaris-process-services` skill.
   colors or approximate Quasar shades as a reference, or reintroduce discarded colors.
   Any palette change must be reflected in this shared reference.
 - Keep components and pages focused; place API calls in services and shared state in Pinia.
+- Place table row actions in the rightmost column as flat, borderless icon buttons with
+  accessible labels. When a row opens an editor, keep its edit icon usable with the keyboard.
 - Use a single native Quasar `QBtn` style for standard action buttons. Use the default
   filled style with its subtle shadow and a clearly visible edge. Vary only `color` to suit
   the action, including `negative` for delete. Omit `outline`, `flat`, and `unelevated` on

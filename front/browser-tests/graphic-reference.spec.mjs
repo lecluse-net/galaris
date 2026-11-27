@@ -20,6 +20,11 @@ async function expectBorderSeparators(page) {
 
 test('reference controls remain local and support keyboard and modal dismissal', async ({ page }, testInfo) => {
   await mount(page, 'test-support/browser/GraphicReferenceHarness.vue', { locale: 'fr' })
+  const header = page.locator('.page-header')
+  const reset = header.getByRole('button', { name: 'Réinitialiser', exact: true })
+  const titleBox = await header.getByRole('heading', { level: 1 }).boundingBox()
+  expect(titleBox).not.toBeNull()
+  expect((await reset.boundingBox())?.y).toBeGreaterThanOrEqual(titleBox.y + titleBox.height)
   const toggles = page.locator('#toggles')
   await expectBorderSeparators(page)
   await page.locator('#navigation').screenshot({ path: testInfo.outputPath('separators-light.png') })
@@ -34,7 +39,7 @@ test('reference controls remain local and support keyboard and modal dismissal',
   await unsetPolicy.getByRole('button', { name: 'Actif', exact: true }).click()
   await expect(unsetPolicy.getByRole('button', { name: 'Actif', exact: true })).toHaveAttribute('aria-pressed', 'true')
   await expect(toggles.getByRole('group', { name: 'Désactivé', exact: true }).getByRole('button', { name: 'Actif', exact: true })).toBeDisabled()
-  await page.getByRole('button', { name: 'Réinitialiser', exact: true }).click()
+  await reset.click()
   await expect(toggles.getByRole('button', { name: 'Liste', exact: true })).toHaveAttribute('aria-pressed', 'true')
   await expect(unsetPolicy.getByRole('button', { name: 'Actif', exact: true })).toHaveAttribute('aria-pressed', 'false')
   await toggles.screenshot({ path: testInfo.outputPath('toggles-desktop-light.png') })
