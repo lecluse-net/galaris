@@ -31,16 +31,20 @@ async function refresh() {
   }
 }
 
+function refreshOnBudgetChange(): void {
+  void refresh()
+}
+
 watch(() => auth.user?.id, () => { envelopes.value = []; void refresh() })
 onMounted(() => {
   void refresh()
   stopPolling = startVisiblePolling(refresh, 30_000)
-  window.addEventListener(budgetChanged, refresh)
+  window.addEventListener(budgetChanged, refreshOnBudgetChange)
 })
 onUnmounted(() => {
   controller?.abort()
   stopPolling?.()
-  window.removeEventListener(budgetChanged, refresh)
+  window.removeEventListener(budgetChanged, refreshOnBudgetChange)
 })
 </script>
 
