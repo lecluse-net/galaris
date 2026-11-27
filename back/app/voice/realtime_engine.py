@@ -237,9 +237,15 @@ class RealtimeAgentVoiceEngine:
         topic_id: UUID | None = None,
         contact_memory_item_id: UUID | None = None,
         conversation_id: str | None = None,
+        requester_user_id: int | None = None,
     ) -> RealtimeAgentVoiceEngine | tts_service.CallSpeechVoice | None:
         async with get_db_session():
             configuration = await _configuration_for_agent(agent_id)
+            if isinstance(configuration, _RealtimeConfiguration) and requester_user_id is not None:
+                from app.llm import budget_limited
+
+                if await budget_limited(requester_user_id):
+                    return None  # Fall back to the metered text inference path.
         if not isinstance(configuration, _RealtimeConfiguration):
             return configuration
         return cls(

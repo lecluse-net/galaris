@@ -1,6 +1,7 @@
 # Décisions d'architecture
 
 - [0330 — Process runs in Goal cycles](0330-goal-process-cycles.md)
+- [0329 — Per-user inference budgets](0329-per-user-inference-budgets.md)
 - [0328 — Retire the containerized Claude harness](0328-retire-containerized-claude-harness.md)
 - [0327 — Embedded harness inference origin](0327-embedded-conversation-inference-origin.md)
 - [0325 — Index partagé des ressources courantes](0325-shared-current-resource-index.md)

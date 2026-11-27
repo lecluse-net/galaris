@@ -2,6 +2,17 @@ import type { NavigationTree } from '@/core/navigation'
 import { privileges } from '@/core/authorize'
 
 const navigation: NavigationTree = {
+  monitor: {
+    children: {
+      inferenceBudget: {
+        label: 'inferenceBudget.menu',
+        description: 'inferenceBudget.description',
+        icon: 'speed',
+        order: 5,
+        to: '/llm/usage',
+      },
+    },
+  },
   configure: {
     children: {
       llm: {

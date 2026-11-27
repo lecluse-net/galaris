@@ -6,6 +6,7 @@ from typing import cast
 from uuid import uuid4
 
 from sqlalchemy import or_, select
+from app.llm import automatic_budget_blocked
 from core.database import get_db
 from .mechanism_registry import MECHANISMS
 from .mechanism_rubrics import get_rubric
@@ -60,6 +61,11 @@ async def claim_next_run() -> ClaimResult:
 
         await finish_run(run)
         return ClaimResult(1)
+    if await automatic_budget_blocked(source_kind="lab_run", source_id=str(run.id),
+                                      requester_user_id=run.created_by):
+        run.lease_expires_at = now + timedelta(seconds=60)
+        await get_db().commit()
+        return ClaimResult(0)
     if run.max_cost is not None and run.candidate_cost + run.judge_cost >= run.max_cost:
         from .run_publication import finish_run
 

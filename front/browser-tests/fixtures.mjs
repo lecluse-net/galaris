@@ -19,6 +19,10 @@ export const test = base.extend({
     })) }))
     // Help starts unread; persistence/error scenarios override this read-only fixture.
     await page.route('**/api/auth/me/help-dismissals', route => route.fulfill({ json: [] }))
+    // The sidebar remains empty for the default unlimited inference budgets.
+    await page.route('**/api/llm-budget/me', route => route.fulfill({
+      json: { can_configure: false, account: { user_id: 1, envelopes: [], requests: [] } },
+    }))
     // Private chat drafts start empty. Dedicated recovery scenarios override failures/concurrency.
     const drafts = new Map()
     await page.route('**/api/chat/rooms/*/deep', route => route.fulfill({ json: { enabled: false, submissions: [] } }))

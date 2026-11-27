@@ -235,11 +235,13 @@ class AgentVoiceEngine:
         caller_external_id: str = "voice-caller",
         caller_name: str = "Caller",
         conversation_room_id: UUID | None = None,
+        requester_user_id: int | None = None,
     ) -> None:
         self._transport = transport
         self._handle = handle
         self._agent_id = agent_id
         self._session_id = session_id
+        self._requester_user_id = requester_user_id
         self._connection_id = connection_id
         self._topic_id = topic_id
         self._contact_memory_item_id = contact_memory_item_id
@@ -283,6 +285,7 @@ class AgentVoiceEngine:
             handle=self._handle,
             agent_id=self._agent_id,
             session_id=self._session_id,
+            requester_user_id=self._requester_user_id,
             room_id=self._room_id,
             conversation_id=self._conversation_id,
             connection_id=self._connection_id,
@@ -395,7 +398,7 @@ class AgentVoiceEngine:
             )
 
     async def _consume_speech_turns(self) -> None:
-        from app.llm import transcription_service
+        from app.llm import budget_limited, transcription_service
 
         realtime: transcription_service.RealtimeTranscriber | None = None
         realtime_failed = False
@@ -410,6 +413,8 @@ class AgentVoiceEngine:
             realtime_failed = False
             try:
                 async with get_db_session():
+                    if self._requester_user_id is not None and await budget_limited(self._requester_user_id):
+                        return None
                     transcriber = await transcription_service.create_realtime_transcriber(
                         agent_id=self._agent_id,
                         language=self._language,

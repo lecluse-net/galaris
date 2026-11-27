@@ -117,6 +117,9 @@ default: dict[str, object] = {
             "timeout": "The request timed out; the server did not respond",
         },
     },
+    "inference_budget": {
+        "grant_requires_active_window": "Credit can only be granted during an active window.",
+    },
     "anthropic_api": {
         "errors": {
             "invalid_request": "Invalid Anthropic request",

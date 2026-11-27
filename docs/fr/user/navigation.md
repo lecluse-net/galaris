@@ -141,7 +141,7 @@ Les valeurs secrètes sont masquées. La consultation nécessite `SERVICE_ACCESS
 | **Configurer** | Fournisseurs & modèles, Agents, Services & connexions, Compétences |
 | **Agir** | Discussion, Objectifs, Processus |
 | **Connaissances** | Documents, Fichiers, Mémoire, Agenda, Contacts, Sujets |
-| **Superviser** | Tableau de bord, Activité, Dream, Permissions, Journal des mails, Journal des échecs |
+| **Superviser** | Tableau de bord, Activité, Consommation, Dream, Permissions, Journal des mails, Journal des échecs |
 | **Administrer** | Préférences, Laboratoire, Console, Utilisateurs & Droits, Plugins |
 | **Développeurs** (mode dev uniquement) | Référence graphique, Inventaire des outils |
 
@@ -198,6 +198,12 @@ nouvelle clé pour la remplacer. Le petit bouton de suppression dans le champ de
 confirmation puis supprime la clé enregistrée. Supprimer une clé obligatoire désactive le
 fournisseur ; supprimer une clé facultative conserve son état. Ce fonctionnement est commun
 à la clé des modèles et à la clé de gestion facultative d’OpenRouter.
+
+**Superviser → Consommation** affiche **Mes limites d’utilisation** dans un bloc dédié.
+Cliquez sur **Modifier mes plafonds** dans ce bloc si votre rôle le permet. Les autres comptes
+figurent dans un tableau à trois colonnes de plafonds. Une cellule vide indique une utilisation
+illimitée. Les jauges du menu ouvrent cette page.
+[Limites d’utilisation de l’inférence](../dev/inference-budgets.md)
 
 Dans la configuration d’un fournisseur compatible, **Consommation et crédits** affiche les
 limites remontées par le service : fenêtres et crédits supplémentaires ChatGPT, crédits ElevenLabs, consommation de clé
@@ -982,7 +988,8 @@ Quelques distinctions utiles :
   désactivez ses privilèges en cliquant sur leur ligne ou leur interrupteur. Chaque
   changement est enregistré immédiatement. Seule la liste défile, avec les rôles en haut.
   L’onglet **Privilèges**, qui organise les catégories, est réservé au mode développement.
-  L’onglet **Équipes** (`/users?tab=teams`) gère les [équipes et leurs membres](teams.md).
+  L’onglet **Équipes** (`/users?tab=teams`) gère les [équipes, leurs membres et leurs chefs](teams.md).
+  Dans la fiche d’un compte, la case **Chef d’équipe** figure à côté de chaque équipe sélectionnée.
 
 ## Un menu ou un bouton manque
 

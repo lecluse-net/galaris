@@ -44,7 +44,7 @@ from .models import User as UserModel
 from . import refresh_session_service
 from . import token_service
 from . import mfa_service
-from .dependencies import require_web_session
+from .dependencies import require_active_web_session, require_web_session
 from .auth_service import (
     authenticate_from_login,
     InvalidCredentialsError,
@@ -592,7 +592,7 @@ async def list_users(
     dependencies=[Depends(require_web_session)],
 )
 @authorize(privileges=Privileges.CREATE_USER)
-async def create_user_endpoint(user: UserAdminCreate) -> UserAdminCreated:
+async def create_user_endpoint(user: UserAdminCreate, request: Request) -> UserAdminCreated:
     actor = await user_service.get_current_user()
     required_privileges: list[str] = []
     if user.settings:
@@ -600,7 +600,10 @@ async def create_user_endpoint(user: UserAdminCreate) -> UserAdminCreated:
     if user.role_ids:
         required_privileges.append(Privileges.MANAGE_ASSIGNMENT)
     if user.team_ids:
+        await require_active_web_session(request)
         required_privileges.extend([Privileges.TEAM_ACCESS, Privileges.TEAM_MEMBERS_EDIT])
+    if user.managed_team_ids:
+        required_privileges.append(Privileges.TEAM_EDIT)
     for privilege in required_privileges:
         if not await check_privilege(actor, privilege, get_db()):
             raise HTTPException(status_code=403, detail=render_prompt(
@@ -611,7 +614,7 @@ async def create_user_endpoint(user: UserAdminCreate) -> UserAdminCreated:
             invitation_service.invitation_mail_configuration()
         created = await user_service.create(
             user, role_ids=user.role_ids, default_role_id=user.default_role_id, team_ids=user.team_ids,
-            settings=user.settings,
+            managed_team_ids=user.managed_team_ids, settings=user.settings,
         )
     except invitation_service.InvitationUnavailableError:
         raise HTTPException(status_code=503, detail=await tr("user_api.errors.invitation_not_configured")) from None

@@ -11,8 +11,9 @@ from uuid import UUID
 
 from loguru import logger
 
-from app.llm import llm_correlation_scope, llm_execution_scope
+from app.llm import BudgetUnavailable, automatic_budget_blocked, llm_correlation_scope, llm_execution_scope
 from app.messenger import Message, message_admitting
+from core.database import get_db_session
 
 from .contracts import DreamClaim
 from .mechanisms.sequential_topic_classification import message_topic_classification_mechanism
@@ -53,6 +54,9 @@ async def _classify(message_id: UUID) -> None:
     mechanism = message_topic_classification_mechanism
     claim: DreamClaim | None = None
     try:
+        async with get_db_session():
+            if await automatic_budget_blocked(source_kind="message", source_id=str(message_id)):
+                return
         claim = await mechanism.claim_message(message_id)
         if claim is None:
             return
@@ -76,6 +80,9 @@ async def _classify(message_id: UUID) -> None:
         if claim is not None:
             await asyncio.shield(release_interrupted(claim, "Live topic worker stopped."))
         raise
+    except BudgetUnavailable as exc:
+        if claim is not None:
+            await release_interrupted(claim, str(exc), delay_seconds=60)
     except Exception as exc:
         if claim is not None:
             await mark_failure(claim, exc)

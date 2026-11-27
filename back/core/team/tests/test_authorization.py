@@ -82,11 +82,17 @@ async def test_team_membership_controls_chat_without_granting_management_over_ht
     login = await client.post("/api/auth/login-json", json={"email": "teams-human@example.com", "password": password})
     human = {"Authorization": f"Bearer {login.json()['access_token']}"}
     assert (await client.get("/api/teams")).status_code in {401, 403}
-    assert (await client.post("/api/teams", headers=human, json={"name": "Denied"})).status_code == 403
-    team_response = await client.post("/api/teams", headers=admin, json={"name": "Commercial"})
+    assert (await client.post("/api/teams", headers=human,
+                              json={"name": "Denied", "manager_user_id": admin_id})).status_code == 403
+    assert (await client.post("/api/teams", headers=admin, json={"name": "Missing manager"})).status_code == 422
+    team_response = await client.post("/api/teams", headers=admin,
+                                      json={"name": "Commercial", "manager_user_id": admin_id})
     assert team_response.status_code == 201, team_response.text
     team_id = team_response.json()["id"]
-    second_team = await client.post("/api/teams", headers=admin, json={"name": "Support"})
+    assert team_response.json()["manager"]["id"] == admin_id
+    assert team_response.json()["human_members"][0]["id"] == admin_id
+    second_team = await client.post("/api/teams", headers=admin,
+                                    json={"name": "Support", "manager_user_id": admin_id})
     second_id = second_team.json()["id"]
     assert second_team.json()["order"] > team_response.json()["order"]
     move_url = f"/api/teams/{second_id}/position"
@@ -128,11 +134,11 @@ async def test_team_membership_controls_chat_without_granting_management_over_ht
     }
     team_list = (await client.get("/api/teams", headers=human)).json()
     listed = next(team for team in team_list if team["id"] == team_id)
-    assert listed["human_count"] == 1
-    assert listed["human_members"][0]["id"] == user_id
+    assert listed["human_count"] == 2
+    assert {member["id"] for member in listed["human_members"]} == {admin_id, user_id}
     updated = await client.put(f"/api/teams/{team_id}", headers=admin, json={"name": "Sales"})
     assert updated.status_code == 200
-    assert updated.json()["human_count"] == 1
+    assert updated.json()["human_count"] == 2
     assert updated.json()["order"] == 1
     created_room = await client.post("/api/chat/rooms", headers=human, json={"agent_id": agent_id})
     assert created_room.status_code == 201, created_room.text

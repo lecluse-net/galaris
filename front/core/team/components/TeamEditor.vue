@@ -10,6 +10,12 @@
                 :label="t('team.name')" :rules="[v => !!String(v).trim() || t('team.required')]" maxlength="255" />
               <q-input v-model="form.description" class="col-12" outlined dense autogrow
                 :readonly="!canEdit" :disable="saving" :label="t('team.description')" maxlength="4000" />
+              <UserSelect v-if="team" v-model="managerId" class="col-12 col-md-6" outlined dense
+                :label="t('team.manager')" :options="managerOptions" :readonly="!canEdit"
+                :disable="saving || loading" :rules="canEdit ? [managerRequired] : undefined" />
+              <UserSelect v-else v-model="managerId" class="col-12 col-md-6" outlined dense use-input
+                :label="t('team.manager')" :options="managerOptions" :disable="saving" :rules="[managerRequired]"
+                @filter="filterManagers" />
             </div>
           </q-card-section>
           <q-separator v-if="!membersOnly" />
@@ -48,7 +54,7 @@
                     <q-item-section avatar><UserAvatar :name="member.label" :avatar-url="member.avatar_url" /></q-item-section>
                     <q-item-section>{{ member.label }}<q-item-label v-if="!member.active" caption>{{ t('team.inactive') }}</q-item-label></q-item-section>
                     <q-item-section v-if="canMembers" side>
-                      <q-btn flat round icon="close" :disable="saving" :aria-label="t('team.removeNamed', { name: member.label })"
+                      <q-btn flat round icon="close" :disable="saving || member.id === managerId" :aria-label="t('team.removeNamed', { name: member.label })"
                         @click="humans = humans.filter(human => human.id !== member.id)" />
                     </q-item-section>
                   </q-item>
@@ -91,6 +97,8 @@ const privileges = usePrivilegeStore()
 const canEdit = computed(() => !membersOnly && privileges.hasPrivilege('TEAM_ACCESS') && privileges.hasPrivilege('TEAM_EDIT'))
 const canMembers = computed(() => privileges.hasPrivilege('TEAM_ACCESS') && privileges.hasPrivilege('TEAM_MEMBERS_EDIT'))
 const form = ref({ name: team?.name ?? '', description: team?.description ?? '' })
+const managerId = ref<number | null>(team?.manager_user_id ?? null)
+let savedManagerId = team?.manager_user_id ?? null
 let savedId = team?.id
 const humans = ref<Human[]>([])
 const originalHumans = new Set<number>()
@@ -98,6 +106,7 @@ const selectedHuman = ref<number | null>(null)
 const selectedHumans = ref<number[] | null>([])
 const selectedHumanRows = new Map<number, Human>()
 const humanResults = ref<Human[]>([])
+const managerResults = ref<Human[]>([])
 const loading = ref(true)
 const loadError = ref(false)
 const saving = ref(false)
@@ -112,6 +121,18 @@ for (const entry of contributions) {
 }
 const humanOptions = computed(() => humanResults.value.filter(human => !humans.value.some(member => member.id === human.id))
   .map(human => ({ value: human.id, label: human.label, avatarUrl: human.avatar_url, caption: human.active ? '' : t('team.inactive') })))
+const managerOptions = computed(() => {
+  const candidates = team ? humans.value.filter(human => human.active || human.id === savedManagerId) : managerResults.value
+  const selected = team?.manager ?? null
+  const options = [...candidates]
+  if (selected && !options.some(human => human.id === selected.id)) options.unshift(selected)
+  return options.map(human => ({ value: human.id, label: human.label, avatarUrl: human.avatar_url,
+    caption: human.active ? '' : t('team.inactive') }))
+})
+
+function managerRequired(value: number | null): boolean | string {
+  return value !== null || t('team.managerRequired')
+}
 
 async function loadHumans(): Promise<void> {
   loading.value = true
@@ -123,8 +144,22 @@ async function loadHumans(): Promise<void> {
   } catch { loadError.value = true } finally { loading.value = false }
 }
 let searchVersion = 0
+let managerSearchVersion = 0
 function invalidateSearch(): void { searchVersion += 1 }
-onBeforeUnmount(invalidateSearch)
+onBeforeUnmount(() => { invalidateSearch(); managerSearchVersion += 1 })
+async function filterManagers(value: string, update: (callback: () => void) => void, abort: () => void): Promise<void> {
+  const version = ++managerSearchVersion
+  try {
+    const rows = await teamService.humans(value, true)
+    if (version !== managerSearchVersion) return
+    update(() => {
+      const selected = managerResults.value.find(human => human.id === managerId.value)
+      managerResults.value = selected && !rows.some(human => human.id === selected.id) ? [selected, ...rows] : rows
+    })
+  } catch {
+    if (version === managerSearchVersion) abort()
+  }
+}
 async function filterHumans(value: string, update: (callback: () => void) => void, abort: () => void): Promise<void> {
   const version = ++searchVersion
   searchError.value = false
@@ -166,8 +201,22 @@ async function save(): Promise<void> {
   saving.value = true
   saveError.value = false
   try {
+    if (canMembers.value && savedId !== undefined) {
+      const additions = new Set([...originalHumans, ...humans.value.map(human => human.id)])
+      await saveMemberships(savedId, [...additions], originalHumans, teamService.membership)
+    }
     if (canEdit.value) {
-      savedId = (await teamService.save(form.value, savedId)).id
+      const manager = managerId.value
+      if (manager === null) return
+      const result = await teamService.save({
+        ...form.value, ...(savedId === undefined || savedManagerId !== manager ? { manager_user_id: manager } : {}),
+      }, savedId)
+      if (savedId === undefined && result.manager) {
+        originalHumans.add(result.manager.id)
+        if (!humans.value.some(human => human.id === result.manager?.id)) humans.value.push(result.manager)
+      }
+      savedId = result.id
+      savedManagerId = result.manager_user_id
       emit('changed')
     }
     if (savedId === undefined) return

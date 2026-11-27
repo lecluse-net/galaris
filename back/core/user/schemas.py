@@ -44,6 +44,7 @@ class UserAdminCreate(UserBase):
     role_ids: list[PositiveInt] = Field(default_factory=list[int])
     default_role_id: PositiveInt | None = None
     team_ids: list[PositiveInt] = Field(default_factory=list[int])
+    managed_team_ids: list[PositiveInt] = Field(default_factory=list[int])
 
     @model_validator(mode="after")
     def validate_default_role(self) -> "UserAdminCreate":
@@ -51,6 +52,8 @@ class UserAdminCreate(UserBase):
             raise ValueError("Provide either a password or an invitation")
         if self.default_role_id is not None and self.default_role_id not in self.role_ids:
             raise ValueError("The default role must be one of the assigned roles")
+        if set(self.managed_team_ids) - set(self.team_ids):
+            raise ValueError("Managed teams must be among the assigned teams")
         return self
 
 

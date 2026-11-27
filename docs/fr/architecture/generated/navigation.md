@@ -120,6 +120,14 @@ Le [guide de navigation](../../user/navigation.md) détaille les onglets, le men
 - Conditions supplémentaires : —
 - Sources : `front/app/index/navigation.ts`
 
+## Superviser → Consommation
+
+- Route : `/llm/usage`
+- Usage : Limites d’utilisation et crédits d’inférence.
+- Visibilité du menu (privilèges) : —
+- Conditions supplémentaires : —
+- Sources : `front/app/llm/navigation.ts`
+
 ## Superviser → Activité
 
 - Route : `/task`

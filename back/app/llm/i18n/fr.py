@@ -124,6 +124,9 @@ default: dict[str, object] = {
             "timeout": "Le délai de la requête est dépassé ; le serveur n’a pas répondu",
         },
     },
+    "inference_budget": {
+        "grant_requires_active_window": "Le crédit ne peut être ajouté que pendant une période en cours.",
+    },
     "anthropic_api": {
         "errors": {
             "invalid_request": "Requête Anthropic invalide",

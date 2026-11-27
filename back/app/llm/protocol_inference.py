@@ -29,6 +29,7 @@ from core.util import as_dict, as_list
 from . import inference_execution as execution, inference_store, llm_service, model_usages, proxy_service
 from .accounting_scope import record_persisted_call_cost
 from .call_capture import TextCallCapture, text_call_capture
+from .budget import BudgetUnavailable
 from .contracts import InferenceEvent, ProtocolInferenceRequest
 from .embedded_runtime import (
     EmbeddedDeepInference, EmbeddedInferenceOrigin, EmbeddedRequestLimitExceeded, EmbeddedTaskInference, bind_embedded_call,
@@ -267,6 +268,8 @@ async def run_protocol(
         exc = transport.failure or exc
         result.success = False
         result.metadata.update(error=str(exc) or type(exc).__name__, error_type=type(exc).__name__)
+        if isinstance(exc, BudgetUnavailable):
+            result.metadata["inference_budget"] = exc.detail()
         if isinstance(exc, Exception) and provider_failure_allows_fallback(exc):
             # SDK wrappers retain typed causes only in-process. Preserve the
             # availability classification before the durable JSON boundary.
@@ -319,6 +322,8 @@ def _raise_failure(result: AIResult | None) -> None:
     metadata = result.metadata if result is not None else {}
     message = str(metadata.get("error", "The inference was interrupted."))
     kind = metadata.get("error_type")
+    if kind == "BudgetUnavailable":
+        raise BudgetUnavailable([], detail=as_dict(metadata.get("inference_budget")))
     if kind == "MailSubscriptionAccessError":
         raise MailSubscriptionAccessError(message)
     if kind == "SubscriptionAccessError":

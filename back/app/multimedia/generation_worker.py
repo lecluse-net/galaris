@@ -5,7 +5,7 @@ from uuid import UUID, uuid4
 
 import httpx
 from sqlalchemy import and_, func, or_, select, update
-from app.llm import LLMExecutionAuthority, MediaRequest, llm_execution_scope
+from app.llm import BudgetUnavailable, LLMExecutionAuthority, MediaRequest, automatic_budget_blocked, llm_execution_scope
 from app.llm.facade import MediaProviderUnavailable, MediaRequestRejected
 from app.services.facade import AuthorizationClosed, AuthorizationSuspended, continued_deferred_dispatch, claim_deferred_dispatch, finish_action
 from core.database import get_db
@@ -50,6 +50,14 @@ async def advance(identifier: UUID) -> MediaGenerationSnapshot:
         return result
     dispatch, authority, agent_id = dict(row.dispatch), dict(row.authority), row.agent_id
     cancelled = bool(row.checkpoint.get("cancel_requested"))
+    provenance = LLMExecutionAuthority(**authority)
+    if not cancelled and not row.checkpoint.get("submission") and await automatic_budget_blocked(
+        task_id=row.task_id, requester_user_id=provenance.requester_user_id,
+        source_kind=provenance.source_kind, source_id=provenance.source_id,
+    ):
+        await db.commit()
+        return MediaGenerationSnapshot(status="waiting", error=MediaGenerationError(
+            code="inference_budget_exhausted", message="Waiting for inference budget."))
     permit = UUID(str(dispatch["authorization_permit"])) if dispatch.get("authorization_permit") else None
     await db.commit()
     try:
@@ -77,6 +85,10 @@ async def advance(identifier: UUID) -> MediaGenerationSnapshot:
     except (PermissionError, AuthorizationClosed):
         result = await publish(identifier, MediaGenerationSnapshot(status="error", error=MediaGenerationError(
             code="authorization_unavailable", message="The operation authorization is no longer available")))
+    except BudgetUnavailable as exc:
+        await db.rollback()
+        return MediaGenerationSnapshot(status="waiting", error=MediaGenerationError(
+            code="inference_budget_exhausted", message=str(exc)))
     except BufferedAdmissionDeferred:
         await db.rollback()
         result = await publish(identifier, MediaGenerationSnapshot(status="waiting", error=MediaGenerationError(

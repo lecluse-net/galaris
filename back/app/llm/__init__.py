@@ -4,6 +4,13 @@ from core.scheduling import PeriodicJobRegistrar
 
 from .embedding_events import register_embedding_change_listener
 from .models import LLMCall
+from .budget_models import InferenceBudget as InferenceBudget
+from .budget import (
+    BudgetUnavailable as BudgetUnavailable,
+    automatic_budget_blocked as automatic_budget_blocked,
+    budget_blocked as budget_blocked,
+    budget_limited as budget_limited,
+)
 from .retention import prune_call_events, prune_traces
 from . import model_usages
 from .profile_models import LlmProfile

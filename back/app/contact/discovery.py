@@ -12,7 +12,7 @@ from sqlalchemy import and_, or_, select
 from sqlalchemy.dialects.postgresql import insert
 
 from app.agent import ContactDiscoverySource, register_contact_discovery
-from app.llm import llm_correlation_scope, llm_execution_scope
+from app.llm import BudgetUnavailable, automatic_budget_blocked, llm_correlation_scope, llm_execution_scope
 from app.llm.facade import llm_call_accounting
 from app.memory import (ContactCoordinates, ContactPhoneNumber, ContactPostalAddress,
     MessengerContactIdentityInput, commit_contact_changes, create_address_book_contact,
@@ -84,6 +84,11 @@ async def _claim() -> tuple[UUID, UUID] | None:
             ContactDiscoveryJob.lease_expires_at <= now,
         ).values(status="error", lease_token=None, lease_expires_at=None,
                  last_error="Contact attempt budget exhausted after lease recovery."))
+        await get_db().commit()
+        return None
+    if await automatic_budget_blocked(source_kind=record.source_kind, source_id=record.source_ref):
+        record.status, record.lease_token, record.lease_expires_at = "retry", None, None
+        record.available_at = now + timedelta(seconds=60)
         await get_db().commit()
         return None
     token = uuid4()
@@ -236,9 +241,11 @@ async def process_contact_discovery() -> int:
         ).with_for_update())
         if record is not None:
             interrupted = isinstance(exc, asyncio.CancelledError)
-            record.attempts = max(0, record.attempts - int(interrupted))
+            budget_wait = isinstance(exc, BudgetUnavailable)
+            record.attempts = max(0, record.attempts - int(interrupted or budget_wait))
             record.status = "error" if record.attempts >= _MAX_ATTEMPTS else "retry"
-            record.available_at = datetime.now(timezone.utc) + timedelta(seconds=0 if interrupted else 2 ** record.attempts)
+            record.available_at = datetime.now(timezone.utc) + timedelta(
+                seconds=60 if budget_wait else 0 if interrupted else 2 ** record.attempts)
             record.lease_token, record.lease_expires_at = None, None
             # Do not persist provider exception bodies containing prompts or transport secrets.
             record.last_error = "Interrupted" if interrupted else type(exc).__name__
@@ -247,6 +254,8 @@ async def process_contact_discovery() -> int:
             raise
         if not isinstance(exc, Exception):
             raise
+        if isinstance(exc, BudgetUnavailable):
+            return 0
         logger.warning("Contact discovery {} failed: {}", identity, type(exc).__name__)
     return 1
 

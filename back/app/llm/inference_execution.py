@@ -81,6 +81,15 @@ async def submit(
     )
 
     async def admit() -> UUID:
+        if not prepared:
+            from .budget import check_context_budget
+            from .models import LLMCall
+
+            await check_context_budget(LLMCall(
+                task_id=request.task_id, conversation_round_id=request.conversation_round_id,
+                process_run_id=request.process_run_id,
+                deep_session_id=request.deep_session_id if isinstance(request, ProtocolInferenceRequest) else None,
+            ), get_current_user_id())
         if isinstance(request, StructuredInferenceRequest):
             from .output_registry import resolve
 
@@ -220,6 +229,11 @@ async def _run(
                                 and (await read(key)).status != "stopped"
                             ):
                                 break
+                            from .budget import BudgetUnavailable
+                            from core.util import as_dict
+                            budget_error = event.result.metadata.get("inference_budget")
+                            if isinstance(budget_error, dict):
+                                raise BudgetUnavailable([], detail=as_dict(budget_error))
                             raise RuntimeError(
                                 str(event.result.metadata.get("error", "Inference did not complete."))
                             )
@@ -382,6 +396,9 @@ async def _execute_admitted(inference_id: UUID) -> None:
     except Exception as exc:
         result.success = False
         result.metadata["error"] = str(exc)
+        from .budget import BudgetUnavailable
+        if isinstance(exc, BudgetUnavailable):
+            result.metadata["inference_budget"] = exc.detail()
     finally:
         if not task.done():
             task.cancel()

@@ -37,6 +37,22 @@ la colonne concernée, puis sur **Enregistrer**. Leurs autres appartenances sont
 Ce bouton exige les droits de consultation des équipes et de modification de leurs membres ;
 il est disponible quand une équipe est sélectionnée.
 
+### Désigner un chef d’équipe
+
+Une équipe a un chef humain. À la création, choisissez-le dans le champ **Chef d’équipe**.
+Il est ajouté aux membres humains de l’équipe. Pour une équipe existante, ce champ permet
+de choisir un autre membre. Sélectionnez son remplaçant avant de retirer l’ancien chef.
+Les équipes présentes avant cette fonctionnalité reçoivent leur premier chef lors d’une désignation.
+
+Vous pouvez aussi ouvrir **Administrer → Utilisateurs & Droits → Utilisateurs**, ajouter les
+équipes dans la fiche du compte et cocher **Chef d’équipe** sur les lignes concernées.
+Dans une fiche existante, le changement de chef est enregistré dès la validation de l’action.
+Pour un nouveau compte, les appartenances et les désignations sont enregistrées lors de sa création.
+
+Dans **Superviser → Consommation**, le chef d’équipe voit les autres membres humains de ses
+équipes. Il peut modifier leurs [limites d’utilisation](../dev/inference-budgets.md) et traiter
+leurs demandes de crédit. Un compte invité acquiert ces droits dès son activation.
+
 Le manager conserve son accès à ses agents, et l’administrateur peut contacter tous les agents.
 Partager une équipe ne permet pas d’administrer
 un agent, de se faire passer pour lui ni de lire les conversations d’autres humains.
@@ -140,7 +156,7 @@ natif reste humain ↔ agent. Les délégations de tâches entre agents respecte
 | Privilège | Permet de |
 |---|---|
 | `TEAM_ACCESS` | Voir les équipes et leurs membres |
-| `TEAM_EDIT` | Créer, modifier et supprimer une équipe |
+| `TEAM_EDIT` | Créer, modifier et supprimer une équipe, et désigner son chef depuis une session web active |
 | `TEAM_MEMBERS_EDIT` | Ajouter et retirer des membres |
 
 Modifier exige aussi le privilège de consultation correspondant. Le privilège du canal

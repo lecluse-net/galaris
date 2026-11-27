@@ -48,6 +48,7 @@ from .anthropic_service import (
     translate_to_openai,
 )
 from .provider_facade import ProviderAuthenticationError
+from .budget import BudgetUnavailable
 from .embedded_runtime import (
     EMBEDDED_TOKEN_PREFIXES, EmbeddedInferenceOrigin, EmbeddedRequestLimitExceeded, EmbeddedRoundInference,
     authenticate_embedded_inference,
@@ -456,6 +457,8 @@ async def _anthropic_messages_body(
     except (EmbeddedRequestLimitExceeded, ConsoleReceiptRequired) as exc:
         raise HTTPException(status.HTTP_429_TOO_MANY_REQUESTS, detail=str(exc),
                             headers={"x-should-retry": "false"}) from exc
+    except BudgetUnavailable as exc:
+        raise HTTPException(429, detail=str(exc), headers={"x-should-retry": "false"}) from exc
     except ProviderAuthenticationError as exc:
         raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
     except PermissionError as exc:

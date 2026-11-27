@@ -100,7 +100,8 @@ test('creates a user with assignments and teams, then manages their saved access
     { id: 11, code: 'synthetic-reader', display_name: 'Reader' },
     { id: 12, code: 'synthetic-editor', display_name: 'Editor' },
   ]
-  const teams = [{ id: 21, name: 'Research' }, { id: 22, name: 'Support' }]
+  const teams = [{ id: 21, name: 'Research', manager_user_id: null },
+    { id: 22, name: 'Support', manager_user_id: null }, { id: 24, name: 'Design', manager_user_id: null }]
   const user = { id: 23, email: 'synthetic.member@example.invalid', is_active: true, created_at: '2026-01-01T00:00:00Z' }
   await stubUserModels(page, user.id)
   let created = false
@@ -110,6 +111,11 @@ test('creates a user with assignments and teams, then manages their saved access
   await jsonRoute(page, '**/api/authorize/role-options', roles)
   await page.route('**/api/teams', route => route.fulfill({ json: teams }))
   await page.route('**/api/teams?user_id=23', route => route.fulfill({ json: teams.filter(team => teamIds.includes(team.id)) }))
+  await page.route('**/api/teams/22/manager', route => {
+    expect(route.request().postDataJSON()).toEqual({ user_id: user.id })
+    teams[1].manager_user_id = user.id
+    return route.fulfill({ status: 204 })
+  })
   await page.route('**/api/teams/*/humans/23', route => {
     const teamId = Number(new URL(route.request().url()).pathname.split('/')[3])
     const { present } = route.request().postDataJSON()
@@ -129,7 +135,7 @@ test('creates a user with assignments and teams, then manages their saved access
   }))
   await page.route('**/api/auth/users', route => {
     const data = route.request().postDataJSON()
-    expect(data).toMatchObject({ email: user.email, role_ids: [11, 12], default_role_id: 12, team_ids: [21],
+    expect(data).toMatchObject({ email: user.email, role_ids: [11, 12], default_role_id: 12, team_ids: [21, 24], managed_team_ids: [24],
       settings: { models: { profile_id: 17 } } })
     if (++createAttempts === 1) return route.fulfill({ status: 400, json: { detail: 'Creation refused. Try again.' } })
     assignments = data.role_ids.map(roleId => ({
@@ -137,13 +143,14 @@ test('creates a user with assignments and teams, then manages their saved access
       is_default: roleId === data.default_role_id, user,
     }))
     teamIds = data.team_ids
+    for (const team of teams) if (data.managed_team_ids.includes(team.id)) team.manager_user_id = user.id
     created = true
     return route.fulfill({ status: 201, json: user })
   })
 
   await mount(page, 'core/user/pages/users.vue', {
     route: '/users', shell: true,
-    privileges: ['READ_USER', 'CREATE_USER', 'UPDATE_USER', 'MANAGE_ASSIGNMENT', 'TEAM_ACCESS', 'TEAM_MEMBERS_EDIT'],
+    privileges: ['READ_USER', 'CREATE_USER', 'UPDATE_USER', 'MANAGE_ASSIGNMENT', 'TEAM_ACCESS', 'TEAM_EDIT', 'TEAM_MEMBERS_EDIT'],
   })
   const dialog = page.getByRole('dialog')
   const addOption = async (option, action) => {
@@ -179,6 +186,9 @@ test('creates a user with assignments and teams, then manages their saved access
   await editorDefault.press('Space')
   await expect(editorDefault).toBeChecked()
   await addOption('Research', 'Add team')
+  await addOption('Design', 'Add team')
+  await dialog.getByRole('checkbox', { name: 'Team lead for Design' }).click()
+  await expect(dialog.getByRole('checkbox', { name: 'Team lead for Design' })).toBeChecked()
   await expect(dialog.getByRole('cell', { name: 'Research', exact: true })).toBeVisible()
   await dialog.screenshot({ path: testInfo.outputPath('user-create-light.png') })
   await page.setViewportSize({ width: 390, height: 844 })
@@ -203,6 +213,7 @@ test('creates a user with assignments and teams, then manages their saved access
   }
   await reopen()
   await expect(editorDefault).toBeChecked()
+  await expect(dialog.getByRole('checkbox', { name: 'Team lead for Design' })).toBeChecked()
   await expect(dialog.getByLabel('LLM profile', { exact: true })).toBeEnabled()
   await dialog.screenshot({ animations: 'disabled', path: testInfo.outputPath('user-edit-light.png') })
   const readerDefault = dialog.getByRole('radio', { name: 'Set Reader (synthetic-reader) as default' })
@@ -213,6 +224,8 @@ test('creates a user with assignments and teams, then manages their saved access
   await page.getByRole('dialog').getByRole('button', { name: 'OK', exact: true }).click()
   await expect(dialog.getByRole('cell', { name: 'Research', exact: true })).toHaveCount(0)
   await addOption('Support', 'Add team')
+  await dialog.getByRole('checkbox', { name: 'Team lead for Support' }).click()
+  await expect(dialog.getByRole('checkbox', { name: 'Team lead for Support' })).toBeChecked()
   await dialog.getByRole('button', { name: 'Cancel', exact: true }).click()
   await expect(dialog).toHaveCount(0)
   await expect(page.getByText('Support', { exact: true })).toBeVisible()
@@ -220,6 +233,7 @@ test('creates a user with assignments and teams, then manages their saved access
   await reopen()
   await expect(readerDefault).toBeChecked()
   await expect(dialog.getByRole('cell', { name: 'Support', exact: true })).toBeVisible()
+  await expect(dialog.getByRole('checkbox', { name: 'Team lead for Support' })).toBeChecked()
   await expect(dialog.getByRole('cell', { name: 'Research', exact: true })).toHaveCount(0)
 })
 

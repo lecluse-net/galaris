@@ -1,5 +1,66 @@
+const budgetMessages = {
+  fr: {
+    menu: 'Consommation',
+    title: 'Consommation d’inférence', description: 'Limites d’utilisation et crédits d’inférence.',
+    session: '5 heures', weekly: 'Hebdomadaire', monthly: 'Mensuelle',
+    shortPeriod: { session: '5h', weekly: 'Semaine', monthly: 'Mois' },
+    compactSummary: '{summary} · {percentage}',
+    account: 'Utilisateur', amount: '{spent} sur {limit}',
+    reset: 'Renouvellement le {time}', sessionPending: 'La fenêtre démarre au prochain appel.',
+    summary: '{period} · {amount} · {renewal}', mine: 'Mes limites d’utilisation',
+    noTeamManager: 'Aucun chef d’équipe actif ne peut traiter vos demandes.',
+    request: 'Demander des crédits', requests: 'Demandes de crédits', grant: 'Ajouter du crédit', edit: 'Modifier les plafonds',
+    editOwn: 'Modifier mes plafonds',
+    approve: 'Accorder', reject: 'Refuser', pending: 'En attente', approved: 'Accordée', rejected: 'Refusée',
+    period: 'Limite d’utilisation', dollars: 'Montant ($)', requestLine: '{period} · {amount} · {status}',
+    blankUnlimited: 'Laisser vide pour illimité',
+    decreaseLimit: 'Diminuer le plafond {period} de 1 $', increaseLimit: 'Augmenter le plafond {period} de 1 $',
+    loading: 'Chargement des limites d’utilisation…', failed: 'Impossible de charger les limites d’utilisation.', actionFailed: 'Impossible d’enregistrer cette action.',
+    cancel: 'Annuler', save: 'Valider', retry: 'Réessayer',
+  },
+  en: {
+    menu: 'Usage',
+    title: 'Inference usage', description: 'Usage limits and inference credits.',
+    session: '5 hours', weekly: 'Weekly', monthly: 'Monthly',
+    shortPeriod: { session: '5h', weekly: 'Week', monthly: 'Month' },
+    compactSummary: '{summary} · {percentage}',
+    account: 'User', amount: '{spent} of {limit}',
+    reset: 'Resets {time}', sessionPending: 'The window starts with the next call.',
+    summary: '{period} · {amount} · {renewal}', mine: 'My usage limits',
+    noTeamManager: 'No active team lead can handle your requests.',
+    request: 'Request credits', requests: 'Credit requests', grant: 'Add credit', edit: 'Change limits',
+    editOwn: 'Change my limits',
+    approve: 'Grant', reject: 'Reject', pending: 'Pending', approved: 'Approved', rejected: 'Rejected',
+    period: 'Usage limit', dollars: 'Amount ($)', requestLine: '{period} · {amount} · {status}',
+    blankUnlimited: 'Leave blank for unlimited',
+    decreaseLimit: 'Decrease the {period} limit by $1', increaseLimit: 'Increase the {period} limit by $1',
+    loading: 'Loading usage limits…', failed: 'Could not load usage limits.', actionFailed: 'Could not save this action.',
+    cancel: 'Cancel', save: 'Confirm', retry: 'Try again',
+  },
+  zh: {
+    menu: '用量',
+    title: '推理用量', description: '用量限制和推理额度。',
+    session: '5 小时', weekly: '每周', monthly: '每月',
+    shortPeriod: { session: '5小时', weekly: '周', monthly: '月' },
+    compactSummary: '{summary} · {percentage}',
+    account: '用户', amount: '已用 {spent}，总额 {limit}',
+    reset: '{time} 重置', sessionPending: '下一次调用开始新的时段。',
+    summary: '{period} · {amount} · {renewal}', mine: '我的用量限制',
+    noTeamManager: '目前没有可处理您申请的在职团队负责人。',
+    request: '申请额度', requests: '额度申请', grant: '增加额度', edit: '修改上限',
+    editOwn: '修改我的上限',
+    approve: '批准', reject: '拒绝', pending: '待处理', approved: '已批准', rejected: '已拒绝',
+    period: '用量限制', dollars: '金额（$）', requestLine: '{period} · {amount} · {status}',
+    blankUnlimited: '留空表示无限制',
+    decreaseLimit: '将{period}上限减少 $1', increaseLimit: '将{period}上限增加 $1',
+    loading: '正在加载用量限制…', failed: '无法加载用量限制。', actionFailed: '无法保存此操作。',
+    cancel: '取消', save: '确认', retry: '重试',
+  },
+}
+
 export default {
   fr: {
+    inferenceBudget: budgetMessages.fr,
     llmTiming: {
       title: 'Délai avant la première sortie utile',
       firstOutput: 'Depuis le premier appel LLM', calls: 'Dans les appels LLM', between: 'Entre les appels LLM',
@@ -565,6 +626,7 @@ export default {
     },
   },
   en: {
+    inferenceBudget: budgetMessages.en,
     llmTiming: {
       title: 'Time to first useful output',
       firstOutput: 'From first LLM call', calls: 'Within LLM calls', between: 'Between LLM calls',
@@ -1130,6 +1192,7 @@ export default {
     },
   },
   zh: {
+    inferenceBudget: budgetMessages.zh,
     llmTiming: {
       title: '首次有效输出延迟',
       firstOutput: '从首次 LLM 调用开始', calls: 'LLM 调用内', between: 'LLM 调用之间',

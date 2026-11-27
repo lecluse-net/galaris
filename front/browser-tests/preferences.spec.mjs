@@ -4,7 +4,7 @@ test('platform SMTP editors can test the saved relay with a recipient entered on
   const address = 'smtp-test@example.invalid'
   const sends = []
   await jsonRoute(page, '**/api/llm-budget/me', {
-    account: { user_id: 1, label: 'Test User', referrer_user_id: null, weekly_reset_hour: 0, envelopes: [], requests: [] },
+    account: { user_id: 1, label: 'Test User', referrer_user_id: null, envelopes: [], requests: [] },
     can_configure: false,
   })
   const saved = new Map([

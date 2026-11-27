@@ -796,6 +796,11 @@ async def _claim_locked_task(
     from .replacement import replacement_pending
     if replacement_pending(task):
         return None
+    if task.goal_id is not None or any((task.data or {}).get(key) for key in ("calendar_trigger_id", "process_run_id")):
+        from app.llm import automatic_budget_blocked
+
+        if await automatic_budget_blocked(task_id=task_id):
+            return None
     from .budget import admit
 
     if not await admit(db, task, now, agent_id=agent_id):

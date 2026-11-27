@@ -392,14 +392,14 @@ async def mark_failure(claim: DreamClaim, exc: BaseException) -> None:
     await _emit_receipt_update(claim.receipt_id)
 
 
-async def release_interrupted(claim: DreamClaim, reason: str) -> None:
+async def release_interrupted(claim: DreamClaim, reason: str, *, delay_seconds: int = 0) -> None:
     """Return preempted work to the queue without consuming its failure budget."""
 
     async with get_db_session():
         record = await _owned_receipt(claim)
         record.status = "retry"
         record.attempts = max(0, record.attempts - 1)
-        record.available_at = datetime.now(timezone.utc)
+        record.available_at = datetime.now(timezone.utc) + timedelta(seconds=delay_seconds)
         record.lease_token = None
         record.lease_owner = None
         record.lease_expires_at = None

@@ -69,6 +69,22 @@ available when a team is selected.
 Drag rows by their handle to reorder teams; dropping a row saves its position immediately.
 The handle also supports touch and the up/down arrow keys. New teams are appended to the list.
 
+### Assign a team lead
+
+A team has one human lead. When creating a team, choose the **Team lead**. The account
+is added to the team's human members. To change the lead, select another human member in
+the team dialog. Choose a replacement before removing the former lead. Teams created before
+this feature receive their first lead when someone makes an assignment.
+
+You can also open **Administer → Users & Permissions → Users**, add teams in the account
+dialog and select **Team lead** for the relevant rows. When editing an account, the change
+is saved when you confirm the action. When creating an account, its memberships and lead
+assignments are saved with the account.
+
+Under **Monitor → Usage**, team leads can see the other human members of their teams,
+edit their [usage limits](../dev/inference-budgets.md) and handle credit requests. Invited
+accounts gain these permissions once activated.
+
 Managers retain access to their agents, and administrators can contact every agent.
 Sharing a team does not grant agent administration,
 impersonation or access to other humans’ conversations.
@@ -134,7 +150,7 @@ each agent's connection and BotFather token.
 | Privilege | Grants |
 |---|---|
 | `TEAM_ACCESS` | Team and membership viewing |
-| `TEAM_EDIT` | Team creation, editing and deletion |
+| `TEAM_EDIT` | Team creation, editing and deletion, and lead assignment from an active web session |
 | `TEAM_MEMBERS_EDIT` | Membership editing |
 
 Editing requires the corresponding viewing privilege. The privilege for the actual channel,

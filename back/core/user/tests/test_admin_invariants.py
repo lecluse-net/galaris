@@ -62,12 +62,15 @@ async def test_admin_creates_account_with_roles_and_teams_and_shares_the_profile
     # A missing team after a valid one must roll back the account and earlier memberships.
     invalid = await client.post(users, headers=admin, json={**credentials, **role_data, "team_ids": [team_ids[0], 999999]})
     assert invalid.status_code == 404, invalid.text
-    created = await client.post(users, headers=admin, json={**credentials, **role_data, "team_ids": team_ids})
+    created = await client.post(users, headers=admin, json={
+        **credentials, **role_data, "team_ids": team_ids, "managed_team_ids": [team_ids[0]],
+    })
     assert created.status_code == 201, created.text
     user_id = created.json()["id"]
     teams = await client.get("/api/teams", headers=admin, params={"user_id": user_id})
     assert teams.status_code == 200, teams.text
     assert {team["id"] for team in teams.json()} == set(team_ids)
+    assert [team["id"] for team in teams.json() if team["manager_user_id"] == user_id] == [team_ids[0]]
     assignments_url = f"/api/authorize/users/{user_id}/assignments"
     assignments = {entry["role_id"]: entry for entry in (await client.get(assignments_url, headers=admin)).json()}
     assert set(assignments) == set(role_ids)

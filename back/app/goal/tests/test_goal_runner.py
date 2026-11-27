@@ -925,6 +925,18 @@ async def test_messenger_goal_cycles_keep_the_linked_galaris_requester(
     assert created.requester_user_id == owner.id
     persisted = await db.get(Goal, created.id)
     assert persisted is not None
+    from decimal import Decimal
+    from app.llm import InferenceBudget
+
+    budget = InferenceBudget(user_id=owner.id, monthly_limit=Decimal(0))
+    db.add(budget)
+    await db.commit()
+    assert await runner.start_due_cycle() is False
+    assert await db.scalar(select(Task.id).where(Task.goal_id == created.id)) is None
+    await db.refresh(owner)
+    await db.refresh(budget)
+    await db.refresh(persisted)
+    budget.monthly_limit = None
     persisted.requester_user_id = None  # Simulate a Goal created before requester snapshots.
     await db.commit()
     assert await runner.start_due_cycle() is True

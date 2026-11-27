@@ -126,7 +126,7 @@ requires `SERVICE_ACCESS` or `SERVICE_EDIT`.
 | **Configure** | Providers & models, Agents, Services & connections, Skills |
 | **Act** | Chat, Goals, Processes |
 | **Knowledge** | Documents, Files, Memory, Agenda, Contacts, Thematic dossiers |
-| **Monitor** | Dashboard, Activity, Dream, Permissions, Mail journal, Failure journal |
+| **Monitor** | Dashboard, Activity, Usage, Dream, Permissions, Mail journal, Failure journal |
 | **Administer** | Preferences, Laboratory, Console, Users & Permissions, Plugins |
 | **Developers** (dev mode only) | Visual reference, Tool inventory |
 
@@ -178,6 +178,11 @@ Leave it empty to retain a key, or enter a new key to replace it. The small remo
 inside the field asks for confirmation, then deletes the stored key. Removing a required
 key deactivates the provider; removing an optional key preserves its active state. This
 behavior applies to both model keys and OpenRouter’s optional management key.
+
+**Monitor → Usage** shows **My usage limits** in its own section. Select **Change my limits**
+there if your role allows it. The table lists other accounts with three limit columns. A blank
+cell means usage is unlimited. The menu's progress bars open this page.
+[Inference usage limits](../dev/inference-budgets.md)
 
 For supported providers, **Usage and credits** in provider settings displays service-reported
 limits: ChatGPT windows and additional credits, ElevenLabs credits, Mammouth AI and OpenRouter key spending,
@@ -905,7 +910,8 @@ Useful distinctions:
   switch to change it. Each change is saved immediately. The role buttons stay visible
   while the list scrolls. The **Privileges** tab for organizing
   categories is available in development mode. Open **Teams** (`/users?tab=teams`)
-  to manage [teams and their members](teams.md).
+  to manage [teams, their members and leads](teams.md). The account dialog also offers a
+  **Team lead** checkbox for each selected team.
 
 ## A menu or button is missing
 

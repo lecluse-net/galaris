@@ -18,6 +18,7 @@ from app.agent import current_management_scope
 
 from . import llm_call_service, llm_service
 from . import inference_execution, inference_store
+from .budget import BudgetUnavailable
 from .contracts import (
     InferenceRead, InferenceCommand, InferenceControlInput,
     TextInferenceRequest, StructuredInferenceRequest,
@@ -131,6 +132,8 @@ async def create_inference(
         raise HTTPException(status_code=404, detail=await tr("llm_api.errors.inference_agent_not_found"))
     try:
         key = await inference_execution.submit(body, prepared=prepared)
+    except BudgetUnavailable as exc:
+        raise HTTPException(429, detail=exc.detail(), headers={"x-should-retry": "false"}) from exc
     except ProviderAuthenticationError as exc:
         raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
     except LookupError as exc:
@@ -331,6 +334,8 @@ async def llm_completion(
         raise HTTPException(status_code=422, detail=str(exc)) from exc
     except LookupError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except BudgetUnavailable as exc:
+        raise HTTPException(429, detail=exc.detail(), headers={"x-should-retry": "false"}) from exc
     except RuntimeError as exc:
         raise HTTPException(status_code=502, detail=str(exc)) from exc
     except HTTPException:
@@ -446,6 +451,8 @@ async def llm_responses(
         raise HTTPException(status_code=422, detail=str(exc)) from exc
     except LookupError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except BudgetUnavailable as exc:
+        raise HTTPException(429, detail=exc.detail(), headers={"x-should-retry": "false"}) from exc
     except RuntimeError as exc:
         raise HTTPException(status_code=502, detail=str(exc)) from exc
     except HTTPException:

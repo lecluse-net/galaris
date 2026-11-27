@@ -92,7 +92,7 @@ async def test_selector_routes_keep_read_permissions_scopes_pagination_and_reope
         assert (await client.get(path, params={"limit": 500}, headers=headers[0])).json() == responses[path]
     assert (await client.get("/api/teams/humans", params={"search": "SYNTHETIC-selector-http-0", "limit": 10}, headers=headers[0])).json()[0]["id"] == owner_id
     assert (await client.get("/api/teams/-1/humans", headers=headers[0])).status_code == 404
-    assert (await client.post("/api/teams", json={"name": "Denied"}, headers=headers[0])).status_code == 403
+    assert (await client.post("/api/teams", json={"name": "Denied", "manager_user_id": 1}, headers=headers[0])).status_code == 403
     async with get_db_session() as db:
         team = await db.get(Team, team_id)
         team.soft_delete()

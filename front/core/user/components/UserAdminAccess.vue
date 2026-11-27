@@ -16,6 +16,7 @@
             <th v-if="section.kind === 'role'" scope="col" class="text-center">
               {{ t('authorize.profile.byDefault') }}
             </th>
+            <th v-else scope="col" class="text-center">{{ t('team.manager') }}</th>
             <th v-if="section.writable" scope="col" class="text-right">{{ t('common.actions') }}</th>
           </tr>
         </thead>
@@ -30,11 +31,19 @@
                 @update:model-value="setDefaultRole(row.id)"
               />
             </td>
+            <td v-else class="text-center">
+              <q-checkbox v-if="canAssignManager || isTeamManager(row.id)"
+                dense color="primary" :model-value="isTeamManager(row.id)"
+                :aria-label="t('team.managerFor', { name: row.label })"
+                :disable="disabled || section.state.saving || !canAssignManager || !eligibleManager || (!!userId && isTeamManager(row.id))"
+                @update:model-value="setTeamManager(row)" />
+            </td>
             <td v-if="section.writable" class="text-right">
               <q-btn
                 flat round dense color="negative" icon="close"
                 :aria-label="t(section.removeLabel, { name: row.label })"
-                :disable="disabled || section.state.saving" @click="remove(section.kind, row)"
+                :disable="disabled || section.state.saving || (section.kind === 'team' && !!userId && isTeamManager(row.id))"
+                @click="remove(section.kind, row)"
               />
             </td>
           </tr>
@@ -81,12 +90,13 @@ import { userTeams } from '../userTeamAccess'
 
 type AccessKind = 'role' | 'team'
 type Option = { id: number; label: string }
-type Team = { id: number; name: string }
+type Team = Awaited<ReturnType<NonNullable<typeof userTeams>['list']>>[number]
 type AssignedRole = Pick<AssignmentWithRole, 'id' | 'role' | 'is_default'>
 
-const { userId, disabled, refreshUserList } = defineProps<{
+const { userId, disabled, eligibleManager, refreshUserList } = defineProps<{
   userId?: number
   disabled: boolean
+  eligibleManager: boolean
   refreshUserList?: () => void
 }>()
 const draft = defineModel<UserAccessDraft>({ required: true })
@@ -98,6 +108,8 @@ const authorizeStore = useAuthorizeStore()
 const canManageRoles = computed(() => privilegeStore.hasPrivilege(privileges.MANAGE_ASSIGNMENT))
 const canReadTeams = computed(() => !!userTeams && privilegeStore.hasPrivilege(privileges.TEAM_ACCESS))
 const canManageTeams = computed(() => canReadTeams.value && privilegeStore.hasPrivilege(privileges.TEAM_MEMBERS_EDIT))
+const canAssignManager = computed(() => (userId ? canReadTeams.value : canManageTeams.value)
+  && privilegeStore.hasPrivilege(privileges.TEAM_EDIT))
 const states = reactive<Record<AccessKind, {
   menuOpen: boolean; loading: boolean; loadError: boolean; saving: boolean
 }>>({
@@ -141,6 +153,11 @@ watch(canManageRoles, allowed => { if (allowed) void load('role') }, { immediate
 watch([canReadTeams, canManageTeams], ([read, write]) => {
   if (userId ? read : write) void load('team')
 }, { immediate: true })
+watch(() => eligibleManager, eligible => {
+  if (!userId && !eligible && draft.value.managed_team_ids.length) {
+    draft.value = { ...draft.value, managed_team_ids: [] }
+  }
+})
 
 function roleOption(role: Role): Option {
   const label = localizedAuthorizeLabel(role)
@@ -176,9 +193,9 @@ async function load(kind: AccessKind) {
   }
 }
 
-async function change(kind: AccessKind, operation: () => Promise<void>, errorKey: string) {
+async function change(kind: AccessKind, operation: () => Promise<void>, errorKey: string,
+  allowed = kind === 'role' ? canManageRoles.value : canManageTeams.value) {
   const state = states[kind]
-  const allowed = kind === 'role' ? canManageRoles.value : canManageTeams.value
   if (!allowed || disabled || state.saving) return
   state.saving = true
   try {
@@ -205,10 +222,11 @@ function add(kind: AccessKind, selected: Option) {
         draft.value = { ...draft.value, role_ids: [...draft.value.role_ids, role.id] }
       }
     } else if (userTeams) {
-      if (teamRows.value.some(row => row.id === selected.id)) return
+      const team = teams.value.find(team => team.id === selected.id)
+      if (!team || teamRows.value.some(row => row.id === selected.id)) return
       if (userId) {
         await userTeams.membership(selected.id, userId, true)
-        memberships.value.push({ id: selected.id, name: selected.label })
+        memberships.value.push(team)
         refreshUserList?.()
       } else {
         draft.value = { ...draft.value, team_ids: [...draft.value.team_ids, selected.id] }
@@ -225,7 +243,8 @@ function remove(kind: AccessKind, row: Option) {
         default_role_id: defaultRoleId.value === row.id ? null : defaultRoleId.value,
       }
     } else {
-      draft.value = { ...draft.value, team_ids: draft.value.team_ids.filter(id => id !== row.id) }
+      draft.value = { ...draft.value, team_ids: draft.value.team_ids.filter(id => id !== row.id),
+        managed_team_ids: draft.value.managed_team_ids.filter(id => id !== row.id) }
     }
     return
   }
@@ -247,6 +266,35 @@ function remove(kind: AccessKind, row: Option) {
       refreshUserList?.()
     }
   }, kind === 'role' ? 'authorize.assignments.deleteError' : 'team.error'))
+}
+
+function isTeamManager(teamId: number): boolean {
+  return userId ? memberships.value.some(team => team.id === teamId && team.manager_user_id === userId)
+    : draft.value.managed_team_ids.includes(teamId)
+}
+
+function setTeamManager(row: Option) {
+  if (!canAssignManager.value || !eligibleManager || disabled || states.team.saving || !userTeams) return
+  const team = (userId ? memberships.value : teams.value).find(team => team.id === row.id)
+  if (!team) return
+  const service = userTeams
+  const assign = () => change('team', async () => {
+    if (userId) {
+      await service.assignManager(team.id, userId)
+      team.manager_user_id = userId
+      refreshUserList?.()
+    } else {
+      const ids = draft.value.managed_team_ids
+      draft.value = { ...draft.value, managed_team_ids: ids.includes(team.id)
+        ? ids.filter(id => id !== team.id) : [...ids, team.id] }
+    }
+  }, 'team.saveError', canAssignManager.value)
+  if (team.manager_user_id != null && !isTeamManager(team.id)) {
+    showConfirmationDialog({ title: t('team.manager'), message: t('team.replaceManager', { name: team.name }), cancel: true })
+      .onOk(assign)
+  } else {
+    void assign()
+  }
 }
 
 function setDefaultRole(roleId: number) {

@@ -14,6 +14,7 @@ class Team(HistoryMixin, Base):
     name: Mapped[str] = mapped_column(String, nullable=False)
     order: Mapped[int] = mapped_column(default=0, server_default="0")
     description: Mapped[str] = mapped_column(Text, default="", server_default="")
+    manager_user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), index=True)
 
 
 class TeamUser(Base):

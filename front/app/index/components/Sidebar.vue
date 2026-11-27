@@ -54,6 +54,7 @@
       </div>
 
       <div class="sidebar-content" :class="{ 'content-mini': isMini }">
+        <SidebarBudget />
         <!-- Purpose-based navigation sections. -->
         <template v-if="!isMini">
           <template v-for="section in visibleNavigationSections" :key="section.rootKey">
@@ -88,6 +89,7 @@ import { LeftMenu } from '@/core/navigation'
 import { useAppStore } from '@/app/index/stores/appStore'
 import { useNavigation } from '@/core/navigation'
 import { settings } from '@/core/settings'
+import { SidebarBudget } from '@/app/llm'
 import { navigationSections } from '../navigationSections'
 import EnvironmentBadge from './EnvironmentBadge.vue'
 import SidebarFooter from './SidebarFooter.vue'

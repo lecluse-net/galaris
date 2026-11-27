@@ -173,6 +173,7 @@ class VoiceSession:
                 handle=handle,
                 agent_id=agent_id,
                 session_id=conversation.id,
+                requester_user_id=conversation.requester_user_id,
                 connection_id=self._connection_id,
                 topic_id=None,
                 contact_memory_item_id=contact_memory_item_id,

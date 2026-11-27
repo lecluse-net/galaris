@@ -2,7 +2,7 @@ import { test, expect, mount, jsonRoute, setPrivileges } from './fixtures.mjs'
 import { agent as agentProfile } from './data.mjs'
 
 const catalogue = {
-  teams: [{id:10,name:'Sales',description:'Customer accounts',order:0},{id:20,name:'Direction',description:'Operations',order:1}],
+  teams: [{id:10,name:'Sales',description:'Customer accounts',order:0,manager_user_id:7},{id:20,name:'Direction',description:'Operations',order:1,manager_user_id:9}],
   agents: [{id:1,label:'Atlas',code:'atlas',manager_user_id:9,team_ids:[10]},{id:2,label:'Ada',code:'ada',manager_user_id:9,team_ids:[20]}],
 }
 
@@ -20,11 +20,12 @@ async function teamFixtures(page, { failFirstAgentSave = false, many = false } =
   const agents = catalogue.agents.map(agent => ({ ...agent, team_ids: [...agent.team_ids], has_avatar: true }))
   if (many) for (let i = 3; i <= 20; i++) agents.push({ id: i, label: `Worker ${i}`, team_ids: [20], has_avatar: false })
   await page.route('**/api/agents/selection?scope=teams', route => route.fulfill({ json: agents.map(({ id, label, has_avatar }) => ({ id, label, has_avatar })) }))
-  const humanTeams = new Map([[10, [7]], [20, []]])
+  const humanTeams = new Map([[10, [7]], [20, [9]]])
   let failAgent = failFirstAgentSave
   const fullTeam = team => {
     const members = people.filter(person => humanTeams.get(team.id)?.includes(person.id))
-    return { ...team, human_count: members.length, human_members: members }
+    return { ...team, manager: people.find(person => person.id === team.manager_user_id) ?? null,
+      human_count: members.length, human_members: members }
   }
   await page.route(/\/api\/agents\/\d+\/avatar(?:\?.*)?$/, route => route.fulfill({ contentType: 'image/svg+xml', body: avatarSvg }))
   await page.route('**/api/agents/teams/agents', route => route.fulfill({ json: agents }))
@@ -32,7 +33,7 @@ async function teamFixtures(page, { failFirstAgentSave = false, many = false } =
     if (route.request().method() === 'POST') {
       const team = { id: 30, order: teams.length, ...route.request().postDataJSON() }
       teams.push(team)
-      humanTeams.set(team.id, [])
+      humanTeams.set(team.id, [team.manager_user_id])
       writes.push(['create', team.id])
       await route.fulfill({ status: 201, json: fullTeam(team) })
     } else await route.fulfill({ json: teams.map(fullTeam) })
@@ -110,7 +111,7 @@ test('team list shows members with avatars and readers can inspect the dialog wi
   await sales.getByText('Sales', { exact: true }).click()
   await expect(dialog).toHaveCount(0)
   await sales.getByText('Customer accounts', { exact: true }).click()
-  await expect(dialog.getByText('Sophie', { exact: true })).toBeVisible()
+  await expect(dialog.getByRole('region', { name: 'Humans' }).getByText('Sophie', { exact: true })).toBeVisible()
   await expect(dialog.getByText('Atlas', { exact: true })).toBeVisible()
   await expect(dialog.getByRole('button', { name: /^Remove/ })).toHaveCount(0)
   await expect(dialog.getByRole('button', { name: 'Save', exact: true })).toHaveCount(0)
@@ -148,16 +149,19 @@ for (const viewport of [{ width: 1400, height: 1000 }, { width: 390, height: 850
     await expect(page.getByRole('dialog').getByText('Nicolas', { exact: true })).toHaveCount(0)
     await addMember(page, 'Humans', 'Nicolas')
     await addMember(page, 'AI agents', 'Ada')
+    await dialog.getByRole('combobox', { name: 'Team lead' }).click()
+    await page.getByRole('option', { name: 'Nicolas', exact: true }).click()
     await page.getByRole('button', { name: 'Remove Sophie from team', exact: true }).click()
     await page.getByRole('button', { name: 'Remove Atlas from team', exact: true }).click()
     await page.getByRole('dialog').getByLabel('Name', { exact: true }).fill('Marketing')
     await page.getByRole('button', { name: 'Save', exact: true }).click()
     await expect(page.getByRole('dialog')).toHaveCount(0)
     await expect.poll(() => writes).toEqual([
-      ['edit', 10], ['human', 10, 7, false], ['human', 10, 8, true], ['agent', 10, 1, false], ['agent', 10, 2, true],
+      ['human', 10, 8, true], ['edit', 10], ['human', 10, 7, false], ['agent', 10, 1, false], ['agent', 10, 2, true],
     ])
     await page.getByText('Customer accounts', { exact: true }).click()
-    await expect(page.getByRole('dialog').getByRole('img', { name: 'Nicolas', exact: true })).toBeVisible()
+    await expect(dialog.getByRole('region', { name: 'Humans' }).getByRole('img', { name: 'Nicolas', exact: true })).toBeVisible()
+    await expect(dialog.getByRole('button', { name: 'Remove Nicolas from team' })).toBeDisabled()
     await expect(page.getByRole('dialog').getByRole('img', { name: 'Ada', exact: true })).toBeVisible()
     await page.screenshot({ path: `/artifacts/team-editor-${viewport.width}.png`, fullPage: true, animations: 'disabled' })
     await page.evaluate(() => window.testApp.dark(true))
@@ -170,6 +174,8 @@ test('new team retries a failed membership save without recreating the team or l
   await mount(page, 'core/team/components/TeamManager.vue', { privileges: ['TEAM_ACCESS', 'TEAM_EDIT', 'TEAM_MEMBERS_EDIT'] })
   await page.getByRole('button', { name: 'New team' }).click()
   await page.getByRole('dialog').getByLabel('Name', { exact: true }).fill('Support')
+  await page.getByRole('combobox', { name: 'Team lead' }).click()
+  await page.getByRole('option', { name: 'Noor', exact: true }).click()
   await addMember(page, 'Humans', 'Nicolas')
   await addMember(page, 'AI agents', 'Ada')
   await page.getByRole('button', { name: 'Save', exact: true }).click()

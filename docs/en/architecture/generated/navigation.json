@@ -483,6 +483,34 @@
       ]
     },
     {
+      "id": "monitor.inferenceBudget",
+      "labels": {
+        "fr": "Consommation",
+        "en": "Usage"
+      },
+      "breadcrumbs": {
+        "fr": [
+          "Superviser",
+          "Consommation"
+        ],
+        "en": [
+          "Monitor",
+          "Usage"
+        ]
+      },
+      "route": "/llm/usage",
+      "href": null,
+      "description": {
+        "fr": "Limites d’utilisation et crédits d’inférence.",
+        "en": "Usage limits and inference credits."
+      },
+      "privilege_groups": [],
+      "conditions": [],
+      "sources": [
+        "front/app/llm/navigation.ts"
+      ]
+    },
+    {
       "id": "monitor.tasks",
       "labels": {
         "fr": "Activité",

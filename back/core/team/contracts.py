@@ -5,10 +5,18 @@ from pydantic import BaseModel, ConfigDict, Field
 type TeamMember = tuple[Literal["agent", "user"], int]
 
 
-class TeamWrite(BaseModel):
+class TeamFields(BaseModel):
     name: str = Field(min_length=1, max_length=255)
     description: str = Field(default="", max_length=4000)
     order: int = 0
+
+
+class TeamWrite(TeamFields):
+    manager_user_id: int | None = Field(default=None, gt=0)
+
+
+class TeamCreate(TeamFields):
+    manager_user_id: int = Field(gt=0)
 
 
 class HumanInfo(BaseModel):
@@ -22,11 +30,16 @@ class TeamInfo(TeamWrite):
     id: int
     human_count: int = 0
     human_members: list[HumanInfo] = Field(default_factory=list[HumanInfo])
+    manager: HumanInfo | None = None
     model_config = ConfigDict(from_attributes=True)
 
 
 class MembershipUpdate(BaseModel):
     present: bool
+
+
+class ManagerAssignment(BaseModel):
+    user_id: int = Field(gt=0)
 
 
 class TeamMove(BaseModel):

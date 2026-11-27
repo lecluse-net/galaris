@@ -16,7 +16,7 @@ from sqlalchemy.sql.elements import ColumnElement
 from sqlalchemy.orm import selectinload
 
 from app.agent.models import Agent
-from app.llm import LLM, LLMCallPurpose
+from app.llm import BudgetUnavailable, LLM, LLMCallPurpose, automatic_budget_blocked, budget_blocked
 from app.llm.models import LLMCall
 from app.process import ProcessEngineError
 from app.process.facade import (
@@ -243,7 +243,7 @@ async def _prepare_terminal_cycle() -> bool:
 async def _claim_terminal_cycle() -> tuple[UUID, UUID] | None:
     db = get_db()
     now = datetime.now(timezone.utc)
-    cycle = await db.scalar(
+    eligible = (
         select(GoalCycle)
         .join(Goal, Goal.id == GoalCycle.goal_id)
         .join(Task, Task.id == GoalCycle.task_id)
@@ -265,11 +265,22 @@ async def _claim_terminal_cycle() -> tuple[UUID, UUID] | None:
             ),
         )
         .order_by(Task.updated_at.asc(), GoalCycle.created_at.asc())
-        .with_for_update(skip_locked=True, of=GoalCycle)
-        .limit(1)
         .execution_options(include_historized=True)
     )
-    if cycle is None or cycle.task is None:
+    for candidate in await db.scalars(eligible):
+        goal = candidate.goal
+        if candidate.task is not None and (
+            goal.status == GoalStatus.COMPLETED or goal.is_weekly_retrospective
+            or not await automatic_budget_blocked(task_id=candidate.task.id,
+                requester_user_id=goal.requester_user_id or (
+                    goal.created_by if goal.referrer_type == GoalReferrerType.AGENT else None))
+        ):
+            cycle = await db.scalar(eligible.where(GoalCycle.id == candidate.id)
+                                    .with_for_update(skip_locked=True, of=GoalCycle)
+                                    .execution_options(populate_existing=True))
+            if cycle is not None and cycle.task is not None:
+                break
+    else:
         return None
 
     cycle.task_finished_at = await _task_finished_at(cycle.task)
@@ -576,6 +587,17 @@ async def process_terminal_cycle(tracking_llm: LLM | None = None) -> bool:
             cost=recorded_cost,
             llm_id=llm_id,
         )
+    except BudgetUnavailable:
+        db = get_db()
+        await db.rollback()
+        pending = await db.scalar(select(GoalCycle).where(
+            GoalCycle.id == cycle_id, GoalCycle.lease_token == token,
+        ).with_for_update())
+        if pending is not None:
+            pending.judge_attempt_count = max(0, pending.judge_attempt_count - 1)
+            pending.clear_lease()
+        await db.commit()
+        return prepared
     except Exception as exc:
         await get_db().rollback()
         await _fail_judgement(cycle_id, token, exc, llm_id=llm_id)
@@ -838,6 +860,11 @@ async def start_due_cycle(
             await goal_service.emit_updated(goal.id)
             logger.warning("Goal {} cannot contact its referrer: {}", goal.id, exc)
             did_work = True
+            continue
+        if await budget_blocked(goal.requester_user_id or (
+            goal.created_by if goal.referrer_type == GoalReferrerType.AGENT else None
+        )):
+            await db.rollback()
             continue
         if not await try_lock_agent(db, goal.agent_id):
             await db.rollback()

@@ -29,7 +29,7 @@ async def actor(codes: list[str]) -> tuple[dict[str, str], int]:
 @pytest.mark.parametrize("transport", ["json", "query", "form"])
 async def test_client_data_cannot_weaken_the_server_privilege_conjunction(client, transport):
     headers, _ = await actor(["TEAM_EDIT"])
-    payload = {"name": "Synthetic policy team", "required_privileges": ["TEAM_EDIT"]}
+    payload = {"name": "Synthetic policy team", "manager_user_id": 1, "required_privileges": ["TEAM_EDIT"]}
     if transport == "json":
         response = await client.post("/api/teams", headers=headers, json=payload)
     elif transport == "query":
@@ -37,7 +37,7 @@ async def test_client_data_cannot_weaken_the_server_privilege_conjunction(client
             "/api/teams",
             headers=headers,
             params={"required_privileges": "TEAM_EDIT"},
-            json={"name": payload["name"]},
+            json={"name": payload["name"], "manager_user_id": 1},
         )
     else:
         response = await client.post("/api/teams", headers=headers, data=payload)
@@ -46,13 +46,20 @@ async def test_client_data_cannot_weaken_the_server_privilege_conjunction(client
 
 @pytest.mark.asyncio
 async def test_server_conjunction_keeps_legitimate_access_despite_client_policy_fields(client):
+    from core.team import TeamModel
+
     headers, _ = await actor(["TEAM_ACCESS", "TEAM_EDIT"])
-    response = await client.post(
-        "/api/teams",
+    async with get_db_session() as db:
+        team = TeamModel(name="Synthetic legacy team")
+        db.add(team)
+        await db.flush()
+        team_id = team.id
+    response = await client.put(
+        f"/api/teams/{team_id}",
         headers=headers,
         json={"name": "Synthetic authorized team", "required_privileges": ["MISSING_PRIVILEGE"]},
     )
-    assert response.status_code == 201
+    assert response.status_code == 200
 
 
 @pytest.mark.asyncio

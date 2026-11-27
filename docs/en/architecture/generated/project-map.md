@@ -11,16 +11,16 @@ tests remain authoritative for behavior.
 
 - 80 declared backend modules;
 - 41 declared frontend modules;
-- 657 backend dependency edges;
+- 658 backend dependency edges;
 - 230 frontend dependency edges;
 - 310 edges between `app`/`bridge` domains;
 - 30 directly bidirectional domain pairs;
 - 1 strongly connected components;
 - 0 directly bidirectional frontend pairs;
-- 853 detected HTTP/WebSocket handlers;
-- 212 detected SQLAlchemy tables;
+- 860 detected HTTP/WebSocket handlers;
+- 215 detected SQLAlchemy tables;
 - 290 detected native MCP tools;
-- 60 detected Vue pages.
+- 61 detected Vue pages.
 
 ## Backend Modules
 
@@ -124,7 +124,7 @@ tests remain authoritative for behavior.
 | `app/connection` | yes | `components`, `i18n.ts`, `navigation.ts`, `pages`, `services`, `stores` | 5 |
 | `app/calendar` | yes | `components`, `i18n.ts`, `navigation.ts`, `pages`, `presentation.ts`, `services` | 1 |
 | `app/skill` | yes | `components`, `i18n.ts`, `navigation.ts`, `pages`, `services`, `stores` | 1 |
-| `app/llm` | yes | `components`, `i18n.ts`, `navigation.ts`, `pages`, `presentation.ts`, `services`, `stores` | 2 |
+| `app/llm` | yes | `components`, `i18n.ts`, `navigation.ts`, `pages`, `presentation.ts`, `services`, `stores` | 3 |
 | `app/task` | yes | `components`, `i18n.ts`, `navigation.ts`, `services`, `stores` | 0 |
 | `app/conversation` | yes | `components`, `i18n.ts`, `services` | 0 |
 | `app/chat` | yes | `components`, `i18n.ts`, `navigation.ts`, `pages`, `services`, `stores` | 1 |
@@ -318,7 +318,7 @@ tests remain authoritative for behavior.
 | `app.dream` | `app.topic` | `back/app/dream/dbadmin.py`, `back/app/dream/mechanisms/conversation_memory.py`, `back/app/dream/mechanisms/resource_topic_classification.py`, `back/app/dream/mechanisms/sequential_topic_classification.py`, `back/app/dream/mechanisms/task_memory.py`, `back/app/dream/mechanisms/task_outcome_reflection.py`, `back/app/dream/mechanisms/topic_classification.py` |
 | `app.dream` | `app.voice` | `back/app/dream/monitoring_service.py`, `back/app/dream/scheduler.py` |
 | `app.dream` | `core.authorize` | `back/app/dream/events.py`, `back/app/dream/router.py` |
-| `app.dream` | `core.database` | `back/app/dream/attachment_processing.py`, `back/app/dream/events.py`, `back/app/dream/evidence_access.py`, `back/app/dream/manual.py`, `back/app/dream/mechanisms/attachment_memory.py`, `back/app/dream/mechanisms/contact_reconciliation.py`, `back/app/dream/mechanisms/conversation_memory.py`, `back/app/dream/mechanisms/dataset_index.py`, `back/app/dream/mechanisms/document_structure.py`, `back/app/dream/mechanisms/file_catalogue.py`, `back/app/dream/mechanisms/file_thumbnails.py`, `back/app/dream/mechanisms/memory_maintenance.py`, `back/app/dream/mechanisms/process_memory.py`, `back/app/dream/mechanisms/resource_index.py`, `back/app/dream/mechanisms/resource_summaries.py`, `back/app/dream/mechanisms/resource_topic_classification.py`, `back/app/dream/mechanisms/sequential_topic_classification.py`, `back/app/dream/mechanisms/stale_memory.py`, `back/app/dream/mechanisms/task_memory.py`, `back/app/dream/mechanisms/task_outcome_reflection.py`, `back/app/dream/mechanisms/topic_classification.py`, `back/app/dream/models.py`, `back/app/dream/monitoring_service.py`, `back/app/dream/service.py` |
+| `app.dream` | `core.database` | `back/app/dream/attachment_processing.py`, `back/app/dream/events.py`, `back/app/dream/evidence_access.py`, `back/app/dream/live_topics.py`, `back/app/dream/manual.py`, `back/app/dream/mechanisms/attachment_memory.py`, `back/app/dream/mechanisms/contact_reconciliation.py`, `back/app/dream/mechanisms/conversation_memory.py`, `back/app/dream/mechanisms/dataset_index.py`, `back/app/dream/mechanisms/document_structure.py`, `back/app/dream/mechanisms/file_catalogue.py`, `back/app/dream/mechanisms/file_thumbnails.py`, `back/app/dream/mechanisms/memory_maintenance.py`, `back/app/dream/mechanisms/process_memory.py`, `back/app/dream/mechanisms/resource_index.py`, `back/app/dream/mechanisms/resource_summaries.py`, `back/app/dream/mechanisms/resource_topic_classification.py`, `back/app/dream/mechanisms/sequential_topic_classification.py`, `back/app/dream/mechanisms/stale_memory.py`, `back/app/dream/mechanisms/task_memory.py`, `back/app/dream/mechanisms/task_outcome_reflection.py`, `back/app/dream/mechanisms/topic_classification.py`, `back/app/dream/models.py`, `back/app/dream/monitoring_service.py`, `back/app/dream/scheduler.py`, `back/app/dream/service.py` |
 | `app.dream` | `core.dbadmin` | `back/app/dream/dbadmin.py` |
 | `app.dream` | `core.document` | `back/app/dream/attachment_processing.py`, `back/app/dream/manual.py`, `back/app/dream/mechanisms/file_thumbnails.py` |
 | `app.dream` | `core.i18n` | `back/app/dream/attachment_processing.py`, `back/app/dream/language.py`, `back/app/dream/mechanisms/sequential_topic_classification.py`, `back/app/dream/mechanisms/task_outcome_reflection.py`, `back/app/dream/mechanisms/topic_classification.py` |
@@ -409,7 +409,7 @@ tests remain authoritative for behavior.
 | `app.lab` | `app.dataset` | `back/app/lab/process_evaluation.py`, `back/app/lab/process_evaluation_router.py` |
 | `app.lab` | `app.dream` | `back/app/lab/contracts.py`, `back/app/lab/mechanism_evaluation_service.py`, `back/app/lab/mechanism_registry.py`, `back/app/lab/run_inference.py`, `back/app/lab/schemas.py`, `back/app/lab/synthetic_service.py` |
 | `app.lab` | `app.goal` | `back/app/lab/mechanism_evaluation_service.py`, `back/app/lab/mechanism_registry.py` |
-| `app.lab` | `app.llm` | `back/app/lab/analysis_service.py`, `back/app/lab/cost_report.py`, `back/app/lab/dispatcher_evaluation_service.py`, `back/app/lab/evaluation_service.py`, `back/app/lab/evidence_service.py`, `back/app/lab/inference_profile.py`, `back/app/lab/judgment_service.py`, `back/app/lab/mechanism_evaluation_service.py`, `back/app/lab/mechanism_registry.py`, `back/app/lab/operation_execution.py`, `back/app/lab/operation_worker.py`, `back/app/lab/operations.py`, `back/app/lab/process_evaluation.py`, `back/app/lab/run_inference.py`, `back/app/lab/synthetic_service.py` |
+| `app.lab` | `app.llm` | `back/app/lab/analysis_service.py`, `back/app/lab/cost_report.py`, `back/app/lab/dispatcher_evaluation_service.py`, `back/app/lab/evaluation_service.py`, `back/app/lab/evidence_service.py`, `back/app/lab/inference_profile.py`, `back/app/lab/judgment_service.py`, `back/app/lab/mechanism_evaluation_service.py`, `back/app/lab/mechanism_registry.py`, `back/app/lab/operation_execution.py`, `back/app/lab/operation_worker.py`, `back/app/lab/operations.py`, `back/app/lab/process_evaluation.py`, `back/app/lab/run_claims.py`, `back/app/lab/run_inference.py`, `back/app/lab/synthetic_service.py` |
 | `app.lab` | `app.memory` | `back/app/lab/mechanism_evaluation_service.py` |
 | `app.lab` | `app.messenger` | `back/app/lab/mechanism_evaluation_service.py`, `back/app/lab/operations.py` |
 | `app.lab` | `app.process` | `back/app/lab/evidence_service.py`, `back/app/lab/mechanism_evaluation_service.py`, `back/app/lab/process_evaluation.py` |
@@ -427,23 +427,24 @@ tests remain authoritative for behavior.
 | `app.lab` | `core.util` | `back/app/lab/mechanism_registry.py`, `back/app/lab/synthetic_service.py` |
 | `app.llm` | `app.agent` | `back/app/llm/anthropic_router.py`, `back/app/llm/anthropic_service.py`, `back/app/llm/call_router.py`, `back/app/llm/contracts.py`, `back/app/llm/dataset_usage.py`, `back/app/llm/decision_service.py`, `back/app/llm/embedded_runtime.py`, `back/app/llm/events.py`, `back/app/llm/facade.py`, `back/app/llm/inference_execution.py`, `back/app/llm/inference_facade.py`, `back/app/llm/inference_journal.py`, `back/app/llm/inference_store.py`, `back/app/llm/llm_call_service.py`, `back/app/llm/llm_service.py`, `back/app/llm/mcp.py`, `back/app/llm/profile_fallback.py`, `back/app/llm/protocol_inference.py`, `back/app/llm/proxy_service.py`, `back/app/llm/runtime_correlation.py`, `back/app/llm/text_inference.py`, `back/app/llm/tts_service.py` |
 | `app.llm` | `app.connection` | `back/app/llm/events.py`, `back/app/llm/llm_call_service.py` |
-| `app.llm` | `app.conversation` | `back/app/llm/cost_report.py`, `back/app/llm/embedded_runtime.py`, `back/app/llm/events.py`, `back/app/llm/facade.py`, `back/app/llm/inference_store.py`, `back/app/llm/llm_call_service.py`, `back/app/llm/runtime_correlation.py`, `back/app/llm/subscription_policy.py` |
+| `app.llm` | `app.conversation` | `back/app/llm/budget.py`, `back/app/llm/cost_report.py`, `back/app/llm/embedded_runtime.py`, `back/app/llm/events.py`, `back/app/llm/facade.py`, `back/app/llm/inference_store.py`, `back/app/llm/llm_call_service.py`, `back/app/llm/runtime_correlation.py`, `back/app/llm/subscription_policy.py` |
 | `app.llm` | `app.file_share` | `back/app/llm/document_analysis.py`, `back/app/llm/document_evidence.py`, `back/app/llm/document_service.py` |
 | `app.llm` | `app.mcp` | `back/app/llm/anthropic_router.py`, `back/app/llm/call_router.py` |
-| `app.llm` | `app.messenger` | `back/app/llm/events.py`, `back/app/llm/llm_call_service.py`, `back/app/llm/subscription_policy.py` |
+| `app.llm` | `app.messenger` | `back/app/llm/budget.py`, `back/app/llm/events.py`, `back/app/llm/llm_call_service.py`, `back/app/llm/subscription_policy.py` |
 | `app.llm` | `app.process` | `back/app/llm/anthropic_router.py`, `back/app/llm/call_router.py`, `back/app/llm/events.py`, `back/app/llm/llm_call_service.py`, `back/app/llm/mcp.py`, `back/app/llm/runtime_correlation.py`, `back/app/llm/subscription_policy.py` |
 | `app.llm` | `app.services` | `back/app/llm/anthropic_router.py`, `back/app/llm/call_router.py`, `back/app/llm/document_service.py`, `back/app/llm/mcp.py`, `back/app/llm/runtime_correlation.py` |
 | `app.llm` | `app.task` | `back/app/llm/embedded_runtime.py`, `back/app/llm/events.py`, `back/app/llm/inference_store.py`, `back/app/llm/llm_call_service.py`, `back/app/llm/mcp.py`, `back/app/llm/proxy_service.py`, `back/app/llm/retention.py`, `back/app/llm/runtime_correlation.py`, `back/app/llm/subscription_policy.py` |
-| `app.llm` | `core.authorize` | `back/app/llm/anthropic_router.py`, `back/app/llm/call_router.py`, `back/app/llm/dataset_usage.py`, `back/app/llm/personal_router.py`, `back/app/llm/profile_inference_router.py`, `back/app/llm/profile_router.py`, `back/app/llm/provider_router.py` |
-| `app.llm` | `core.database` | `back/app/llm/anthropic_router.py`, `back/app/llm/call_router.py`, `back/app/llm/cost_report.py`, `back/app/llm/dataset_usage.py`, `back/app/llm/document_evidence.py`, `back/app/llm/document_service.py`, `back/app/llm/document_store.py`, `back/app/llm/events.py`, `back/app/llm/facade.py`, `back/app/llm/inference_execution.py`, `back/app/llm/inference_journal.py`, `back/app/llm/inference_notifications.py`, `back/app/llm/inference_store.py`, `back/app/llm/llm_call_service.py`, `back/app/llm/llm_provider_service.py`, `back/app/llm/llm_service.py`, `back/app/llm/mcp.py`, `back/app/llm/models.py`, `back/app/llm/personal_service.py`, `back/app/llm/pricing_sync.py`, `back/app/llm/profile_gateway.py`, `back/app/llm/profile_models.py`, `back/app/llm/profile_service.py`, `back/app/llm/protocol_inference.py`, `back/app/llm/provider_models.py`, `back/app/llm/provider_permits.py`, `back/app/llm/proxy_service.py`, `back/app/llm/retention.py`, `back/app/llm/structured_service.py`, `back/app/llm/subscription_policy.py`, `back/app/llm/text_inference.py` |
+| `app.llm` | `core.authorize` | `back/app/llm/anthropic_router.py`, `back/app/llm/budget_router.py`, `back/app/llm/call_router.py`, `back/app/llm/dataset_usage.py`, `back/app/llm/personal_router.py`, `back/app/llm/profile_inference_router.py`, `back/app/llm/profile_router.py`, `back/app/llm/provider_router.py` |
+| `app.llm` | `core.database` | `back/app/llm/anthropic_router.py`, `back/app/llm/budget.py`, `back/app/llm/budget_models.py`, `back/app/llm/budget_router.py`, `back/app/llm/call_router.py`, `back/app/llm/cost_report.py`, `back/app/llm/dataset_usage.py`, `back/app/llm/document_evidence.py`, `back/app/llm/document_service.py`, `back/app/llm/document_store.py`, `back/app/llm/events.py`, `back/app/llm/facade.py`, `back/app/llm/inference_execution.py`, `back/app/llm/inference_journal.py`, `back/app/llm/inference_notifications.py`, `back/app/llm/inference_store.py`, `back/app/llm/llm_call_service.py`, `back/app/llm/llm_provider_service.py`, `back/app/llm/llm_service.py`, `back/app/llm/mcp.py`, `back/app/llm/models.py`, `back/app/llm/personal_service.py`, `back/app/llm/pricing_sync.py`, `back/app/llm/profile_gateway.py`, `back/app/llm/profile_models.py`, `back/app/llm/profile_service.py`, `back/app/llm/protocol_inference.py`, `back/app/llm/provider_models.py`, `back/app/llm/provider_permits.py`, `back/app/llm/proxy_service.py`, `back/app/llm/retention.py`, `back/app/llm/structured_service.py`, `back/app/llm/subscription_policy.py`, `back/app/llm/text_inference.py` |
 | `app.llm` | `core.dbadmin` | `back/app/llm/dbadmin.py`, `back/app/llm/initial_configuration.py` |
 | `app.llm` | `core.document` | `back/app/llm/document_analysis.py`, `back/app/llm/document_budget.py`, `back/app/llm/document_input.py`, `back/app/llm/document_rag.py` |
 | `app.llm` | `core.failure_journal` | `back/app/llm/llm_call_service.py` |
-| `app.llm` | `core.i18n` | `back/app/llm/anthropic_router.py`, `back/app/llm/anthropic_service.py`, `back/app/llm/call_router.py`, `back/app/llm/llm_call_service.py`, `back/app/llm/llm_provider_service.py`, `back/app/llm/llm_service.py`, `back/app/llm/personal_router.py`, `back/app/llm/profile_gateway.py`, `back/app/llm/profile_inference_router.py`, `back/app/llm/profile_router.py`, `back/app/llm/profile_service.py`, `back/app/llm/provider_quota.py`, `back/app/llm/provider_router.py`, `back/app/llm/proxy_service.py`, `back/app/llm/runtime_correlation.py`, `back/app/llm/subscription_policy.py` |
+| `app.llm` | `core.i18n` | `back/app/llm/anthropic_router.py`, `back/app/llm/anthropic_service.py`, `back/app/llm/budget_router.py`, `back/app/llm/call_router.py`, `back/app/llm/llm_call_service.py`, `back/app/llm/llm_provider_service.py`, `back/app/llm/llm_service.py`, `back/app/llm/personal_router.py`, `back/app/llm/profile_gateway.py`, `back/app/llm/profile_inference_router.py`, `back/app/llm/profile_router.py`, `back/app/llm/profile_service.py`, `back/app/llm/provider_quota.py`, `back/app/llm/provider_router.py`, `back/app/llm/proxy_service.py`, `back/app/llm/runtime_correlation.py`, `back/app/llm/subscription_policy.py` |
 | `app.llm` | `core.params` | `back/app/llm/call_deadline.py`, `back/app/llm/dbadmin.py`, `back/app/llm/llm_call_service.py`, `back/app/llm/profile_service.py`, `back/app/llm/retention.py` |
 | `app.llm` | `core.scheduling` | `back/app/llm/__init__.py` |
-| `app.llm` | `core.user` | `back/app/llm/anthropic_router.py`, `back/app/llm/call_router.py`, `back/app/llm/dataset_usage.py`, `back/app/llm/document_service.py`, `back/app/llm/events.py`, `back/app/llm/inference_execution.py`, `back/app/llm/llm_call_service.py`, `back/app/llm/llm_provider_service.py`, `back/app/llm/personal_router.py`, `back/app/llm/profile_inference.py`, `back/app/llm/subscription_policy.py` |
-| `app.llm` | `core.util` | `back/app/llm/document_analysis.py`, `back/app/llm/document_input.py`, `back/app/llm/document_rag.py`, `back/app/llm/document_responses.py`, `back/app/llm/embedded_runtime.py`, `back/app/llm/embedding_service.py`, `back/app/llm/generation_capacity.py`, `back/app/llm/handlers/openai_compatible.py`, `back/app/llm/image_generation_service.py`, `back/app/llm/image_trace.py`, `back/app/llm/llm_call_service.py`, `back/app/llm/llm_provider_service.py`, `back/app/llm/media_facade.py`, `back/app/llm/media_transport.py`, `back/app/llm/message_cleanup.py`, `back/app/llm/personal_service.py`, `back/app/llm/pricing_sync.py`, `back/app/llm/protocol_inference.py`, `back/app/llm/provider_quota.py`, `back/app/llm/proxy_service.py`, `back/app/llm/responses_stream.py`, `back/app/llm/responses_trace.py`, `back/app/llm/runtime_correlation.py`, `back/app/llm/trace.py`, `back/app/llm/transcription_service.py`, `back/app/llm/tts_service.py` |
+| `app.llm` | `core.team` | `back/app/llm/budget_router.py` |
+| `app.llm` | `core.user` | `back/app/llm/anthropic_router.py`, `back/app/llm/budget_router.py`, `back/app/llm/call_router.py`, `back/app/llm/dataset_usage.py`, `back/app/llm/document_service.py`, `back/app/llm/events.py`, `back/app/llm/inference_execution.py`, `back/app/llm/llm_call_service.py`, `back/app/llm/llm_provider_service.py`, `back/app/llm/personal_router.py`, `back/app/llm/profile_inference.py`, `back/app/llm/subscription_policy.py` |
+| `app.llm` | `core.util` | `back/app/llm/document_analysis.py`, `back/app/llm/document_input.py`, `back/app/llm/document_rag.py`, `back/app/llm/document_responses.py`, `back/app/llm/embedded_runtime.py`, `back/app/llm/embedding_service.py`, `back/app/llm/generation_capacity.py`, `back/app/llm/handlers/openai_compatible.py`, `back/app/llm/image_generation_service.py`, `back/app/llm/image_trace.py`, `back/app/llm/inference_execution.py`, `back/app/llm/llm_call_service.py`, `back/app/llm/llm_provider_service.py`, `back/app/llm/media_facade.py`, `back/app/llm/media_transport.py`, `back/app/llm/message_cleanup.py`, `back/app/llm/personal_service.py`, `back/app/llm/pricing_sync.py`, `back/app/llm/protocol_inference.py`, `back/app/llm/provider_quota.py`, `back/app/llm/proxy_service.py`, `back/app/llm/responses_stream.py`, `back/app/llm/responses_trace.py`, `back/app/llm/runtime_correlation.py`, `back/app/llm/trace.py`, `back/app/llm/transcription_service.py`, `back/app/llm/tts_service.py` |
 | `app.mcp` | `app.agent` | `back/app/mcp/router.py` |
 | `app.mcp` | `app.services` | `back/app/mcp/router.py`, `back/app/mcp/runtime_adapter.py` |
 | `app.mcp` | `core.authorize` | `back/app/mcp/router.py` |
@@ -565,7 +566,7 @@ tests remain authoritative for behavior.
 | `app.skill` | `core.util` | `back/app/skill/interface.py`, `back/app/skill/learning_service.py`, `back/app/skill/ownership_recovery.py`, `back/app/skill/projection.py`, `back/app/skill/skill_service.py` |
 | `app.task` | `app.agent` | `back/app/task/__init__.py`, `back/app/task/activity_snapshot.py`, `back/app/task/agent_adapter.py`, `back/app/task/amendment_service.py`, `back/app/task/budget.py`, `back/app/task/call_recovery.py`, `back/app/task/checkpoint_storage.py`, `back/app/task/collab.py`, `back/app/task/execution_scope.py`, `back/app/task/facade.py`, `back/app/task/live_checkpoint.py`, `back/app/task/mcp.py`, `back/app/task/models.py`, `back/app/task/operational_state.py`, `back/app/task/outcome.py`, `back/app/task/replacement.py`, `back/app/task/router.py`, `back/app/task/run_events.py`, `back/app/task/runner.py`, `back/app/task/scheduler.py`, `back/app/task/schemas.py`, `back/app/task/task_service.py`, `back/app/task/work_tracking.py`, `back/app/task/working_set.py` |
 | `app.task` | `app.goal` | `back/app/task/models.py`, `back/app/task/router.py`, `back/app/task/task_service.py` |
-| `app.task` | `app.llm` | `back/app/task/activity_snapshot.py`, `back/app/task/budget.py`, `back/app/task/cost_report.py`, `back/app/task/mcp.py`, `back/app/task/startup_timing.py`, `back/app/task/task_service.py` |
+| `app.task` | `app.llm` | `back/app/task/activity_snapshot.py`, `back/app/task/budget.py`, `back/app/task/cost_report.py`, `back/app/task/mcp.py`, `back/app/task/scheduler.py`, `back/app/task/startup_timing.py`, `back/app/task/task_service.py` |
 | `app.task` | `app.messenger` | `back/app/task/collab.py`, `back/app/task/facade.py`, `back/app/task/scheduler.py`, `back/app/task/task_service.py` |
 | `app.task` | `app.services` | `back/app/task/access.py`, `back/app/task/agent_adapter.py`, `back/app/task/collab.py`, `back/app/task/mcp.py`, `back/app/task/work_tracking.py` |
 | `app.task` | `core.authorize` | `back/app/task/router.py`, `back/app/task/run_events.py` |
@@ -805,7 +806,7 @@ tests remain authoritative for behavior.
 | `core.storage` | `core.util` | `back/core/storage/derivatives.py`, `back/core/storage/identity.py`, `back/core/storage/lifecycle.py`, `back/core/storage/migration.py`, `back/core/storage/registry.py`, `back/core/storage/resources.py` |
 | `core.team` | `core.authorize` | `back/core/team/router.py`, `back/core/team/service.py` |
 | `core.team` | `core.database` | `back/core/team/__init__.py`, `back/core/team/models.py`, `back/core/team/router.py`, `back/core/team/service.py` |
-| `core.team` | `core.user` | `back/core/team/service.py` |
+| `core.team` | `core.user` | `back/core/team/router.py`, `back/core/team/service.py` |
 | `core.user` | `core.authorize` | `back/core/user/authContextMiddleware.py`, `back/core/user/auth_service.py`, `back/core/user/router.py`, `back/core/user/user_service.py` |
 | `core.user` | `core.database` | `back/core/user/auth_service.py`, `back/core/user/help_service.py`, `back/core/user/invitation_service.py`, `back/core/user/mfa_service.py`, `back/core/user/models.py`, `back/core/user/refresh_session_service.py`, `back/core/user/router.py`, `back/core/user/token_service.py`, `back/core/user/user_service.py` |
 | `core.user` | `core.i18n` | `back/core/user/auth_service.py`, `back/core/user/dependencies.py`, `back/core/user/invitation_service.py`, `back/core/user/platform_mail.py`, `back/core/user/router.py`, `back/core/user/user_service.py` |
@@ -914,7 +915,7 @@ tests remain authoritative for behavior.
 | `app/index` | `app/connection` | `front/app/index/pages/services.vue` |
 | `app/index` | `app/conversation` | `front/app/index/pages/task.vue` |
 | `app/index` | `app/harnesses` | `front/app/index/components/AgentWorkspace.vue`, `front/app/index/composables/useAgentHarnessRuntime.ts` |
-| `app/index` | `app/llm` | `front/app/index/components/AgentWorkspace.vue`, `front/app/index/components/DashboardLiveActivity.vue`, `front/app/index/pages/task.vue` |
+| `app/index` | `app/llm` | `front/app/index/components/AgentWorkspace.vue`, `front/app/index/components/DashboardLiveActivity.vue`, `front/app/index/components/Sidebar.vue`, `front/app/index/pages/task.vue` |
 | `app/index` | `app/onboarding` | `front/app/index/components/HomeActionCenter.vue`, `front/app/index/pages/index.vue`, `front/app/index/pages/welcome.vue` |
 | `app/index` | `app/process` | `front/app/index/pages/task.vue` |
 | `app/index` | `app/services` | `front/app/index/pages/services.vue`, `front/app/index/pages/tool-inventory.vue` |
@@ -935,11 +936,11 @@ tests remain authoritative for behavior.
 | `app/lab` | `core/navigation` | `front/app/lab/navigation.ts`, `front/app/lab/pages/ai-evaluations.vue`, `front/app/lab/pages/index.vue` |
 | `app/lab` | `core/util` | `front/app/lab/components/LabCaptureConfirmation.vue`, `front/app/lab/components/LabComparisonDialog.vue`, `front/app/lab/components/LabCostComparison.vue`, `front/app/lab/components/LabDatasetCaptureDialog.vue`, `front/app/lab/components/LabHumanReviewDialog.vue`, `front/app/lab/components/LabResultsPanel.vue`, `front/app/lab/components/LabValueEditor.vue`, `front/app/lab/components/LabWorkbench.vue`, `front/app/lab/components/MemoryExtractionCaseEditor.vue`, `front/app/lab/components/TopicMessageRangeImportDialog.vue`, `front/app/lab/pages/ai-evaluations.vue`, `front/app/lab/pages/index.vue`, `front/app/lab/pages/processes.vue`, `front/app/lab/stores/evaluationStore.ts`, `front/app/lab/textPresentation.ts` |
 | `app/llm` | `app/agent` | `front/app/llm/components/LlmActivityPanel.vue`, `front/app/llm/components/LlmCall.vue`, `front/app/llm/components/LlmCallDetails.vue`, `front/app/llm/presentation.ts` |
-| `app/llm` | `core/api` | `front/app/llm/components/ExternalClientConfigDialog.vue`, `front/app/llm/components/LlmCallStopButton.vue`, `front/app/llm/components/LlmCalls.vue`, `front/app/llm/services/llmCallService.ts`, `front/app/llm/services/llmProfileService.ts`, `front/app/llm/services/llmProviderService.ts`, `front/app/llm/services/personalLlmService.ts`, `front/app/llm/services/profileCatalogService.ts`, `front/app/llm/useLlmCallProgress.ts` |
+| `app/llm` | `core/api` | `front/app/llm/components/ExternalClientConfigDialog.vue`, `front/app/llm/components/LlmCallStopButton.vue`, `front/app/llm/components/LlmCalls.vue`, `front/app/llm/pages/usage.vue`, `front/app/llm/services/budgetService.ts`, `front/app/llm/services/llmCallService.ts`, `front/app/llm/services/llmProfileService.ts`, `front/app/llm/services/llmProviderService.ts`, `front/app/llm/services/personalLlmService.ts`, `front/app/llm/services/profileCatalogService.ts`, `front/app/llm/useLlmCallProgress.ts` |
 | `app/llm` | `core/authorize` | `front/app/llm/components/ConfiguredLlmManager.vue`, `front/app/llm/components/CustomProviderDialog.vue`, `front/app/llm/components/ExternalClientConfigButton.vue`, `front/app/llm/components/LlmActivityPanel.vue`, `front/app/llm/components/LlmCallStopButton.vue`, `front/app/llm/components/LlmCalls.vue`, `front/app/llm/components/LlmUsageManager.vue`, `front/app/llm/components/ProviderConfigPanel.vue`, `front/app/llm/components/ProviderListPanel.vue`, `front/app/llm/components/ProviderModelsPanel.vue`, `front/app/llm/components/ProviderWorkspace.vue`, `front/app/llm/navigation.ts`, `front/app/llm/pages/index.vue`, `front/app/llm/useLlmCallProgress.ts` |
 | `app/llm` | `core/navigation` | `front/app/llm/navigation.ts`, `front/app/llm/pages/index.vue` |
-| `app/llm` | `core/user` | `front/app/llm/tokenAction.ts`, `front/app/llm/userTab.ts` |
-| `app/llm` | `core/util` | `front/app/llm/components/ConfiguredLlmManager.vue`, `front/app/llm/components/ExternalClientConfigDialog.vue`, `front/app/llm/components/LlmActivityPanel.vue`, `front/app/llm/components/LlmCall.vue`, `front/app/llm/components/LlmCallDetails.vue`, `front/app/llm/components/LlmCallStopButton.vue`, `front/app/llm/components/LlmCallTaskDetail.vue`, `front/app/llm/components/LlmCalls.vue`, `front/app/llm/components/LlmUsageManager.vue`, `front/app/llm/components/ProviderConfigPanel.vue`, `front/app/llm/components/ProviderModelsPanel.vue`, `front/app/llm/components/ProviderQuotaPanel.vue`, `front/app/llm/components/ProviderWorkspace.vue`, `front/app/llm/index.ts`, `front/app/llm/pages/index.vue`, `front/app/llm/stores/llmProfileStore.ts`, `front/app/llm/stores/llmProviderStore.ts`, `front/app/llm/taskColors.ts`, `front/app/llm/useEditorVoice.ts` |
+| `app/llm` | `core/user` | `front/app/llm/components/SidebarBudget.vue`, `front/app/llm/pages/usage.vue`, `front/app/llm/tokenAction.ts`, `front/app/llm/userTab.ts` |
+| `app/llm` | `core/util` | `front/app/llm/components/BudgetCreditRequests.vue`, `front/app/llm/components/BudgetGauge.vue`, `front/app/llm/components/ConfiguredLlmManager.vue`, `front/app/llm/components/ExternalClientConfigDialog.vue`, `front/app/llm/components/LlmActivityPanel.vue`, `front/app/llm/components/LlmCall.vue`, `front/app/llm/components/LlmCallDetails.vue`, `front/app/llm/components/LlmCallStopButton.vue`, `front/app/llm/components/LlmCallTaskDetail.vue`, `front/app/llm/components/LlmCalls.vue`, `front/app/llm/components/LlmUsageManager.vue`, `front/app/llm/components/ProviderConfigPanel.vue`, `front/app/llm/components/ProviderModelsPanel.vue`, `front/app/llm/components/ProviderQuotaPanel.vue`, `front/app/llm/components/ProviderWorkspace.vue`, `front/app/llm/components/SidebarBudget.vue`, `front/app/llm/index.ts`, `front/app/llm/pages/index.vue`, `front/app/llm/pages/usage.vue`, `front/app/llm/stores/llmProfileStore.ts`, `front/app/llm/stores/llmProviderStore.ts`, `front/app/llm/taskColors.ts`, `front/app/llm/useEditorVoice.ts` |
 | `app/llm` | `core/websocket` | `front/app/llm/components/LlmActivityPanel.vue`, `front/app/llm/components/LlmCalls.vue`, `front/app/llm/useLlmCallProgress.ts` |
 | `app/memory` | `app/agent` | `front/app/memory/pages/contacts.vue`, `front/app/memory/pages/index.vue` |
 | `app/memory` | `app/document` | `front/app/memory/components/MemoryAttachmentButton.vue`, `front/app/memory/components/MemoryContentPreviews.vue`, `front/app/memory/components/MemoryFileResources.vue`, `front/app/memory/components/MemoryGraphNodeDetail.vue`, `front/app/memory/components/MemoryGraphRelations.vue`, `front/app/memory/components/MemoryItemHistory.vue`, `front/app/memory/components/MemoryItemThumbnail.vue`, `front/app/memory/components/MemoryLinkDialog.vue`, `front/app/memory/pages/index.vue`, `front/app/memory/services/memoryService.ts`, `front/app/memory/stores/memoryStore.ts`, `front/app/memory/types.ts` |
@@ -1318,7 +1319,7 @@ No cyclic component detected.
 | GET | `/api/health/ready` | `core.api` | `readiness_check` | no | `back/core/api.py:281` |
 | GET | `/api/openapi.json` | `core.api` | `get_public_openapi_endpoint` | no | `back/core/api.py:233` |
 | GET | `/auth/avatars/{avatar_key}` | `core.user` | `read_user_avatar` | no | `back/core/user/router.py:418` |
-| POST | `/auth/invitations/accept` | `core.user` | `accept_user_invitation` | no | `back/core/user/router.py:647` |
+| POST | `/auth/invitations/accept` | `core.user` | `accept_user_invitation` | no | `back/core/user/router.py:650` |
 | POST | `/auth/keep-alive` | `core.user` | `keep_alive` | yes | `back/core/user/router.py:391` |
 | POST | `/auth/login` | `core.user` | `login` | no | `back/core/user/router.py:216` |
 | POST | `/auth/login-json` | `core.user` | `login_json` | no | `back/core/user/router.py:240` |
@@ -1330,25 +1331,25 @@ No cyclic component detected.
 | POST | `/auth/me/avatar` | `core.user` | `upload_user_avatar` | yes | `back/core/user/router.py:435` |
 | GET | `/auth/me/help-dismissals` | `core.user` | `list_help_dismissals` | yes | `back/core/user/router.py:504` |
 | PUT | `/auth/me/help-dismissals/{help_key}` | `core.user` | `dismiss_help` | yes | `back/core/user/router.py:517` |
-| GET | `/auth/me/tokens` | `core.user` | `list_my_tokens` | yes | `back/core/user/router.py:709` |
-| POST | `/auth/me/tokens` | `core.user` | `create_my_token` | yes | `back/core/user/router.py:725` |
-| DELETE | `/auth/me/tokens/{token_id}` | `core.user` | `delete_my_token` | yes | `back/core/user/router.py:768` |
-| PUT | `/auth/me/tokens/{token_id}` | `core.user` | `update_my_token` | yes | `back/core/user/router.py:746` |
+| GET | `/auth/me/tokens` | `core.user` | `list_my_tokens` | yes | `back/core/user/router.py:712` |
+| POST | `/auth/me/tokens` | `core.user` | `create_my_token` | yes | `back/core/user/router.py:728` |
+| DELETE | `/auth/me/tokens/{token_id}` | `core.user` | `delete_my_token` | yes | `back/core/user/router.py:771` |
+| PUT | `/auth/me/tokens/{token_id}` | `core.user` | `update_my_token` | yes | `back/core/user/router.py:749` |
 | POST | `/auth/mfa/confirm` | `core.user` | `confirm_mfa` | yes | `back/core/user/router.py:294` |
 | POST | `/auth/mfa/disable` | `core.user` | `disable_mfa` | yes | `back/core/user/router.py:307` |
 | POST | `/auth/mfa/recovery-codes` | `core.user` | `regenerate_mfa_recovery_codes` | yes | `back/core/user/router.py:320` |
 | POST | `/auth/mfa/setup` | `core.user` | `setup_mfa` | yes | `back/core/user/router.py:282` |
 | GET | `/auth/mfa/status` | `core.user` | `read_mfa_status` | yes | `back/core/user/router.py:269` |
-| POST | `/auth/platform-smtp/test` | `core.user` | `send_platform_smtp_test` | yes | `back/core/user/router.py:654` |
+| POST | `/auth/platform-smtp/test` | `core.user` | `send_platform_smtp_test` | yes | `back/core/user/router.py:657` |
 | POST | `/auth/refresh` | `core.user` | `refresh_session` | no | `back/core/user/router.py:351` |
 | POST | `/auth/register` | `core.user` | `register` | no | `back/core/user/router.py:141` |
 | GET | `/auth/registration-status` | `core.user` | `registration_status` | no | `back/core/user/router.py:129` |
 | GET | `/auth/users` | `core.user` | `list_users` | yes | `back/core/user/router.py:558` |
 | POST | `/auth/users` | `core.user` | `create_user_endpoint` | yes | `back/core/user/router.py:595` |
-| DELETE | `/auth/users/{user_id}` | `core.user` | `delete_user_endpoint` | yes | `back/core/user/router.py:693` |
-| GET | `/auth/users/{user_id}` | `core.user` | `read_user` | yes | `back/core/user/router.py:667` |
-| PUT | `/auth/users/{user_id}` | `core.user` | `update_user_endpoint` | yes | `back/core/user/router.py:676` |
-| POST | `/auth/users/{user_id}/invitation` | `core.user` | `resend_user_invitation` | yes | `back/core/user/router.py:633` |
+| DELETE | `/auth/users/{user_id}` | `core.user` | `delete_user_endpoint` | yes | `back/core/user/router.py:696` |
+| GET | `/auth/users/{user_id}` | `core.user` | `read_user` | yes | `back/core/user/router.py:670` |
+| PUT | `/auth/users/{user_id}` | `core.user` | `update_user_endpoint` | yes | `back/core/user/router.py:679` |
+| POST | `/auth/users/{user_id}/invitation` | `core.user` | `resend_user_invitation` | yes | `back/core/user/router.py:636` |
 | GET | `/authorize/assignment-user-options` | `core.authorize` | `assignment_user_options` | yes | `back/core/authorize/router.py:141` |
 | GET | `/authorize/assignments` | `core.authorize` | `list_assignments` | yes | `back/core/authorize/router.py:287` |
 | POST | `/authorize/assignments` | `core.authorize` | `create_assignment` | yes | `back/core/authorize/router.py:339` |
@@ -1841,14 +1842,20 @@ No cyclic component detected.
 | POST | `/internal/validate` | `app.process` | `native_validate_definition` | yes | `back/app/process/native_router.py:153` |
 | POST | `/janus/openai/chat/completions` | `app.agent` | `janus_chat_completions` | yes | `back/app/agent/openai_router.py:179` |
 | GET | `/janus/openai/models` | `app.agent` | `get_janus_models` | yes | `back/app/agent/openai_router.py:163` |
-| GET | `/llm-calls` | `app.llm` | `read_calls` | yes | `back/app/llm/call_router.py:477` |
-| DELETE | `/llm-calls/cleanup` | `app.llm` | `cleanup_calls` | yes | `back/app/llm/call_router.py:553` |
-| GET | `/llm-calls/history` | `app.llm` | `read_call_history` | yes | `back/app/llm/call_router.py:524` |
-| GET | `/llm-calls/retention/preview` | `app.llm` | `preview_call_retention` | yes | `back/app/llm/call_router.py:562` |
-| GET | `/llm-calls/running` | `app.llm` | `read_running_calls` | yes | `back/app/llm/call_router.py:504` |
-| DELETE | `/llm-calls/{call_id}` | `app.llm` | `delete_call` | yes | `back/app/llm/call_router.py:586` |
-| GET | `/llm-calls/{call_id}` | `app.llm` | `read_call` | yes | `back/app/llm/call_router.py:605` |
-| POST | `/llm-calls/{call_id}/stop` | `app.llm` | `stop_llm_call` | yes | `back/app/llm/call_router.py:571` |
+| POST | `/llm-budget/grants/{user_id}` | `app.llm` | `grant_credit` | yes | `back/app/llm/budget_router.py:227` |
+| GET | `/llm-budget/managed` | `app.llm` | `managed_budgets` | yes | `back/app/llm/budget_router.py:120` |
+| GET | `/llm-budget/me` | `app.llm` | `my_budget` | yes | `back/app/llm/budget_router.py:109` |
+| PUT | `/llm-budget/policies/{user_id}` | `app.llm` | `set_policy` | yes | `back/app/llm/budget_router.py:149` |
+| POST | `/llm-budget/requests` | `app.llm` | `request_credit` | yes | `back/app/llm/budget_router.py:171` |
+| POST | `/llm-budget/requests/{request_id}/review` | `app.llm` | `review_request` | yes | `back/app/llm/budget_router.py:236` |
+| GET | `/llm-calls` | `app.llm` | `read_calls` | yes | `back/app/llm/call_router.py:484` |
+| DELETE | `/llm-calls/cleanup` | `app.llm` | `cleanup_calls` | yes | `back/app/llm/call_router.py:560` |
+| GET | `/llm-calls/history` | `app.llm` | `read_call_history` | yes | `back/app/llm/call_router.py:531` |
+| GET | `/llm-calls/retention/preview` | `app.llm` | `preview_call_retention` | yes | `back/app/llm/call_router.py:569` |
+| GET | `/llm-calls/running` | `app.llm` | `read_running_calls` | yes | `back/app/llm/call_router.py:511` |
+| DELETE | `/llm-calls/{call_id}` | `app.llm` | `delete_call` | yes | `back/app/llm/call_router.py:593` |
+| GET | `/llm-calls/{call_id}` | `app.llm` | `read_call` | yes | `back/app/llm/call_router.py:612` |
+| POST | `/llm-calls/{call_id}/stop` | `app.llm` | `stop_llm_call` | yes | `back/app/llm/call_router.py:578` |
 | GET | `/llm-profiles` | `app.llm` | `list_profiles` | yes | `back/app/llm/profile_router.py:68` |
 | POST | `/llm-profiles` | `app.llm` | `create_profile` | yes | `back/app/llm/profile_router.py:101` |
 | PUT | `/llm-profiles/default-fallback` | `app.llm` | `set_default_fallback_profile` | yes | `back/app/llm/profile_router.py:80` |
@@ -1880,26 +1887,26 @@ No cyclic component detected.
 | GET | `/llm-providers/{provider_id}/quota` | `app.llm` | `get_provider_quota` | yes | `back/app/llm/provider_router.py:473` |
 | GET | `/llm-providers/{provider_id}/resources` | `app.llm` | `list_provider_resources` | yes | `back/app/llm/provider_router.py:598` |
 | GET | `/llm-providers/{provider_id}/transcription-models` | `app.llm` | `list_provider_transcription_models` | yes | `back/app/llm/provider_router.py:644` |
-| POST | `/llm/anthropic/v1/messages` | `app.llm` | `anthropic_messages` | no | `back/app/llm/anthropic_router.py:283` |
-| POST | `/llm/anthropic/v1/messages/count_tokens` | `app.llm` | `anthropic_count_tokens` | no | `back/app/llm/anthropic_router.py:246` |
-| GET | `/llm/anthropic/v1/models` | `app.llm` | `anthropic_models` | no | `back/app/llm/anthropic_router.py:204` |
-| GET | `/llm/me/native-voices` | `app.llm` | `get_native_voices` | yes | `back/app/llm/personal_router.py:154` |
-| GET | `/llm/me/options` | `app.llm` | `get_options` | yes | `back/app/llm/personal_router.py:56` |
-| GET | `/llm/me/preferences` | `app.llm` | `get_preferences` | yes | `back/app/llm/personal_router.py:41` |
-| PUT | `/llm/me/preferences` | `app.llm` | `put_preferences` | yes | `back/app/llm/personal_router.py:47` |
-| POST | `/llm/me/speech` | `app.llm` | `speech` | yes | `back/app/llm/personal_router.py:132` |
-| POST | `/llm/me/transcription` | `app.llm` | `transcribe` | yes | `back/app/llm/personal_router.py:95` |
-| POST | `/llm/openai/chat/completions` | `app.llm` | `llm_completion` | no | `back/app/llm/call_router.py:208` |
-| POST | `/llm/openai/inferences` | `app.llm` | `create_inference` | no | `back/app/llm/call_router.py:121` |
-| GET | `/llm/openai/inferences/{inference_id}` | `app.llm` | `get_inference` | no | `back/app/llm/call_router.py:145` |
-| POST | `/llm/openai/inferences/{inference_id}/commands` | `app.llm` | `command_inference` | no | `back/app/llm/call_router.py:151` |
-| GET | `/llm/openai/inferences/{inference_id}/events` | `app.llm` | `inference_events` | no | `back/app/llm/call_router.py:165` |
-| GET | `/llm/openai/models` | `app.llm` | `llm_models` | no | `back/app/llm/call_router.py:188` |
-| POST | `/llm/openai/responses` | `app.llm` | `llm_responses` | no | `back/app/llm/call_router.py:353` |
-| POST | `/llm/openai/responses/compact` | `app.llm` | `llm_responses` | no | `back/app/llm/call_router.py:353` |
-| GET | `/llm/openai/runs/{agent_run_id}/usage` | `app.llm` | `llm_run_usage` | no | `back/app/llm/call_router.py:459` |
-| GET | `/llm/users/{user_id}/preferences` | `app.llm` | `get_user_preferences` | yes | `back/app/llm/personal_router.py:78` |
-| PUT | `/llm/users/{user_id}/preferences` | `app.llm` | `put_user_preferences` | yes | `back/app/llm/personal_router.py:85` |
+| POST | `/llm/anthropic/v1/messages` | `app.llm` | `anthropic_messages` | no | `back/app/llm/anthropic_router.py:284` |
+| POST | `/llm/anthropic/v1/messages/count_tokens` | `app.llm` | `anthropic_count_tokens` | no | `back/app/llm/anthropic_router.py:247` |
+| GET | `/llm/anthropic/v1/models` | `app.llm` | `anthropic_models` | no | `back/app/llm/anthropic_router.py:205` |
+| GET | `/llm/me/native-voices` | `app.llm` | `get_native_voices` | yes | `back/app/llm/personal_router.py:160` |
+| GET | `/llm/me/options` | `app.llm` | `get_options` | yes | `back/app/llm/personal_router.py:57` |
+| GET | `/llm/me/preferences` | `app.llm` | `get_preferences` | yes | `back/app/llm/personal_router.py:42` |
+| PUT | `/llm/me/preferences` | `app.llm` | `put_preferences` | yes | `back/app/llm/personal_router.py:48` |
+| POST | `/llm/me/speech` | `app.llm` | `speech` | yes | `back/app/llm/personal_router.py:135` |
+| POST | `/llm/me/transcription` | `app.llm` | `transcribe` | yes | `back/app/llm/personal_router.py:96` |
+| POST | `/llm/openai/chat/completions` | `app.llm` | `llm_completion` | no | `back/app/llm/call_router.py:211` |
+| POST | `/llm/openai/inferences` | `app.llm` | `create_inference` | no | `back/app/llm/call_router.py:122` |
+| GET | `/llm/openai/inferences/{inference_id}` | `app.llm` | `get_inference` | no | `back/app/llm/call_router.py:148` |
+| POST | `/llm/openai/inferences/{inference_id}/commands` | `app.llm` | `command_inference` | no | `back/app/llm/call_router.py:154` |
+| GET | `/llm/openai/inferences/{inference_id}/events` | `app.llm` | `inference_events` | no | `back/app/llm/call_router.py:168` |
+| GET | `/llm/openai/models` | `app.llm` | `llm_models` | no | `back/app/llm/call_router.py:191` |
+| POST | `/llm/openai/responses` | `app.llm` | `llm_responses` | no | `back/app/llm/call_router.py:358` |
+| POST | `/llm/openai/responses/compact` | `app.llm` | `llm_responses` | no | `back/app/llm/call_router.py:358` |
+| GET | `/llm/openai/runs/{agent_run_id}/usage` | `app.llm` | `llm_run_usage` | no | `back/app/llm/call_router.py:466` |
+| GET | `/llm/users/{user_id}/preferences` | `app.llm` | `get_user_preferences` | yes | `back/app/llm/personal_router.py:79` |
+| PUT | `/llm/users/{user_id}/preferences` | `app.llm` | `put_user_preferences` | yes | `back/app/llm/personal_router.py:86` |
 | GET | `/mail/approvers` | `bridge.mail` | `list_mail_approvers` | yes | `back/bridge/mail/router.py:172` |
 | GET | `/mail/browser/message` | `bridge.mail` | `read_browser_message` | yes | `back/bridge/mail/router.py:39` |
 | GET | `/mail/connections/{connection_id}/mailboxes` | `bridge.mail` | `list_connection_mailboxes` | yes | `back/bridge/mail/router.py:271` |
@@ -1975,16 +1982,16 @@ No cyclic component detected.
 | POST | `/process-campaigns/datasets/generate` | `app.lab` | `lab_process_dataset_generate` | yes | `back/app/lab/process_evaluation_router.py:74` |
 | GET | `/process-campaigns/{identity}` | `app.lab` | `lab_process_campaign_get` | yes | `back/app/lab/process_evaluation_router.py:95` |
 | POST | `/process-campaigns/{identity}/cancel` | `app.lab` | `lab_process_campaign_cancel` | yes | `back/app/lab/process_evaluation_router.py:104` |
-| POST | `/profile/anthropic/v1/messages` | `app.llm` | `anthropic_messages` | no | `back/app/llm/anthropic_router.py:283` |
-| POST | `/profile/anthropic/v1/messages/count_tokens` | `app.llm` | `anthropic_count_tokens` | no | `back/app/llm/anthropic_router.py:246` |
-| GET | `/profile/anthropic/v1/models` | `app.llm` | `anthropic_models` | no | `back/app/llm/anthropic_router.py:204` |
-| POST | `/profile/decisions` | `app.llm` | `decisions` | no | `back/app/llm/profile_inference_router.py:52` |
-| GET | `/profile/models` | `app.llm` | `models` | no | `back/app/llm/profile_inference_router.py:28` |
-| POST | `/profile/openai/chat/completions` | `app.llm` | `llm_completion` | no | `back/app/llm/call_router.py:208` |
-| POST | `/profile/openai/embeddings` | `app.llm` | `embeddings` | no | `back/app/llm/profile_inference_router.py:35` |
-| GET | `/profile/openai/models` | `app.llm` | `llm_models` | no | `back/app/llm/call_router.py:188` |
-| POST | `/profile/openai/responses` | `app.llm` | `llm_responses` | no | `back/app/llm/call_router.py:353` |
-| POST | `/profile/openai/responses/compact` | `app.llm` | `llm_responses` | no | `back/app/llm/call_router.py:353` |
+| POST | `/profile/anthropic/v1/messages` | `app.llm` | `anthropic_messages` | no | `back/app/llm/anthropic_router.py:284` |
+| POST | `/profile/anthropic/v1/messages/count_tokens` | `app.llm` | `anthropic_count_tokens` | no | `back/app/llm/anthropic_router.py:247` |
+| GET | `/profile/anthropic/v1/models` | `app.llm` | `anthropic_models` | no | `back/app/llm/anthropic_router.py:205` |
+| POST | `/profile/decisions` | `app.llm` | `decisions` | no | `back/app/llm/profile_inference_router.py:55` |
+| GET | `/profile/models` | `app.llm` | `models` | no | `back/app/llm/profile_inference_router.py:29` |
+| POST | `/profile/openai/chat/completions` | `app.llm` | `llm_completion` | no | `back/app/llm/call_router.py:211` |
+| POST | `/profile/openai/embeddings` | `app.llm` | `embeddings` | no | `back/app/llm/profile_inference_router.py:36` |
+| GET | `/profile/openai/models` | `app.llm` | `llm_models` | no | `back/app/llm/call_router.py:191` |
+| POST | `/profile/openai/responses` | `app.llm` | `llm_responses` | no | `back/app/llm/call_router.py:358` |
+| POST | `/profile/openai/responses/compact` | `app.llm` | `llm_responses` | no | `back/app/llm/call_router.py:358` |
 | GET | `/retention/preview` | `app.process` | `preview_retention` | yes | `back/app/process/router.py:110` |
 | GET | `/runs` | `app.process` | `read_runs` | yes | `back/app/process/router.py:275` |
 | POST | `/runs` | `app.process` | `create_run` | yes | `back/app/process/router.py:229` |
@@ -2079,15 +2086,16 @@ No cyclic component detected.
 | POST | `/tasks/{task_id}/resume` | `app.task` | `resume_task` | yes | `back/app/task/router.py:350` |
 | POST | `/tasks/{task_id}/retry` | `app.task` | `retry_task` | yes | `back/app/task/router.py:229` |
 | POST | `/tasks/{task_id}/run` | `app.task` | `run_task` | yes | `back/app/task/router.py:402` |
-| GET | `/teams` | `core.team` | `list_teams` | yes | `back/core/team/router.py:13` |
-| POST | `/teams` | `core.team` | `create_team` | yes | `back/core/team/router.py:31` |
-| GET | `/teams/human-selection` | `core.team` | `human_selection` | yes | `back/core/team/router.py:25` |
-| GET | `/teams/humans` | `core.team` | `search_humans` | yes | `back/core/team/router.py:19` |
-| DELETE | `/teams/{team_id}` | `core.team` | `delete_team` | yes | `back/core/team/router.py:55` |
-| PUT | `/teams/{team_id}` | `core.team` | `update_team` | yes | `back/core/team/router.py:42` |
-| GET | `/teams/{team_id}/humans` | `core.team` | `team_humans` | yes | `back/core/team/router.py:76` |
-| PUT | `/teams/{team_id}/humans/{user_id}` | `core.team` | `set_human_membership` | yes | `back/core/team/router.py:85` |
-| PUT | `/teams/{team_id}/position` | `core.team` | `move_team` | yes | `back/core/team/router.py:66` |
+| GET | `/teams` | `core.team` | `list_teams` | yes | `back/core/team/router.py:14` |
+| POST | `/teams` | `core.team` | `create_team` | yes | `back/core/team/router.py:33` |
+| GET | `/teams/human-selection` | `core.team` | `human_selection` | yes | `back/core/team/router.py:27` |
+| GET | `/teams/humans` | `core.team` | `search_humans` | yes | `back/core/team/router.py:20` |
+| DELETE | `/teams/{team_id}` | `core.team` | `delete_team` | yes | `back/core/team/router.py:73` |
+| PUT | `/teams/{team_id}` | `core.team` | `update_team` | yes | `back/core/team/router.py:46` |
+| GET | `/teams/{team_id}/humans` | `core.team` | `team_humans` | yes | `back/core/team/router.py:94` |
+| PUT | `/teams/{team_id}/humans/{user_id}` | `core.team` | `set_human_membership` | yes | `back/core/team/router.py:103` |
+| PUT | `/teams/{team_id}/manager` | `core.team` | `assign_team_manager` | yes | `back/core/team/router.py:61` |
+| PUT | `/teams/{team_id}/position` | `core.team` | `move_team` | yes | `back/core/team/router.py:84` |
 | GET | `/topics` | `app.topic` | `read_topics` | yes | `back/app/topic/router.py:49` |
 | POST | `/topics` | `app.topic` | `create_topic` | yes | `back/app/topic/router.py:106` |
 | GET | `/topics/conversation` | `app.topic` | `read_conversation_topics` | yes | `back/app/topic/router.py:68` |
@@ -2131,7 +2139,7 @@ No cyclic component detected.
 
 | Table | Class | Module | Versioned | Foreign Keys | Source |
 |---|---|---|---:|---|---|
-| `agent_groups` | `Team` | `core.team` | yes | — | `back/core/team/models.py:10` |
+| `agent_groups` | `Team` | `core.team` | yes | `users.id` | `back/core/team/models.py:10` |
 | `agent_harnesses` | `AgentHarness` | `app.harnesses` | no | `agents.id`, `harnesses.id` | `back/app/harnesses/models.py:69` |
 | `agent_mcp_tokens` | `AgentMcpToken` | `app.mcp` | no | `agents.id` | `back/app/mcp/models.py:17` |
 | `agent_skill_categories` | `AgentSkillCategory` | `app.skill` | no | `agents.id`, `skill_categories.id` | `back/app/skill/models.py:176` |
@@ -2252,6 +2260,8 @@ No cyclic component detected.
 | `lab_tasks` | `LabTask` | `app.lab` | no | `tasks.id` | `back/app/lab/models.py:30` |
 | `llm_call_events` | `LLMCallEvent` | `app.llm` | no | `llm_calls.id`, `llm_inferences.id` | `back/app/llm/models.py:95` |
 | `llm_calls` | `LLMCall` | `app.llm` | yes | `agents.id`, `conversation_rounds.id`, `deep_sessions.id`, `deep_submissions.id`, `llm_inference_attempts.id`, `llm_profiles.id`, `llms.id`, `multimedia_generations.id`, `process_runs.id`, `task_attempts.id`, `tasks.id`, `users.id` | `back/app/llm/models.py:132` |
+| `llm_credit_grants` | `InferenceCreditGrant` | `app.llm` | no | `llm_credit_requests.id`, `users.id` | `back/app/llm/budget_models.py:52` |
+| `llm_credit_requests` | `InferenceCreditRequest` | `app.llm` | no | `users.id` | `back/app/llm/budget_models.py:32` |
 | `llm_document_analyses` | `LLMDocumentAnalysis` | `app.llm` | no | `agents.id`, `tasks.id` | `back/app/llm/models.py:26` |
 | `llm_inference_attempts` | `LLMInferenceAttempt` | `app.llm` | no | `llm_inferences.id` | `back/app/llm/models.py:66` |
 | `llm_inference_commands` | `LLMInferenceCommand` | `app.llm` | no | `llm_inference_attempts.id`, `llm_inferences.id` | `back/app/llm/models.py:82` |
@@ -2259,6 +2269,7 @@ No cyclic component detected.
 | `llm_profiles` | `LlmProfile` | `app.llm` | no | `llms.id` | `back/app/llm/profile_models.py:19` |
 | `llm_provider_permits` | `LLMProviderPermit` | `app.llm` | no | `llm_calls.id`, `llm_providers.id` | `back/app/llm/models.py:122` |
 | `llm_providers` | `LLMProvider` | `app.llm` | yes | `users.id` | `back/app/llm/provider_models.py:10` |
+| `llm_user_budgets` | `InferenceBudget` | `app.llm` | no | `users.id` | `back/app/llm/budget_models.py:13` |
 | `llms` | `LLM` | `app.llm` | yes | `llm_providers.id` | `back/app/llm/provider_models.py:124` |
 | `mail_inbound_receipts` | `MailInboundReceipt` | `bridge.mail` | no | `agents.id`, `connections.id`, `service_action_authorizations.id` | `back/bridge/mail/models.py:137` |
 | `mail_outbound_deliveries` | `MailOutboundDelivery` | `bridge.mail` | no | `agents.id`, `connections.id`, `service_action_authorizations.id`, `users.id` | `back/bridge/mail/models.py:28` |
@@ -2331,8 +2342,8 @@ No cyclic component detected.
 | `task_amendments` | `TaskAmendment` | `app.task` | no | `tasks.id` | `back/app/task/models.py:249` |
 | `task_attempts` | `TaskAttempt` | `app.task` | no | `tasks.id` | `back/app/task/models.py:282` |
 | `tasks` | `Task` | `app.task` | yes | `agents.id`, `connections.id`, `goals.id`, `memory_items.id`, `messenger_messages.id`, `tasks.id`, `topics.id`, `users.id` | `back/app/task/models.py:80` |
-| `team_audit` | `TeamAudit` | `core.team` | yes | — | `back/core/team/models.py:28` |
-| `team_users` | `TeamUser` | `core.team` | no | `agent_groups.id`, `users.id` | `back/core/team/models.py:19` |
+| `team_audit` | `TeamAudit` | `core.team` | yes | — | `back/core/team/models.py:29` |
+| `team_users` | `TeamUser` | `core.team` | no | `agent_groups.id`, `users.id` | `back/core/team/models.py:20` |
 | `titles` | `Title` | `app.agent` | no | — | `back/app/agent/models.py:27` |
 | `tool_search_documents` | `ToolSearchDocument` | `app.services` | no | — | `back/app/services/models.py:83` |
 | `topics` | `Topic` | `app.topic` | yes | `memory_items.id` | `back/app/topic/models.py:15` |
@@ -2716,6 +2727,8 @@ No cyclic component detected.
 | `VOICE_EXECUTOR_EVALUATION_ACCESS` | `app.lab` | privilege.VOICE_EXECUTOR_EVALUATION_ACCESS | `back/app/lab/privileges.py:33` |
 | `VOICE_EXECUTOR_EVALUATION_EDIT` | `app.lab` | privilege.VOICE_EXECUTOR_EVALUATION_EDIT | `back/app/lab/privileges.py:34` |
 | `LLM_API_ACCESS` | `app.llm` | privilege.LLM_API_ACCESS | `back/app/llm/privileges.py:5` |
+| `LLM_BUDGET_ADMIN` | `app.llm` | privilege.LLM_BUDGET_ADMIN | `back/app/llm/privileges.py:13` |
+| `LLM_BUDGET_EDIT_OWN` | `app.llm` | privilege.LLM_BUDGET_EDIT_OWN | `back/app/llm/privileges.py:14` |
 | `LLM_CALL_ACCESS` | `app.llm` | privilege.LLM_CALL_ACCESS | `back/app/llm/privileges.py:11` |
 | `LLM_CALL_CONTROL` | `app.llm` | privilege.LLM_CALL_CONTROL | `back/app/llm/privileges.py:12` |
 | `LLM_CALL_PURGE` | `app.llm` | privilege.LLM_CALL_PURGE | `back/app/llm/privileges.py:6` |
@@ -2822,6 +2835,7 @@ No cyclic component detected.
 | `/lab/processes` | `app/lab` | `front/app/lab/pages/processes.vue` |
 | `/llm` | `app/llm` | `front/app/llm/pages/index.vue` |
 | `/llm/calls` | `app/llm` | `front/app/llm/pages/calls.vue` |
+| `/llm/usage` | `app/llm` | `front/app/llm/pages/usage.vue` |
 | `/memory` | `app/memory` | `front/app/memory/pages/index.vue` |
 | `/memory/contacts` | `app/memory` | `front/app/memory/pages/contacts.vue` |
 | `/memory/documents` | `app/document` | `front/app/document/pages/legacy-documents.vue` |

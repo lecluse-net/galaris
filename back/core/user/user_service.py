@@ -347,6 +347,7 @@ async def create(
     role_ids: Sequence[int] = (),
     default_role_id: int | None = None,
     team_ids: Sequence[int] = (),
+    managed_team_ids: Sequence[int] = (),
     settings: dict[str, dict[str, object]] | None = None,
 ) -> User:
     """Create a user through the authenticated administration API."""
@@ -379,10 +380,12 @@ async def create(
 
         await assign_initial_roles(new_user.id, role_ids, default_role_id)
     if team_ids:
-        from core.team import set_human_membership
+        from core.team import assign_team_manager, set_human_membership
 
         for team_id in dict.fromkeys(team_ids):
             await set_human_membership(team_id, new_user.id, True)
+        for team_id in dict.fromkeys(managed_team_ids):
+            await assign_team_manager(team_id, new_user.id)
     if settings:
         await apply_admin_user_settings(new_user.id, settings)
     await db.commit()
@@ -578,6 +581,7 @@ async def delete(user_id: int) -> bool:
     from core.authorize import preserve_administrator
 
     await preserve_administrator(user_id=user_id)
+    await lock_resource_sharing()
 
     result = await db.execute(select(User).where(User.id == user_id))
     user = result.scalar_one_or_none()

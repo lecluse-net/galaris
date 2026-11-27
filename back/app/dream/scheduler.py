@@ -8,7 +8,8 @@ from datetime import datetime, timedelta, timezone
 from loguru import logger
 
 from app.agent import register_terminal_task_observer, unregister_terminal_task_observer
-from app.llm import llm_correlation_scope, llm_execution_scope
+from app.llm import BudgetUnavailable, automatic_budget_blocked, llm_correlation_scope, llm_execution_scope
+from core.database import get_db_session
 from app.llm.facade import llm_call_accounting
 from app.task import has_active_task_work
 from app.voice import (
@@ -338,6 +339,11 @@ def _claim_timeout() -> float:
 async def _run_claim(mechanism: DreamMechanism, claim: DreamClaim) -> None:
     phase: str = "preparing"
     try:
+        async with get_db_session():
+            exhausted = await automatic_budget_blocked(source_kind=claim.subject_kind, source_id=claim.subject_id)
+        if exhausted:
+            await release_interrupted(claim, "Inference budget exhausted.", delay_seconds=60)
+            return
         payload = claim.prepared_payload
         if payload is None or payload.get("_dream_stage") == "evidence":
             _set_runtime_state(
@@ -444,6 +450,8 @@ async def _run_claim(mechanism: DreamMechanism, claim: DreamClaim) -> None:
                 claim.subject_id,
                 claim.receipt_id,
             )
+    except BudgetUnavailable as exc:
+        await release_interrupted(claim, str(exc), delay_seconds=60)
     except Exception as exc:
         _set_runtime_state(
             status="faulted",

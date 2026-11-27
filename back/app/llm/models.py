@@ -133,6 +133,11 @@ class LLMCall(HistoryMixin, Base):
     """A provider LLM call with an inspectable trace."""
 
     __tablename__ = "llm_calls"
+    __table_args__ = (
+        Index("ix_llm_calls_user_started", "user_id", "started_at", postgresql_where=text("user_id IS NOT NULL")),
+        Index("ix_llm_calls_user_running", "user_id",
+              postgresql_where=text("user_id IS NOT NULL AND status = 'running'")),
+    )
 
     id: Mapped[UUID] = mapped_column(
         PGUUID(as_uuid=True), primary_key=True, default=uuid4, index=True

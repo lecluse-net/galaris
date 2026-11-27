@@ -21,6 +21,7 @@ font foi ; les plans décrivent les extensions encore ouvertes.
 | Manipuler du JSON et le codec typé | [Documents Données](datasets.md) |
 | Exécuter un workflow interne | [Profil BPMN natif](native-processes.md) |
 | Attribuer les coûts d’inférence à un compte | [Attribution des appels LLM](llm-attribution.md) |
+| Configurer et vérifier les limites d’utilisation de l’inférence | [Limites d’utilisation](inference-budgets.md) |
 | Partager des ressources | [Contrats et migration des ACL](sharing.md) |
 | Déléguer les domaines et les réglages | [Privilèges par fonction](../admin/privileges.md) |
 | Choisir une preuve et une commande de test | [Tester un comportement](testing.md) |

@@ -58,7 +58,9 @@
         <component v-else-if="user" :is="section.component" :user-id="user.id" class="q-mt-lg" />
       </template>
 
-      <UserAdminAccess v-model="access" :user-id="user?.id" :disabled="loading" :refresh-user-list="refreshUserList" />
+      <UserAdminAccess v-model="access" :user-id="user?.id" :disabled="loading"
+        :eligible-manager="user ? user.is_active || pendingInvitation : invite || form.is_active"
+        :refresh-user-list="refreshUserList" />
     </q-card-section>
 
     <q-card-actions align="right" class="galaris-dialog-actions">
@@ -102,7 +104,7 @@ const form = reactive({
   password: '',
   is_active: user?.is_active ?? true,
 })
-const access = ref<UserAccessDraft>({ role_ids: [], default_role_id: null, team_ids: [] })
+const access = ref<UserAccessDraft>({ role_ids: [], default_role_id: null, team_ids: [], managed_team_ids: [] })
 const settings = reactive<Record<string, object>>({})
 
 function setSettings(name: string, value: object | null) {

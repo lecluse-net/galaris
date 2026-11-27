@@ -17,6 +17,7 @@ from .document_contracts import DocumentAnalysisError, DocumentAnalysisSnapshot
 from .document_store import TERMINAL_STATUSES, publish, snapshot
 from .models import LLMDocumentAnalysis
 from .subscription_policy import LLMExecutionAuthority, current_execution_authority, llm_execution_scope
+from .budget import BudgetUnavailable, automatic_budget_blocked
 
 
 async def start_analysis(agent_id: int, input_data: dict[str, Any], *,
@@ -158,6 +159,13 @@ async def analysis_tick() -> None:
     row.lease_token, row.lease_expires_at = lease, now + timedelta(seconds=1500)
     authority = LLMExecutionAuthority(**row.authority)
     dispatch, agent_id = dict(row.dispatch), row.agent_id
+    deferred_until = None
+    if row.status not in TERMINAL_STATUSES and not row.checkpoint.get("pending_inference") and not row.checkpoint.get("cancelled"):
+        if await automatic_budget_blocked(task_id=row.task_id, requester_user_id=authority.requester_user_id,
+                                          source_kind=authority.source_kind, source_id=authority.source_id):
+            row.lease_token, row.lease_expires_at = None, now + timedelta(seconds=60)
+            await db.commit()
+            return
     await db.commit()
     permit = UUID(str(dispatch["authorization_permit"])) if dispatch.get("authorization_permit") else None
     try:
@@ -174,6 +182,9 @@ async def analysis_tick() -> None:
             result = await advance_analysis(key)
         if result.status in TERMINAL_STATUSES:
             await settle_authorization(key, result)
+    except BudgetUnavailable:
+        await db.rollback()
+        deferred_until = datetime.now(timezone.utc) + timedelta(seconds=60)
     except (PermissionError, AuthorizationClosed):
         result = await publish(key, DocumentAnalysisSnapshot(status="error", error=DocumentAnalysisError(
             code="document_authorization_unavailable", message="The analysis authorization is no longer available")))
@@ -181,5 +192,5 @@ async def analysis_tick() -> None:
     finally:
         await db.execute(update(LLMDocumentAnalysis).where(
             LLMDocumentAnalysis.id == key, LLMDocumentAnalysis.lease_token == lease,
-        ).values(lease_token=None, lease_expires_at=None, updated_at=datetime.now(timezone.utc)))
+        ).values(lease_token=None, lease_expires_at=deferred_until, updated_at=datetime.now(timezone.utc)))
         await db.commit()

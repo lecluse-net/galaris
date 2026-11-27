@@ -9,6 +9,7 @@ from core.i18n import tr
 from core.user import get_current_user_id, get_user_record, register_admin_user_settings, require_web_session
 
 from . import personal_service, transcription_service
+from .budget import BudgetUnavailable, check_inference_budget
 from .personal_service import NativeVoiceOptions, PersonalOptions, PersonalPreferences, PersonalSpeechError
 
 router = APIRouter(prefix="/llm/me", tags=["personal-llm"])
@@ -121,6 +122,8 @@ async def transcribe(
         return TranscriptionResponse(text=text)
     except PersonalSpeechError as exc:
         raise await _error(str(exc)) from exc
+    except BudgetUnavailable as exc:
+        raise HTTPException(429, detail=exc.detail()) from exc
     except (ValueError, RuntimeError, httpx.HTTPError) as exc:
         raise await _error("provider_failed", 502) from exc
     finally:
@@ -131,11 +134,14 @@ async def transcribe(
 @authorize()
 async def speech(payload: SpeechRequest) -> Response:
     try:
+        await check_inference_budget(_user_id())
         audio, offset, done = await personal_service.read_document(
             _user_id(), payload.html, payload.offset
         )
     except PersonalSpeechError as exc:
         raise await _error(str(exc)) from exc
+    except BudgetUnavailable as exc:
+        raise HTTPException(429, detail=exc.detail()) from exc
     except (ValueError, RuntimeError, httpx.HTTPError) as exc:
         raise await _error("provider_failed", 502) from exc
     return Response(

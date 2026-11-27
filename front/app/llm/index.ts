@@ -1,4 +1,5 @@
 import { defineAsyncView } from '@/core/util/facade'
+export const SidebarBudget = /* @__PURE__ */ defineAsyncView(() => import('./components/SidebarBudget.vue'))
 
 export const LlmCalls = /* @__PURE__ */ defineAsyncView(() => import('./components/LlmCalls.vue'))
 export const LlmActivityPanel = /* @__PURE__ */ defineAsyncView(() => import('./components/LlmActivityPanel.vue'))

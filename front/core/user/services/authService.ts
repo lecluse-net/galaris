@@ -45,6 +45,7 @@ export interface UserAccessDraft {
     role_ids: number[]
     default_role_id: number | null
     team_ids: number[]
+    managed_team_ids: number[]
 }
 
 type UserAdminSettings = { settings?: Record<string, object> }

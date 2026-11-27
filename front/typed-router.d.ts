@@ -297,6 +297,13 @@ declare module 'vue-router/auto-routes' {
       Record<never, never>,
       | never
     >,
+    '//llm/usage': RouteRecordInfo<
+      '//llm/usage',
+      '/llm/usage',
+      Record<never, never>,
+      Record<never, never>,
+      | never
+    >,
     '//memory/': RouteRecordInfo<
       '//memory/',
       '/memory',
@@ -763,6 +770,14 @@ declare module 'vue-router/auto-routes' {
     'app/llm/pages/calls.vue': {
       routes:
         | '//llm/calls'
+      views:
+        | never
+      pathParamNames:
+        | never
+    }
+    'app/llm/pages/usage.vue': {
+      routes:
+        | '//llm/usage'
       views:
         | never
       pathParamNames:

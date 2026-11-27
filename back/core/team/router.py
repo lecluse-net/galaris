@@ -1,9 +1,10 @@
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 
 from core.authorize import RequireAllPrivilegesAssertion, authorize
 from core.database import get_db
+from core.user import require_active_web_session
 from . import service
-from .contracts import HumanInfo, HumanSelection, MembershipUpdate, TeamInfo, TeamMove, TeamWrite
+from .contracts import HumanInfo, HumanSelection, ManagerAssignment, MembershipUpdate, TeamCreate, TeamInfo, TeamMove, TeamWrite
 
 router = APIRouter(prefix="/teams", tags=["teams"])
 
@@ -16,8 +17,9 @@ async def list_teams(user_id: int | None = Query(default=None, gt=0)) -> list[Te
 
 @router.get("/humans", response_model=list[HumanInfo])
 @authorize(privileges="TEAM_ACCESS")
-async def search_humans(search: str = Query(default="", max_length=200), limit: int = Query(default=500, ge=1, le=500)) -> list[HumanInfo]:
-    return await service.search_humans(search, limit)
+async def search_humans(search: str = Query(default="", max_length=200), limit: int = Query(default=500, ge=1, le=500),
+                        active_only: bool = False) -> list[HumanInfo]:
+    return await service.search_humans(search, limit, active_only=active_only)
 
 
 @router.get("/human-selection", response_model=list[HumanSelection])
@@ -28,22 +30,38 @@ async def human_selection(self_only: bool = False) -> list[HumanSelection]:
 
 @router.post("", response_model=TeamInfo, status_code=201)
 @authorize(privileges="TEAM_EDIT", assertion=RequireAllPrivilegesAssertion, params={"required_privileges": ["TEAM_ACCESS", "TEAM_EDIT"]})
-async def create_team(data: TeamWrite) -> TeamInfo:
+async def create_team(data: TeamCreate, request: Request) -> TeamInfo:
+    await require_active_web_session(request)
     try:
         result = await service.save_team(data)
         await get_db().commit()
+        await service.notify_team_access_changed()
         return result
-    except ValueError as exc:
+    except (LookupError, ValueError) as exc:
         raise HTTPException(422, str(exc)) from exc
 
 
 @router.put("/{team_id}", response_model=TeamInfo)
 @authorize(privileges="TEAM_EDIT", assertion=RequireAllPrivilegesAssertion, params={"required_privileges": ["TEAM_ACCESS", "TEAM_EDIT"]})
-async def update_team(team_id: int, data: TeamWrite) -> TeamInfo:
+async def update_team(team_id: int, data: TeamWrite, request: Request) -> TeamInfo:
+    if "manager_user_id" in data.model_fields_set:
+        await require_active_web_session(request)
     try:
         result = await service.save_team(data, team_id)
         await get_db().commit()
         return result
+    except LookupError as exc:
+        raise HTTPException(404, str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(422, str(exc)) from exc
+
+
+@router.put("/{team_id}/manager", status_code=204, dependencies=[Depends(require_active_web_session)])
+@authorize(privileges="TEAM_EDIT", assertion=RequireAllPrivilegesAssertion, params={"required_privileges": ["TEAM_ACCESS", "TEAM_EDIT"]})
+async def assign_team_manager(team_id: int, data: ManagerAssignment) -> None:
+    try:
+        await service.assign_team_manager(team_id, data.user_id)
+        await get_db().commit()
     except LookupError as exc:
         raise HTTPException(404, str(exc)) from exc
     except ValueError as exc:
@@ -80,7 +98,7 @@ async def team_humans(team_id: int) -> list[HumanInfo]:
         raise HTTPException(404, str(exc)) from exc
 
 
-@router.put("/{team_id}/humans/{user_id}", status_code=204)
+@router.put("/{team_id}/humans/{user_id}", status_code=204, dependencies=[Depends(require_active_web_session)])
 @authorize(privileges="TEAM_MEMBERS_EDIT", assertion=RequireAllPrivilegesAssertion, params={"required_privileges": ["TEAM_ACCESS", "TEAM_MEMBERS_EDIT"]})
 async def set_human_membership(team_id: int, user_id: int, data: MembershipUpdate) -> None:
     try:
@@ -89,3 +107,5 @@ async def set_human_membership(team_id: int, user_id: int, data: MembershipUpdat
         await service.notify_team_access_changed()
     except LookupError as exc:
         raise HTTPException(404, str(exc)) from exc
+    except service.TeamManagerMembershipError as exc:
+        raise HTTPException(409, str(exc)) from exc

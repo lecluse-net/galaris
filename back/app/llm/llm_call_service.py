@@ -1370,8 +1370,10 @@ async def _persist_running_call(call: LLMCall, capture: TextCallCapture | None, 
         await owned(owner)
         call.inference_attempt_id = owner.attempt_id
     from .user_attribution import resolve_call_user
+    from .budget import admit_budgeted_call
 
     call.user_id = await resolve_call_user(db, call, get_current_user_id(), current_execution_authority())
+    await admit_budgeted_call(call)
     db.add(call)
     await db.flush()
     from .provider_permits import insert_permit

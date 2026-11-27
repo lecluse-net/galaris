@@ -1,7 +1,10 @@
 import api from '@/core/api'
 
-export interface TeamWrite { name: string; description: string }
-export interface Team extends TeamWrite { id: number; order: number; human_count: number; human_members: Human[] }
+export interface TeamWrite { name: string; description: string; manager_user_id?: number }
+export interface Team extends Omit<TeamWrite, 'manager_user_id'> {
+  id: number; order: number; human_count: number; human_members: Human[]
+  manager_user_id: number | null; manager: Human | null
+}
 export interface Human { id: number; label: string; active: boolean; avatar_url: string | null }
 export interface HumanSelection { id: number; teams: { id: number; name: string; order: number }[] }
 export const teamService = {
@@ -22,9 +25,14 @@ export const teamService = {
   async move(id: number, target: number, after: boolean): Promise<void> {
     await api.put(`/teams/${id}/position`, { target_team_id: target, after })
   },
-  async humans(search = ''): Promise<Human[]> { return (await api.get<Human[]>('/teams/humans', { params: { search } })).data },
+  async humans(search = '', activeOnly?: boolean): Promise<Human[]> {
+    return (await api.get<Human[]>('/teams/humans', { params: { search, active_only: activeOnly } })).data
+  },
   async members(id: number): Promise<Human[]> { return (await api.get<Human[]>(`/teams/${id}/humans`)).data },
   async membership(team: number, human: number, present: boolean): Promise<void> {
     await api.put(`/teams/${team}/humans/${human}`, { present })
+  },
+  async assignManager(team: number, human: number): Promise<void> {
+    await api.put(`/teams/${team}/manager`, { user_id: human })
   },
 }

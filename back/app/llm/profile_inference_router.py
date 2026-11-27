@@ -6,6 +6,7 @@ from fastapi.responses import JSONResponse
 from core.authorize import independent_auth
 from core.i18n import tr
 from .call_router import authenticate_llm_api
+from .budget import BudgetUnavailable
 from .decision_contracts import DecisionResult
 from .profile_gateway import profile_models
 from .profile_inference import (
@@ -43,6 +44,8 @@ async def embeddings(request: Request, body: ProfileEmbeddingRequest) -> JSONRes
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
+    except BudgetUnavailable as exc:
+        raise HTTPException(429, detail=exc.detail()) from exc
     except RuntimeError as exc:
         raise HTTPException(status_code=502, detail=str(exc)) from exc
 
@@ -59,5 +62,7 @@ async def decisions(request: Request, body: ProfileDecisionRequest) -> DecisionR
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
+    except BudgetUnavailable as exc:
+        raise HTTPException(429, detail=exc.detail()) from exc
     except RuntimeError as exc:
         raise HTTPException(status_code=502, detail=str(exc)) from exc

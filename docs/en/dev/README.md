@@ -21,6 +21,7 @@ and tests remain authoritative; plans describe extensions still open.
 | Handle JSON and the typed codec | [Data documents](datasets.md) |
 | Execute an internal workflow | [Native BPMN profile](native-processes.md) |
 | Attribute inference costs to an account | [LLM call attribution](llm-attribution.md) |
+| Configure and verify inference usage limits | [Usage limits](inference-budgets.md) |
 | Share resources | [ACL contracts and migration](sharing.md) |
 | Delegate domains and settings | [Functional privileges](../admin/privileges.md) |
 | Choose evidence and test commands | [Testing behavior](testing.md) |

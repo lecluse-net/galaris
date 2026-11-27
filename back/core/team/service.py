@@ -2,7 +2,7 @@
 
 from collections.abc import Awaitable, Callable, Collection, Sequence
 
-from sqlalchemy import delete, func, select
+from sqlalchemy import Select, delete, func, or_, select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import load_only
 
@@ -10,7 +10,7 @@ from core.database import get_db, lock_resource_sharing
 from core.authorize import check_privilege
 from core.user import UserModel, get_current_user
 
-from .contracts import HumanInfo, HumanSelection, SelectionTeam, TeamInfo, TeamMember, TeamWrite
+from .contracts import HumanInfo, HumanSelection, SelectionTeam, TeamCreate, TeamInfo, TeamMember, TeamWrite
 from .models import Team, TeamAudit, TeamUser
 
 
@@ -18,6 +18,10 @@ _access_observers: dict[str, Callable[[], Awaitable[None]]] = {}
 _access_projections: dict[str, Callable[[int, TeamMember | None], Awaitable[None]]] = {}
 _HUMAN_FIELDS = (UserModel.id, UserModel.display_name, UserModel.email,
                  UserModel.is_active, UserModel.avatar_key, UserModel.avatar_mime_type)
+
+
+class TeamManagerMembershipError(ValueError):
+    pass
 
 
 def register_team_access_observer(key: str, callback: Callable[[], Awaitable[None]]) -> None:
@@ -64,6 +68,12 @@ async def list_teams(*, user_id: int | None = None) -> list[TeamInfo]:
 async def _team_summaries(teams: Sequence[Team]) -> list[TeamInfo]:
     if not teams:
         return []
+    manager_ids = {team.manager_user_id for team in teams if team.manager_user_id is not None}
+    managers_by_id: dict[int, HumanInfo] = {}
+    if manager_ids:
+        managers = await get_db().scalars(select(UserModel).options(load_only(*_HUMAN_FIELDS, raiseload=True))
+                                          .where(UserModel.id.in_(manager_ids)))
+        managers_by_id = {manager.id: _human_info(manager) for manager in managers}
     counts = dict((await get_db().execute(
         select(TeamUser.team_id, func.count()).join(UserModel, UserModel.id == TeamUser.user_id)
         .where(TeamUser.team_id.in_([team.id for team in teams]))
@@ -81,6 +91,7 @@ async def _team_summaries(teams: Sequence[Team]) -> list[TeamInfo]:
             previews.setdefault(team_id, []).append(_human_info(user))
     return [TeamInfo.model_validate(team).model_copy(update={
         "human_count": counts.get(team.id, 0), "human_members": previews.get(team.id, []),
+        "manager": managers_by_id.get(team.manager_user_id) if team.manager_user_id is not None else None,
     }) for team in teams]
 
 
@@ -89,26 +100,54 @@ def _human_info(user: UserModel) -> HumanInfo:
                      active=user.is_active, avatar_url=user.avatar_url)
 
 
-async def save_team(data: TeamWrite, team_id: int | None = None) -> TeamInfo:
-    values = data.model_dump()
+async def save_team(data: TeamWrite | TeamCreate, team_id: int | None = None) -> TeamInfo:
+    values = data.model_dump(exclude_unset=True)
+    values.setdefault("description", data.description)
     if "order" not in data.model_fields_set:
-        del values["order"]
         if team_id is None:
             last_order = await get_db().scalar(select(func.max(Team.order)))
             values["order"] = (last_order if last_order is not None else -1) + 1
     values["name"] = data.name.strip()
     if not values["name"]:
         raise ValueError("Team name is required")
+    changes_manager = "manager_user_id" in data.model_fields_set
+    if changes_manager:
+        await lock_resource_sharing()
+        del values["manager_user_id"]
     team = await require_team(team_id) if team_id is not None else Team()
-    summary_fields = {"human_count", "human_members"}
+    summary_fields = {"human_count", "human_members", "manager"}
     before = TeamInfo.model_validate(team).model_dump(exclude=summary_fields) if team_id is not None else None
     for key, value in values.items():
         setattr(team, key, value)
     get_db().add(team)
     await get_db().flush()
+    if changes_manager:
+        if data.manager_user_id is None:
+            raise ValueError("Choose a team manager")
+        if team_id is None:
+            await set_human_membership(team.id, data.manager_user_id, True)
+        await _assign_manager(team, data.manager_user_id)
     after = (await _team_summaries([team]))[0]
     audit("team.save", {"before": before, "after": after.model_dump(exclude=summary_fields)})
     return after
+
+
+async def _assign_manager(team: Team, user_id: int) -> None:
+    manager = await get_db().scalar(select(UserModel.id).join(TeamUser, TeamUser.user_id == UserModel.id)
+        .where(UserModel.id == user_id, TeamUser.team_id == team.id,
+               or_(UserModel.is_active.is_(True), UserModel.invitation_pending.is_(True))))
+    if manager is None:
+        raise ValueError("The team manager must be an active or invited human member of this team")
+    team.manager_user_id = manager
+
+
+async def assign_team_manager(team_id: int, user_id: int) -> None:
+    await lock_resource_sharing()
+    team = await require_team(team_id)
+    previous = team.manager_user_id
+    await _assign_manager(team, user_id)
+    if previous != user_id:
+        audit("team.manager", {"team": team.id, "before": previous, "after": user_id})
 
 
 async def delete_team(team_id: int) -> None:
@@ -140,13 +179,35 @@ async def move_team(team_id: int, target_team_id: int, *, after: bool) -> None:
     audit("team.reorder", {"before": before, "after": [team.id for team in ordered]})
 
 
-async def search_humans(search: str = "", limit: int = 500) -> list[HumanInfo]:
+async def search_humans(search: str = "", limit: int = 500, *, active_only: bool = False) -> list[HumanInfo]:
     statement = select(UserModel).options(load_only(*_HUMAN_FIELDS, raiseload=True)).order_by(UserModel.id).limit(limit)
+    if active_only:
+        statement = statement.where(UserModel.is_active.is_(True))
     if search.strip():
         term = f"%{search.strip()}%"
         statement = statement.where(UserModel.display_name.ilike(term) | UserModel.email.ilike(term))
     return [_human_info(user)
             for user in (await get_db().scalars(statement)).all()]
+
+
+def managed_team_users(manager_user_id: int, *, member_user_id: int | None = None) -> Select[tuple[int]]:
+    """Memberships that delegate management to a human, excluding their own account."""
+    manager = UserModel.__table__.alias("team_manager")
+    statement = (select(TeamUser.user_id).join(Team, Team.id == TeamUser.team_id)
+            .join(manager, manager.c.id == Team.manager_user_id)
+            .where(Team.manager_user_id == manager_user_id, Team.deleted_at.is_(None),
+                   manager.c.is_active.is_(True), TeamUser.user_id != manager_user_id))
+    if member_user_id is not None:
+        statement = statement.where(TeamUser.user_id == member_user_id)
+    return statement
+
+
+async def has_team_manager(user_id: int) -> bool:
+    statement = (select(Team.id).join(TeamUser, TeamUser.team_id == Team.id)
+                 .join(UserModel, UserModel.id == Team.manager_user_id)
+                 .where(TeamUser.user_id == user_id, Team.manager_user_id != user_id,
+                        Team.deleted_at.is_(None), UserModel.is_active.is_(True)))
+    return bool(await get_db().scalar(select(statement.exists())))
 
 
 async def human_memberships() -> dict[int, set[int]]:
@@ -199,7 +260,9 @@ async def team_humans(team_id: int) -> list[HumanInfo]:
 
 async def set_human_membership(team_id: int, user_id: int, present: bool) -> None:
     await lock_resource_sharing()
-    await require_team(team_id)
+    team = await require_team(team_id)
+    if not present and team.manager_user_id == user_id:
+        raise TeamManagerMembershipError("Choose another team manager before removing this member")
     if await get_db().scalar(select(UserModel.id).where(UserModel.id == user_id)) is None:
         raise LookupError("User not found")
     if present:

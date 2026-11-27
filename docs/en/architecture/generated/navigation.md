@@ -120,6 +120,14 @@ The [navigation guide](../../user/navigation.md) explains tabs, the account menu
 - Additional conditions : —
 - Sources : `front/app/index/navigation.ts`
 
+## Monitor → Usage
+
+- Route : `/llm/usage`
+- Purpose : Usage limits and inference credits.
+- Menu visibility (privileges) : —
+- Additional conditions : —
+- Sources : `front/app/llm/navigation.ts`
+
 ## Monitor → Activity
 
 - Route : `/task`

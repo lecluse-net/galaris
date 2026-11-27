@@ -7,6 +7,7 @@ from pydantic import BaseModel, Field, Json
 from sqlalchemy import select
 
 from app.agent import AIResult
+from app.llm import BudgetUnavailable, InferenceBudget
 from app.llm import inference_execution as execution, inference_store as store
 from app.llm.contracts import StructuredInferenceRequest
 from app.llm.facade import (
@@ -51,6 +52,22 @@ def request_for(llm, key, *, mode="tool", retries=2):
         reasoning_effort="low", count_tokens_before_request=False,
         output=inference_output_spec(key, mode=mode), output_retries=retries,
     )
+
+
+@pytest.mark.asyncio
+async def test_exhausted_budget_refuses_inference_before_provider_submission(runtime, output_contract):
+    from decimal import Decimal
+
+    db, llm, requests, _ = runtime
+    user = User(email=f"exhausted-{uuid4()}@example.test", hashed_password="unused")
+    db.add(user)
+    await db.flush()
+    db.add(InferenceBudget(user_id=user.id, weekly_limit=Decimal(0)))
+    await db.commit()
+    with llm_execution_scope(requester_user_id=user.id), pytest.raises(BudgetUnavailable, match="weekly"):
+        await start_inference(request_for(llm, output_contract))
+    assert requests == []
+    assert await db.scalar(select(LLMCall.id)) is None
 
 
 @pytest.mark.asyncio

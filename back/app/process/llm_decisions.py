@@ -6,7 +6,7 @@ from uuid import UUID, uuid5
 
 from pydantic import BaseModel, ConfigDict, JsonValue, StrictBool
 
-from app.llm import LLMCallPurpose, llm_service
+from app.llm import LLMCallPurpose, automatic_budget_blocked, llm_service
 from app.llm.contracts import InferenceProfileSelection, StructuredInferenceRequest
 from app.llm.facade import (
     ChoiceQuestion, DecisionInferenceRequest, DecisionResult, control_inference,
@@ -51,10 +51,13 @@ async def observe_decision(
     run: ProcessRun, occurrence: ProcessNodeRun, node: Node, attempt: ProcessNodeAttempt,
     agent_id: int, fence: Callable[[], Awaitable[ProcessRun | None]],
 ) -> dict[str, Any] | None:
-    identity = uuid5(attempt.id, "simple-llm")
+    saved_identity = occurrence.context.get("llm_inference_id")
+    identity = UUID(saved_identity) if isinstance(saved_identity, str) else uuid5(attempt.id, "simple-llm")
     from .native_engine import local_graph
     graph = local_graph(run, occurrence)
     decision_node = graph.node(node.id).kind == "if"
+    if "llm_inference_id" not in occurrence.context and await automatic_budget_blocked(process_run_id=run.id):
+        return None
     failure_code = "llm_if_failed" if decision_node else "llm_task_failed"
     # Persist ownership before admission in the independent LLM transaction.
     # Cancellation can discover even an admission whose reply was lost.
@@ -121,14 +124,24 @@ async def observe_decision(
     if current is None or current.engine_metadata.get("native", {}).get("cancel_requested"):
         return None
     if inference.status == "prepared":
+        if await automatic_budget_blocked(process_run_id=run.id):
+            return None
         await control_inference(identity, "start", command_id=uuid5(attempt.id, "start-llm"))
         await get_db().commit()
         return None
     if inference.status in {"queued", "running", "pausing", "stopping"}:
         return None
+    result = inference.attempts[-1].result
+    if inference.status == "failed" and result is not None and result.metadata.get("inference_budget"):
+        if await automatic_budget_blocked(process_run_id=run.id):
+            return None
+        replay = await control_inference(identity, "replay", command_id=uuid5(identity, "retry-after-budget"))
+        if replay.replay_id is not None:
+            occurrence.context = {**occurrence.context, "llm_inference_id": str(replay.replay_id)}
+            await get_db().commit()
+        return None
     if inference.status != "completed":
         raise ProcessEngineError(failure_code, f"Activity inference ended with status {inference.status}")
-    result = inference.attempts[-1].result
     if result is None or not result.success:
         raise ProcessEngineError(failure_code, "Activity inference did not return a successful result")
     if not decision_node:
