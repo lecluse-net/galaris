@@ -58,5 +58,9 @@ export const paramsService = {
         const response = await api.put<ParamUpdateResponse>(`/params/${name}`, update)
         invalidateSessionReads('parameters')
         return response
-    }
+    },
+
+    async sendPlatformSmtpTest(recipient: string): Promise<void> {
+        await api.post('/auth/platform-smtp/test', { recipient })
+    },
 }

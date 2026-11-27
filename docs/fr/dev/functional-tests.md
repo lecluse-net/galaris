@@ -478,6 +478,9 @@ imposant ce regroupement propre au Chat est remplacé par cette garantie adminis
 pagination, le total filtré et le refus des filtres sur des appartenances non autorisées.
 `front/browser-tests/user-administration.spec.mjs` exerce la recherche et les trois
 filtres dans **Utilisateurs**, ainsi que la modification des affectations dans la fiche.
+`core/user/tests/test_invitations.py` vérifie le cycle HTTP, le chiffrement du secret SMTP,
+les refus, l’expiration et la connexion après activation. Le scénario utilisateur Playwright
+vérifie aussi le blocage d’un mot de passe faible ou non confirmé et le renvoi après un échec.
 
 `core/authorize/tests/test_domain_authorization.py` exerce les vraies routes avec lecteurs,
 opérateurs, anciens droits seuls et droits voisins : Contacts, indexation, tableau de bord,

@@ -33,6 +33,7 @@ dependencies = [
     "pwdlib~=0.3",                   # password hashing
     "bcrypt~=5.0",                   # pwdlib hashing backend
     "cryptography~=50.0",            # encryption (core/util/encryption)
+    "pyspnego[kerberos]~=0.12",       # SMTP NTLM and Kerberos SASL
     # Real-time frontend transport and HTTP client
     "python-socketio~=5.17",
     "httpx~=0.28",

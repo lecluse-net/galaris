@@ -10,7 +10,7 @@ Browser configuration, Goal configuration and each family of preferences. The ex
 parameter policy is `core.params.access`: every declared key has an explicit owner;
 unknown keys fail closed. DbAdmin verifies this policy before merging parameter data.
 The frontend field policy is generated alongside privilege accessors. `PARAMS_*` now
-controls registration and HTTP rate limits only; it is not an administrative bypass.
+controls registration, platform SMTP settings and HTTP rate limits.
 Internal signing keys remain inaccessible. Composite Goal settings are written through
 the Goal API, preserving validation, global scope and the event contract.
 
@@ -34,6 +34,13 @@ before buttons, typed replies and interrupted delivery can consume an answer. Re
 leaves an unanswered choice pending; it never schedules the old answer to execute after
 rights are restored. HTTP checks use the active role; background recipients use their
 current assignments, independently of the sender's context.
+
+Platform invitations belong to `core.user`. SMTP settings use the system parameter
+policy, with the password encrypted. The account transport is private to the backend.
+Agent email continues through its own Service connections and their authorization policy.
+Invitations address the pending account's current email. Each issuance replaces the
+previous link before contacting the relay. Accepting a valid link sets the initial
+password and activates the account in a single transaction.
 
 Calendar feed management has its own page and rights. Selecting a Calendar connection
 or trigger Process returns scoped metadata, never connection parameters or Process

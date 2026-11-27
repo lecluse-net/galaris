@@ -965,6 +965,13 @@ Quelques distinctions utiles :
 - **Administrer → Utilisateurs & Droits** (`/users`) réunit les comptes, les équipes et les
   rôles. Dans **Utilisateurs**, recherchez un nom ou un e-mail et combinez les filtres
   **Rôle**, **Équipe** et **Statut**. Les affectations se gèrent dans la fiche du compte.
+  Pour créer un compte, saisissez et confirmez son mot de passe ou activez **Envoyer une
+  invitation par e-mail**. Le destinataire dispose de 24 heures pour choisir son mot de
+  passe et activer son compte. Dans la fiche d’un compte en attente, **Renvoyer l’invitation**
+  envoie un nouveau lien et remplace le précédent. Le serveur d’envoi se configure dans
+  **Administrer → Préférences → Système → SMTP de la plateforme**.
+  Choisissez la sécurité de la connexion et l’authentification proposées par votre relais, puis
+  saisissez un destinataire et sélectionnez **Envoyer le test**.
   Dans **Rôles**, sélectionnez un rôle en haut de la page, puis activez ou
   désactivez ses privilèges en cliquant sur leur ligne ou leur interrupteur. Chaque
   changement est enregistré immédiatement. Seule la liste défile, avec les rôles en haut.

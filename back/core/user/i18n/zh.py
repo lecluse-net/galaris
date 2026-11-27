@@ -2,8 +2,23 @@
 
 default = {
     "user_api": {
+        "smtp_test": {
+            "subject": "Galaris SMTP 测试",
+            "body": "这是一封由 Galaris 通过平台 SMTP 服务器发送的测试邮件。",
+            "not_configured": "请先保存平台 SMTP 设置，再发送测试邮件。",
+            "delivery_failed": "SMTP 服务器未确认发送。请检查 SMTP 设置和收件人地址。",
+        },
+        "invitation": {
+            "subject": "您受邀加入 Galaris",
+            "body": "打开此链接设置密码并激活账户：\n\n${url}\n\n链接在 24 小时后过期，且只能使用一次。",
+        },
         "logged_out": "已成功退出登录",
         "errors": {
+            "invitation_pending": "此账户正在等待收件人接受邀请。",
+            "invitation_not_configured": "请先配置平台 SMTP 服务器和有效的应用公开网址。",
+            "invitation_unavailable": "发送邀请需要待激活账户、平台 SMTP 设置和有效的应用公开网址。",
+            "invitation_delivery_failed": "邮件服务器未确认发送。请从用户账户页面重试。",
+            "invitation_invalid": "此邀请无效、已过期或已被使用。",
             "last_administrator": "移除此访问权限前，请保留至少一位处于启用状态的管理员。",
             "protected_admin_role": "无法删除或重命名内置管理员角色，也无法移除其权限。",
             "account_in_use": "此账户仍拥有资源，包括已归档的智能体。请先重新分配这些资源，再删除账户。",

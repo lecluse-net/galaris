@@ -57,6 +57,13 @@ class Params:
     # Administrable operation limits.
     HTTP_RATE_LIMIT_PER_MINUTE = "HTTP_RATE_LIMIT_PER_MINUTE"
     ALLOW_USER_REGISTRATION = "ALLOW_USER_REGISTRATION"
+    PLATFORM_SMTP_HOST = "PLATFORM_SMTP_HOST"
+    PLATFORM_SMTP_PORT = "PLATFORM_SMTP_PORT"
+    PLATFORM_SMTP_SECURITY = "PLATFORM_SMTP_SECURITY"
+    PLATFORM_SMTP_AUTHENTICATION = "PLATFORM_SMTP_AUTHENTICATION"
+    PLATFORM_SMTP_FROM = "PLATFORM_SMTP_FROM"
+    PLATFORM_SMTP_USERNAME = "PLATFORM_SMTP_USERNAME"
+    PLATFORM_SMTP_PASSWORD = "PLATFORM_SMTP_PASSWORD"
     MESSENGER_MAX_INLINE_MB = "MESSENGER_MAX_INLINE_MB"
     PYDANTIC_AI_BINARY_INPUT_MAX_BYTES = "PYDANTIC_AI_BINARY_INPUT_MAX_BYTES"
     LOGFIRE_TOKEN = "LOGFIRE_TOKEN"
@@ -304,6 +311,19 @@ DEFAULT_PARAMS: dict[str, ParamConfig] = {
     Params.GALARIS_AGENT_ID: {"value": None, "kind": "integer"},
     Params.TASK_RUN_POLICIES_MERGED: {"value": None, "kind": "boolean"},
     Params.ALLOW_USER_REGISTRATION: {"value": "false", "runtime_field": "ALLOW_USER_REGISTRATION", "kind": "boolean"},
+    Params.PLATFORM_SMTP_HOST: {"value": "", "runtime_field": "PLATFORM_SMTP_HOST", "kind": "string"},
+    Params.PLATFORM_SMTP_PORT: {"value": "587", "runtime_field": "PLATFORM_SMTP_PORT", "kind": "integer"},
+    Params.PLATFORM_SMTP_SECURITY: {
+        "value": "starttls", "runtime_field": "PLATFORM_SMTP_SECURITY",
+        "kind": "choice", "choices": ("none", "starttls", "tls"),
+    },
+    Params.PLATFORM_SMTP_AUTHENTICATION: {
+        "value": "auto", "runtime_field": "PLATFORM_SMTP_AUTHENTICATION", "kind": "choice",
+        "choices": ("auto", "none", "password", "cram-md5", "gssapi", "ntlm"),
+    },
+    Params.PLATFORM_SMTP_FROM: {"value": "", "runtime_field": "PLATFORM_SMTP_FROM", "kind": "string"},
+    Params.PLATFORM_SMTP_USERNAME: {"value": "", "runtime_field": "PLATFORM_SMTP_USERNAME", "kind": "string"},
+    Params.PLATFORM_SMTP_PASSWORD: {"value": "", "runtime_field": "PLATFORM_SMTP_PASSWORD", "kind": "secret"},
     Params.MESSENGER_MAX_INLINE_MB: {"value": "3.814697265625", "runtime_field": "MESSENGER_MAX_INLINE_MB", "kind": "float"},
     Params.PYDANTIC_AI_BINARY_INPUT_MAX_BYTES: {"value": "20000000", "runtime_field": "PYDANTIC_AI_BINARY_INPUT_MAX_BYTES", "kind": "integer"},
     Params.LOGFIRE_TOKEN: {"value": "", "runtime_field": "LOGFIRE_TOKEN", "kind": "secret"},
@@ -902,6 +922,7 @@ DEFAULT_PARAMS: dict[str, ParamConfig] = {
 # Parameters encrypted at rest. The runtime cache retains plaintext for internal
 # consumers; the administration API exposes only whether a secret is configured.
 SECRET_PARAMS: set[str] = {
+    Params.PLATFORM_SMTP_PASSWORD,
     Params.LOGFIRE_TOKEN,
     Params.HARNESS_MANAGER_SECRET,
     Params.AUTH_SECRET_KEY,

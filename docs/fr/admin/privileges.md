@@ -85,7 +85,7 @@ Pour chaque famille ci-dessous, le droit de modification permet aussi de consult
 
 | Famille de réglages | Consultation | Modification |
 |---|---|---|
-| Système : inscriptions, limitation HTTP | `PARAMS_ACCESS` | `PARAMS_EDIT` |
+| Système : inscriptions, SMTP de la plateforme, limitation HTTP | `PARAMS_ACCESS` | `PARAMS_EDIT` |
 | Langue et localisation | `LANGUAGE_CONFIG_ACCESS` | `LANGUAGE_CONFIG_EDIT` |
 | Messagerie | `MESSAGING_CONFIG_ACCESS` | `MESSAGING_CONFIG_EDIT` |
 | Mémoire et sessions | `MEMORY_CONFIG_ACCESS` | `MEMORY_CONFIG_EDIT` |

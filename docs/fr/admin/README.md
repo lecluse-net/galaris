@@ -1099,6 +1099,28 @@ du moteur par défaut et l'assistant de connexion actuel restent orientés n8n.
 
 ## 8. Comptes, rôles et privilèges
 
+### Envoi des invitations
+
+Dans **Administrer → Préférences → Système → SMTP de la plateforme**, renseignez le
+serveur, le port et l’adresse d’expédition. **SSL/TLS** chiffre la connexion dès
+l’ouverture. **STARTTLS** établit le chiffrement après la connexion initiale.
+**Aucune** ouvre une connexion sans chiffrement.
+
+Choisissez la méthode d’authentification annoncée par le serveur. **Mot de passe normal**
+utilise PLAIN ou LOGIN, **Mot de passe chiffré** utilise CRAM-MD5 et **NTLM** utilise
+l’identifiant et le mot de passe. **Kerberos / GSSAPI** utilise le ticket Kerberos
+accessible au compte du backend. **Pas d’authentification** ignore les identifiants
+enregistrés. **Automatique** conserve le comportement des configurations existantes.
+Le mot de passe SMTP est chiffré en base et masqué dans les réponses de l’API.
+
+Après avoir enregistré les réglages, saisissez une adresse dans **E-mail du destinataire**
+et cliquez sur **Envoyer le test**. L’interface indique si le relais a accepté le message.
+Les liens utilisent l’URL publique `APP_HOST`, qui doit être en HTTPS en production.
+Ce SMTP sert aux invitations. Les agents envoient leurs e-mails via leurs propres
+connexions de Service.
+
+### Rôles et privilèges
+
 Galaris applique un RBAC à trois niveaux :
 
 1. un privilège protège une opération ou une ressource ;

@@ -2,8 +2,23 @@
 
 default = {
     "user_api": {
+        "smtp_test": {
+            "subject": "Test SMTP de Galaris",
+            "body": "Voici un e-mail de test envoyé par Galaris via le serveur SMTP de la plateforme.",
+            "not_configured": "Enregistrez les réglages SMTP de la plateforme avant de lancer le test.",
+            "delivery_failed": "Le serveur SMTP n’a pas confirmé l’envoi. Vérifiez les réglages SMTP et l’adresse du destinataire.",
+        },
+        "invitation": {
+            "subject": "Vous êtes invité à rejoindre Galaris",
+            "body": "Ouvrez ce lien pour choisir votre mot de passe et activer votre compte :\n\n${url}\n\nCe lien expire après 24 heures et ne peut être utilisé qu’une fois.",
+        },
         "logged_out": "Déconnexion réussie",
         "errors": {
+            "invitation_pending": "Ce compte est en attente d’acceptation par le destinataire de l’invitation.",
+            "invitation_not_configured": "Configurez le serveur SMTP de la plateforme et une URL publique valide avant d’envoyer des invitations.",
+            "invitation_unavailable": "L’envoi nécessite un compte en attente, les réglages SMTP de la plateforme et une URL publique valide.",
+            "invitation_delivery_failed": "Le serveur SMTP n’a pas confirmé l’envoi. Réessayez depuis la fiche utilisateur.",
+            "invitation_invalid": "Cette invitation est invalide, a expiré ou a déjà été utilisée.",
             "last_administrator": "Conservez au moins un administrateur actif avant de retirer cet accès.",
             "protected_admin_role": "Le rôle administrateur intégré et ses privilèges ne peuvent pas être supprimés ou renommés.",
             "account_in_use": "Ce compte possède encore des ressources, y compris des agents archivés. Réaffectez-les avant de le supprimer.",

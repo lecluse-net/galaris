@@ -16,7 +16,7 @@ RUN printf '%s\n' "$GALARIS_BUILD_VERSION" > /opt/galaris-version
 
 # Apply available security updates to the pinned base before installing packages.
 RUN apt-get update && apt-get upgrade -y && apt-get install -y --no-install-recommends \
-    python3.14 python3.14-venv python-is-python3 ca-certificates curl \
+    python3.14 python3.14-venv python-is-python3 ca-certificates curl libgssapi-krb5-2 \
     tzdata \
     && rm -rf /var/lib/apt/lists/*
 
@@ -61,6 +61,8 @@ FROM base AS build-tools
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     libpq-dev \
+    libkrb5-dev \
+    python3.14-dev \
     && rm -rf /var/lib/apt/lists/*
 
 # -----------------------------

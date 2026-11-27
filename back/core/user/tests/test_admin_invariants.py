@@ -11,7 +11,7 @@ from core.user.schemas import UserCreate, UserUpdate
 
 @pytest.mark.asyncio
 async def test_administrative_creation_keeps_language(db):
-    user = await user_service.create(UserCreate(email="language@example.com", password="password-123", language="zh"))
+    user = await user_service.create(UserCreate(email="language@example.com", password="Northern-maple-37", language="zh"))
     await db.refresh(user)
     assert user.language == "zh"
 
@@ -135,13 +135,13 @@ async def test_owned_account_delete_returns_localized_conflict_over_http(client)
     from app.agent.models import Agent, Title
     from core.database import get_db_session
 
-    credentials = {"email": "french-admin@example.com", "password": "password-123"}
+    credentials = {"email": "french-admin@example.com", "password": "Northern-maple-37"}
     created = await client.post("/api/auth/register", json={**credentials, "language": "fr"})
     assert created.status_code == 201
     login = await client.post("/api/auth/login-json", json=credentials)
     headers = {"Authorization": f"Bearer {login.json()['access_token']}"}
     account = await client.post("/api/auth/users", headers=headers, json={
-        "email": "resource-owner@example.com", "password": "password-123",
+        "email": "resource-owner@example.com", "password": "Northern-maple-37",
     })
     assert account.status_code == 201
     owner_id = account.json()["id"]
@@ -198,7 +198,7 @@ async def test_last_active_admin_guard_covers_users_and_assignments(db):
 
 @pytest.mark.asyncio
 async def test_admin_conflicts_are_explained_over_http(client):
-    credentials = {"email": "admin@example.com", "password": "password-123"}
+    credentials = {"email": "admin@example.com", "password": "Northern-maple-37"}
     created = await client.post("/api/auth/register", json=credentials)
     assert created.status_code == 201
     login = await client.post("/api/auth/login-json", json=credentials)
@@ -233,7 +233,7 @@ async def test_user_pagination_and_search_reach_past_500(db):
 
 @pytest.mark.asyncio
 async def test_privilege_management_requires_authorization_and_preserves_unique_codes(client):
-    credentials = {"email": "privilege-admin@example.com", "password": "password-123"}
+    credentials = {"email": "privilege-admin@example.com", "password": "Northern-maple-37"}
     assert (await client.post("/api/auth/register", json=credentials)).status_code == 201
     login = await client.post("/api/auth/login-json", json=credentials)
     headers = {"Authorization": f"Bearer {login.json()['access_token']}"}
@@ -246,7 +246,7 @@ async def test_privilege_management_requires_authorization_and_preserves_unique_
     assert listed.status_code == 200
     assert [row["id"] for row in listed.json() if row["code"] == privilege["code"]] == [created.json()["id"]]
 
-    ordinary = {"email": "privilege-reader@example.com", "password": "password-123"}
+    ordinary = {"email": "privilege-reader@example.com", "password": "Northern-maple-37"}
     assert (await client.post("/api/auth/users", headers=headers, json=ordinary)).status_code == 201
     login = await client.post("/api/auth/login-json", json=ordinary)
     limited = {"Authorization": f"Bearer {login.json()['access_token']}"}

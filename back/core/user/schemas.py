@@ -1,4 +1,5 @@
 from datetime import datetime
+import re
 from typing import Annotated, Literal
 
 from pydantic import AfterValidator, BaseModel, ConfigDict, EmailStr, Field, PositiveInt, model_validator
@@ -7,6 +8,15 @@ from pydantic import AfterValidator, BaseModel, ConfigDict, EmailStr, Field, Pos
 def _validate_bcrypt_password(value: str) -> str:
     if len(value.encode("utf-8")) > 72:
         raise ValueError("Password must not exceed 72 UTF-8 bytes")
+    compact = "".join(char for char in value.lower() if char.isalnum())
+    if (
+        len(set(value.strip())) < 4
+        or re.fullmatch(r"(.{1,4})\1+", value.lower(), flags=re.DOTALL)
+        or re.fullmatch(r"(?:password|passw0rd|motdepasse|qwerty|azerty|letmein|admin)[0-9]*", compact)
+        or (compact and compact in "012345678901234567890123456789")
+        or (compact and compact in "abcdefghijklmnopqrstuvwxyz")
+    ):
+        raise ValueError("Choose a less predictable password")
     return value
 
 
@@ -26,7 +36,10 @@ class UserCreate(UserBase):
     is_active: bool = True
 
 
-class UserAdminCreate(UserCreate):
+class UserAdminCreate(UserBase):
+    password: PasswordValue | None = None
+    invite: bool = False
+    is_active: bool = True
     settings: dict[str, dict[str, object]] = Field(default_factory=dict[str, dict[str, object]])
     role_ids: list[PositiveInt] = Field(default_factory=list[int])
     default_role_id: PositiveInt | None = None
@@ -34,6 +47,8 @@ class UserAdminCreate(UserCreate):
 
     @model_validator(mode="after")
     def validate_default_role(self) -> "UserAdminCreate":
+        if self.invite == (self.password is not None):
+            raise ValueError("Provide either a password or an invitation")
         if self.default_role_id is not None and self.default_role_id not in self.role_ids:
             raise ValueError("The default role must be one of the assigned roles")
         return self
@@ -73,10 +88,31 @@ class User(UserBase):
     document_open_mode: Literal["split", "dialog"] = "split"
     document_library_mode: Literal["folders", "topics", "agents"] = "folders"
     is_active: bool
+    invitation_pending: bool = False
     avatar_url: str | None
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class UserAdminCreated(User):
+    invitation_sent: bool | None = None
+
+
+class PlatformSmtpTest(BaseModel):
+    recipient: EmailStr
+
+
+class UserInvitationAcceptance(BaseModel):
+    token: Annotated[str, Field(pattern=r"^[A-Za-z0-9_-]{43}$")]
+    password: PasswordValue
+    password_confirmation: Annotated[str, Field(max_length=72)]
+
+    @model_validator(mode="after")
+    def confirm_password(self) -> "UserInvitationAcceptance":
+        if self.password != self.password_confirmation:
+            raise ValueError("Passwords do not match")
+        return self
 
 
 class UserListRole(BaseModel):

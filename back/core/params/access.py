@@ -25,7 +25,7 @@ PARAMETER_DOMAINS: dict[str, tuple[str, str]] = {
 def parameter_domain(name: str) -> str:
     if name in INTERNAL_PARAMS:
         return "internal"
-    if name in {"ALLOW_USER_REGISTRATION", "HTTP_RATE_LIMIT_PER_MINUTE"}:
+    if name in {"ALLOW_USER_REGISTRATION", "HTTP_RATE_LIMIT_PER_MINUTE"} or name.startswith("PLATFORM_SMTP_"):
         return "system"
     if name in {"DEFAULT_LANGUAGE", "LOCALIZATION"}:
         return "language"

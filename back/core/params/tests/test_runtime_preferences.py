@@ -92,6 +92,8 @@ async def test_internal_signing_secret_is_absent_and_immutable_even_for_admin(cl
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize('name,value,invalid', [
+    ('PLATFORM_SMTP_SECURITY', 'none', ['opportunistic']),
+    ('PLATFORM_SMTP_AUTHENTICATION', 'cram-md5', ['unsupported']),
     ('DEFAULT_LANGUAGE', '', ['de', 'invalid']),
     ('DEFAULT_LANGUAGE', 'zh', ['de', 'invalid']),
     ('LOCALIZATION', '', []),

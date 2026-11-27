@@ -4,7 +4,7 @@ from .consts import Params
 from .models import Param
 from .prompt_defaults import prompt_default
 from .schemas import Param as ParamSchema, ParamUpdate
-from .runtime_settings import RuntimeSettings, runtime_settings
+from .runtime_settings import PlatformSmtpAuthentication, PlatformSmtpSecurity, RuntimeSettings, runtime_settings
 from .web_push import VapidKeyPair, web_push_keys
 from .middleware import RuntimeTrustedHostMiddleware
 from .access import PARAMETER_DOMAINS, generate_parameter_access_file
@@ -18,6 +18,8 @@ __all__ = [
     "ParamUpdate",
     "prompt_default",
     "RuntimeSettings",
+    "PlatformSmtpAuthentication",
+    "PlatformSmtpSecurity",
     "runtime_settings",
     "VapidKeyPair",
     "web_push_keys",

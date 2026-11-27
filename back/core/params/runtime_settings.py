@@ -11,7 +11,7 @@ from typing import Literal, cast
 from urllib.parse import urlsplit
 
 from cryptography.fernet import Fernet
-from pydantic import BaseModel, ConfigDict, Field, ValidationInfo, field_validator
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, TypeAdapter, ValidationInfo, field_validator
 
 from core.settings import settings as bootstrap_settings
 
@@ -25,6 +25,9 @@ SUPPORTED_MESSENGER_CHANNELS = (
     "one_bot",
 )
 
+PlatformSmtpSecurity = Literal["none", "starttls", "tls"]
+PlatformSmtpAuthentication = Literal["auto", "none", "password", "cram-md5", "gssapi", "ntlm"]
+
 
 class RuntimeSettings(BaseModel):
     """Validated application settings whose durable source is ``params``."""
@@ -33,6 +36,19 @@ class RuntimeSettings(BaseModel):
 
     LOGFIRE_TOKEN: str = Field(default="", repr=False)
     ALLOW_USER_REGISTRATION: bool = False
+    PLATFORM_SMTP_HOST: str = ""
+    PLATFORM_SMTP_PORT: int = Field(default=587, ge=1, le=65535)
+    PLATFORM_SMTP_SECURITY: PlatformSmtpSecurity = "starttls"
+    PLATFORM_SMTP_AUTHENTICATION: PlatformSmtpAuthentication = "auto"
+    PLATFORM_SMTP_FROM: str = ""
+    PLATFORM_SMTP_USERNAME: str = ""
+    PLATFORM_SMTP_PASSWORD: str = Field(default="", repr=False)
+
+    @field_validator("PLATFORM_SMTP_FROM")
+    @classmethod
+    def validate_platform_smtp_sender(cls, value: str) -> str:
+        value = value.strip()
+        return TypeAdapter(EmailStr).validate_python(value) if value else ""
 
     @field_validator("LOGFIRE_TOKEN")
     @classmethod

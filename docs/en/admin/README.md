@@ -1066,6 +1066,28 @@ and current connection assistant remain oriented toward n8n.
 
 ## 8. Accounts, Roles, and Privileges
 
+### Sending invitations
+
+Under **Administer → Preferences → System → Platform SMTP**, enter the server, port,
+and sender address. **SSL/TLS** encrypts the connection from the start. **STARTTLS**
+establishes encryption after the initial connection. **None** opens an unencrypted connection.
+
+Choose the authentication method offered by the server. **Normal password** uses
+PLAIN or LOGIN, **Encrypted password** uses CRAM-MD5, and **NTLM** uses the username
+and password. **Kerberos / GSSAPI** uses the Kerberos ticket available to the backend
+account. **No authentication** ignores saved credentials. **Automatic** preserves
+the behavior of existing configurations. The SMTP password is encrypted at rest and
+masked in API responses.
+
+Invitation links use the public `APP_HOST` URL, which must use HTTPS
+in production. This SMTP server handles invitations. Agents send email through their
+own Service connections.
+
+After saving the settings, enter a **Recipient email** and select **Send test email**.
+The interface reports whether the relay accepted the message.
+
+### Roles and privileges
+
 Galaris applies RBAC at three levels:
 
 1. a privilege protects an operation or resource;

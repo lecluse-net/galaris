@@ -6,6 +6,43 @@ export const systemFields: SettingField[] = [
     { name: 'LOGFIRE_TOKEN', labelKey: 'observabilitySettings.token', descriptionKey: 'observabilitySettings.tokenHint', input: 'secret' },
 ]
 
+export const platformSmtpServerFields: SettingField[] = [
+    { name: 'PLATFORM_SMTP_HOST', labelKey: 'platformSmtp.host' },
+    { name: 'PLATFORM_SMTP_PORT', labelKey: 'platformSmtp.port', input: 'integer', min: 1, max: 65535 },
+    { name: 'PLATFORM_SMTP_FROM', labelKey: 'platformSmtp.sender' },
+]
+
+export const platformSmtpSecurityFields: SettingField[] = [
+    {
+        name: 'PLATFORM_SMTP_SECURITY',
+        labelKey: 'platformSmtp.security',
+        input: 'select',
+        options: [
+            { value: 'none', labelKey: 'platformSmtp.securityNone' },
+            { value: 'starttls', labelKey: 'platformSmtp.starttls' },
+            { value: 'tls', labelKey: 'platformSmtp.tls' },
+        ],
+    },
+    {
+        name: 'PLATFORM_SMTP_AUTHENTICATION',
+        labelKey: 'platformSmtp.authentication',
+        input: 'select',
+        options: [
+            { value: 'auto', labelKey: 'platformSmtp.authAuto' },
+            { value: 'none', labelKey: 'platformSmtp.authNone' },
+            { value: 'password', labelKey: 'platformSmtp.authPassword' },
+            { value: 'cram-md5', labelKey: 'platformSmtp.authCramMd5' },
+            { value: 'gssapi', labelKey: 'platformSmtp.authGssapi' },
+            { value: 'ntlm', labelKey: 'platformSmtp.authNtlm' },
+        ],
+    },
+]
+
+export const platformSmtpCredentialFields: SettingField[] = [
+    { name: 'PLATFORM_SMTP_USERNAME', labelKey: 'platformSmtp.username' },
+    { name: 'PLATFORM_SMTP_PASSWORD', labelKey: 'platformSmtp.password', input: 'secret' },
+]
+
 export const memoryStorageFields: SettingField[] = [
     { name: 'MEMORY_RESOURCE_MAX_BYTES', labelKey: 'storageSettings.memoryResourceMaxBytes', input: 'integer', sizeUnit: 'bytes', min: 1024 },
 ]

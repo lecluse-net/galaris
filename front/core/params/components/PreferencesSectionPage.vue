@@ -15,11 +15,14 @@
         </div>
 
         <div v-else-if="!parameterRequests.fetchParams?.error || paramsStore.params.length" class="params-form" :class="{ 'params-form--harnesses': section === 'harnesses' }">
-            <q-card flat :bordered="section !== 'harnesses'" class="settings-content">
+            <template v-if="section === 'system'">
+                <SettingsBlock :title="t('systemSettings.general')" icon="settings">
+                    <SettingsFields :fields="systemFields" />
+                </SettingsBlock>
+                <PlatformSmtpSettings :can-test="canEdit" />
+            </template>
+            <q-card v-else flat :bordered="section !== 'harnesses'" class="settings-content">
                 <q-tab-panels :model-value="section" class="settings-panels">
-                    <q-tab-panel name="system" class="settings-panel">
-                        <SettingsFields :fields="systemFields" />
-                    </q-tab-panel>
                     <q-tab-panel name="language" class="settings-panel">
                         <div class="text-h6 text-primary q-mb-sm">{{ t('languageSettings.title') }}</div>
                         <div class="text-body2 text-grey-7 q-mb-lg">{{ t('languageSettings.subtitle') }}</div>
@@ -198,6 +201,7 @@ import {
 import { useParamsStore } from '../stores/paramsStore'
 import { parameterReadPrivileges, sectionPrivileges } from '../access'
 import BridgeSettingsPanel from './BridgeSettingsPanel.vue'
+import PlatformSmtpSettings from './PlatformSmtpSettings.vue'
 import PreferencesMenuGrid from './PreferencesMenuGrid.vue'
 import SettingsFields from './SettingsFields.vue'
 import SettingsBlock from './SettingsBlock.vue'

@@ -888,7 +888,13 @@ Useful distinctions:
   privileges are still required in the web application.
 - **Administer → Users & Permissions** (`/users`) groups accounts, teams and roles.
   On **Users**, search by name or email and combine the **Role**, **Team** and **Status**
-  filters. Manage assignments in the account editor. On the
+  filters. Manage assignments in the account editor. To create an account, enter and
+  confirm its password or enable **Send an invitation by email**. Recipients have
+  24 hours to choose their password and activate the account. In a pending account,
+  **Resend invitation** sends a new link and replaces the previous one. Configure
+  the mail server in **Administer → Preferences → System → Platform SMTP**.
+  Choose the connection security and authentication offered by your relay, then enter a
+  recipient and select **Send test email**. On the
   **Roles** tab, select a role at the top of the page and click a privilege row or its
   switch to change it. Each change is saved immediately. The role buttons stay visible
   while the list scrolls. The **Privileges** tab for organizing

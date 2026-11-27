@@ -173,6 +173,7 @@ function isAuthenticationRequest(url?: string): boolean {
         '/auth/login',
         '/auth/login-json',
         '/auth/register',
+        '/auth/invitations/accept',
         '/auth/refresh',
         '/auth/logout'
     ].some(path => url.includes(path))

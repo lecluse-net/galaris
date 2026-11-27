@@ -14,8 +14,11 @@ from core.database import get_db
 from core.i18n import render_prompt, tr
 from core.rate_limit import rate_limit
 from .schemas import (
+    PlatformSmtpTest,
     UserAdminCreate,
+    UserAdminCreated,
     UserAdminUpdate,
+    UserInvitationAcceptance,
     UserLogin,
     UserListEntry,
     UserRegistration,
@@ -35,6 +38,8 @@ from core.authorize import AdministratorConflictError, Privileges, check_privile
 from core.authorize.context import role_id_ctx
 from . import user_service
 from . import help_service
+from . import invitation_service
+from . import platform_mail
 from .models import User as UserModel
 from . import refresh_session_service
 from . import token_service
@@ -582,11 +587,12 @@ async def list_users(
 
 
 @router.post(
-    "/users", response_model=UserSchema, status_code=status.HTTP_201_CREATED,
+    "/users", response_model=UserAdminCreated, response_model_exclude_unset=True,
+    status_code=status.HTTP_201_CREATED,
     dependencies=[Depends(require_web_session)],
 )
 @authorize(privileges=Privileges.CREATE_USER)
-async def create_user_endpoint(user: UserAdminCreate) -> UserModel:
+async def create_user_endpoint(user: UserAdminCreate) -> UserAdminCreated:
     actor = await user_service.get_current_user()
     required_privileges: list[str] = []
     if user.settings:
@@ -601,14 +607,57 @@ async def create_user_endpoint(user: UserAdminCreate) -> UserModel:
                 await tr("authorize_api.errors.missing_privilege"), privileges=[privilege],
             ))
     try:
-        return await user_service.create(
+        if user.invite:
+            invitation_service.invitation_mail_configuration()
+        created = await user_service.create(
             user, role_ids=user.role_ids, default_role_id=user.default_role_id, team_ids=user.team_ids,
             settings=user.settings,
         )
+    except invitation_service.InvitationUnavailableError:
+        raise HTTPException(status_code=503, detail=await tr("user_api.errors.invitation_not_configured")) from None
     except LookupError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
+    result = UserAdminCreated.model_validate(created)
+    if user.invite:
+        try:
+            result.invitation_sent = await invitation_service.send_invitation(created.id)
+        except (invitation_service.InvitationDeliveryError, invitation_service.InvitationUnavailableError):
+            result.invitation_sent = False
+    return result
+
+
+@router.post("/users/{user_id}/invitation", status_code=status.HTTP_204_NO_CONTENT, dependencies=[Depends(require_web_session)])
+@authorize(privileges=Privileges.UPDATE_USER)
+async def resend_user_invitation(user_id: int) -> None:
+    try:
+        sent = await invitation_service.send_invitation(user_id)
+    except invitation_service.InvitationUnavailableError:
+        raise HTTPException(status_code=409, detail=await tr("user_api.errors.invitation_unavailable")) from None
+    except invitation_service.InvitationDeliveryError:
+        raise HTTPException(status_code=502, detail=await tr("user_api.errors.invitation_delivery_failed")) from None
+    if not sent:
+        raise HTTPException(status_code=404, detail=await tr("user_api.errors.user_not_found"))
+
+
+@router.post("/invitations/accept", status_code=status.HTTP_204_NO_CONTENT)
+@rate_limit("10/minute")
+@public(reason="Redeem a single-use email invitation for a pending account")
+async def accept_user_invitation(data: UserInvitationAcceptance, request: Request) -> None:
+    if not await invitation_service.accept_invitation(data.token, data.password):
+        raise HTTPException(status_code=400, detail=await tr("user_api.errors.invitation_invalid"))
+
+
+@router.post("/platform-smtp/test", status_code=status.HTTP_204_NO_CONTENT, dependencies=[Depends(require_web_session)])
+@authorize(privileges=Privileges.PARAMS_EDIT)
+async def send_platform_smtp_test(data: PlatformSmtpTest) -> None:
+    try:
+        await platform_mail.send_platform_smtp_test(data.recipient)
+    except platform_mail.PlatformSmtpNotConfiguredError:
+        raise HTTPException(status_code=409, detail=await tr("user_api.smtp_test.not_configured")) from None
+    except platform_mail.PlatformSmtpDeliveryError:
+        raise HTTPException(status_code=502, detail=await tr("user_api.smtp_test.delivery_failed")) from None
 
 
 @router.get("/users/{user_id}", response_model=UserSchema)
@@ -630,7 +679,7 @@ async def update_user_endpoint(user_id: int, user_update: UserAdminUpdate):
         if not user:
             raise HTTPException(status_code=404, detail=await tr("user_api.errors.user_not_found"))
         return user
-    except AdministratorConflictError as exc:
+    except (AdministratorConflictError, user_service.PendingInvitationError) as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))

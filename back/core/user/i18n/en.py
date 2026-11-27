@@ -2,8 +2,23 @@
 
 default = {
     "user_api": {
+        "smtp_test": {
+            "subject": "Galaris SMTP test",
+            "body": "This test email was sent by Galaris through the platform SMTP server.",
+            "not_configured": "Save the platform SMTP settings before sending a test email.",
+            "delivery_failed": "The SMTP server did not confirm submission. Check the SMTP settings and recipient address.",
+        },
+        "invitation": {
+            "subject": "You’re invited to Galaris",
+            "body": "Open this link to choose your password and activate your account:\n\n${url}\n\nThe link expires after 24 hours and can only be used once.",
+        },
         "logged_out": "Logged out successfully",
         "errors": {
+            "invitation_pending": "This account is waiting for the recipient to accept the invitation.",
+            "invitation_not_configured": "Configure the platform SMTP server and a valid public application URL before sending invitations.",
+            "invitation_unavailable": "An invitation requires a pending account, platform SMTP settings and a valid public application URL.",
+            "invitation_delivery_failed": "The mail server could not accept the invitation. Try sending it again from the user’s account.",
+            "invitation_invalid": "This invitation is invalid, has expired, or has already been used.",
             "last_administrator": "Keep at least one active administrator before removing this access.",
             "protected_admin_role": "The built-in administrator role and its privileges cannot be removed or renamed.",
             "account_in_use": "This account still owns resources, including archived agents. Reassign them before deleting it.",

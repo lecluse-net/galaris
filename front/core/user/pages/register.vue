@@ -34,53 +34,7 @@
             </template>
           </q-input>
 
-          <q-input
-            v-model="password"
-            :label="$t('auth.password')"
-            :type="isPwd ? 'password' : 'text'"
-            outlined
-            dense
-            maxlength="72"
-            :rules="[
-              val => !!val || $t('auth.passwordRequired'),
-              val => val.length >= 12 || $t('auth.passwordMinChars')
-            ]"
-          >
-            <template v-slot:prepend>
-              <q-icon name="lock" />
-            </template>
-            <template v-slot:append>
-              <q-icon
-                :name="isPwd ? 'visibility_off' : 'visibility'"
-                class="cursor-pointer"
-                @click="isPwd = !isPwd"
-              />
-            </template>
-          </q-input>
-
-          <q-input
-            v-model="confirmPassword"
-            :label="$t('auth.confirmPassword')"
-            :type="isConfirmPwd ? 'password' : 'text'"
-            outlined
-            dense
-            maxlength="72"
-            :rules="[
-              val => !!val || $t('auth.confirmRequired'),
-              val => val === password || $t('auth.passwordMismatch')
-            ]"
-          >
-            <template v-slot:prepend>
-              <q-icon name="lock" />
-            </template>
-            <template v-slot:append>
-              <q-icon
-                :name="isConfirmPwd ? 'visibility_off' : 'visibility'"
-                class="cursor-pointer"
-                @click="isConfirmPwd = !isConfirmPwd"
-              />
-            </template>
-          </q-input>
+          <PasswordFields v-model="password" stacked />
 
           <div v-if="error" class="text-negative q-mt-md">
             {{ error }}
@@ -117,6 +71,7 @@ import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '../stores/authStore'
 import { settings } from '../../settings'
 import { useRegistrationStatus } from '../useRegistrationStatus'
+import PasswordFields from '../components/PasswordFields.vue'
 
 const router = useRouter()
 const $q = useQuasar()
@@ -126,9 +81,6 @@ const appLabel = settings.APP_LABEL
 
 const email = ref('')
 const password = ref('')
-const confirmPassword = ref('')
-const isPwd = ref(true)
-const isConfirmPwd = ref(true)
 const loading = ref(false)
 const error = ref('')
 const { registrationOpen, checkingRegistration, registrationStatusError, checkRegistration } = useRegistrationStatus()

@@ -18,6 +18,7 @@ export interface User {
     email: string
     display_name: string | null
     is_active: boolean
+    invitation_pending?: boolean
     language: string | null
     document_open_mode: DocumentOpenMode
     document_library_mode: DocumentLibraryMode
@@ -47,7 +48,13 @@ export interface UserAccessDraft {
 }
 
 type UserAdminSettings = { settings?: Record<string, object> }
-export type UserAdminCreate = UserRegistration & { is_active?: boolean } & Partial<UserAccessDraft> & UserAdminSettings
+export type UserAdminCreate = Omit<UserRegistration, 'password'> & {
+    password?: string
+    is_active?: boolean
+    invite?: boolean
+} & Partial<UserAccessDraft> & UserAdminSettings
+
+type UserAdminCreated = User & { invitation_sent?: boolean }
 
 export interface UserUpdate {
     email?: string
@@ -245,9 +252,17 @@ export const authService = {
         return response.data
     },
 
-    async createUser(data: UserAdminCreate): Promise<User> {
-        const response: AxiosResponse<User> = await api.post('/auth/users', data)
+    async createUser(data: UserAdminCreate): Promise<UserAdminCreated> {
+        const response: AxiosResponse<UserAdminCreated> = await api.post('/auth/users', data)
         return response.data
+    },
+
+    async resendInvitation(id: number): Promise<void> {
+        await api.post(`/auth/users/${id}/invitation`)
+    },
+
+    async acceptInvitation(token: string, password: string, passwordConfirmation: string): Promise<void> {
+        await api.post('/auth/invitations/accept', { token, password, password_confirmation: passwordConfirmation })
     },
 
     async updateUserAdmin(id: number, data: UserUpdate): Promise<User> {

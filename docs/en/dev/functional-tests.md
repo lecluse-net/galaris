@@ -443,6 +443,9 @@ former expectation of a separate Chat grouping with administrator-owned organiza
 filtered totals and authorization for membership filters.
 `front/browser-tests/user-administration.spec.mjs` exercises text search and all three
 filters on **Users**, with assignment editing in the account form.
+`core/user/tests/test_invitations.py` covers the HTTP journey, SMTP secret encryption,
+authorization, expiry and login after activation. The Playwright user journey also checks
+that weak or mismatched passwords block submission and failed invitation emails can be retried.
 
 `core/authorize/tests/test_domain_authorization.py` exercises real routes with readers,
 operators, former broad grants alone and neighbouring grants: Contacts, indexing, Dashboard,

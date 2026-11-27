@@ -11,6 +11,7 @@ Usage:
 from contextvars import ContextVar
 from contextlib import contextmanager
 from collections.abc import Generator, Sequence
+from secrets import token_urlsafe
 from sqlalchemy import select, func, delete as sqlalchemy_delete, text
 from sqlalchemy.sql.elements import ColumnElement
 from sqlalchemy.orm import load_only
@@ -27,7 +28,7 @@ from core.i18n import render_prompt, tr
 from core.params import runtime_settings
 from .models import User
 from .lifecycle import apply_admin_user_settings, project_user_activation
-from .schemas import UserCreate, UserListEntry, UserListRole, UserListTeam, UserRegistration, UserUpdate
+from .schemas import UserAdminCreate, UserCreate, UserListEntry, UserListRole, UserListTeam, UserRegistration, UserUpdate
 
 
 class RegistrationClosedError(Exception):
@@ -36,6 +37,10 @@ class RegistrationClosedError(Exception):
 
 class UserConflictError(ValueError):
     """An account cannot be removed while other resources still reference it."""
+
+
+class PendingInvitationError(ValueError):
+    """An invited user must accept their invitation before signing in."""
 
 
 class InvalidAvatarTypeError(ValueError):
@@ -215,7 +220,7 @@ async def get_users(
     if public_only:
         query = query.options(load_only(
             User.id, User.email, User.display_name, User.language, User.document_open_mode, User.document_library_mode,
-            User.is_active, User.avatar_key, User.avatar_mime_type, User.created_at,
+            User.is_active, User.invitation_pending, User.avatar_key, User.avatar_mime_type, User.created_at,
             raiseload=True,
         ))
     if active_only:
@@ -338,7 +343,7 @@ async def register_public_user(user_data: UserRegistration) -> User:
 
 
 async def create(
-    user_data: UserCreate, *,
+    user_data: UserCreate | UserAdminCreate, *,
     role_ids: Sequence[int] = (),
     default_role_id: int | None = None,
     team_ids: Sequence[int] = (),
@@ -357,12 +362,14 @@ async def create(
             )
         )
 
-    hashed_password = await run_in_threadpool(encrypt_password, user_data.password)
+    invited = isinstance(user_data, UserAdminCreate) and user_data.invite
+    hashed_password = await run_in_threadpool(encrypt_password, user_data.password or token_urlsafe(32))
     new_user = User(
         email=user_data.email,
         hashed_password=hashed_password,
         display_name=user_data.display_name,
-        is_active=user_data.is_active,
+        is_active=user_data.is_active and not invited,
+        invitation_pending=invited,
         language=user_data.language,
     )
 
@@ -414,11 +421,14 @@ async def update(user_id: int, user_update: UserUpdate, *, settings: dict[str, d
     query = select(User).where(User.id == user_id)
     if user_update.is_active is not None:
         await lock_resource_sharing()
+    if user_update.is_active is not None or user_update.email is not None or hashed_password is not None:
         query = query.with_for_update().execution_options(populate_existing=True)
     result = await db.execute(query)
     user = result.scalar_one_or_none()
     if not user:
         return None
+    if user.invitation_pending and (user_update.is_active is True or hashed_password is not None):
+        raise PendingInvitationError(await tr("user_api.errors.invitation_pending"))
 
     if user_update.email and user_update.email != user.email:
         existing = await get_user_by_email(user_update.email)
@@ -430,6 +440,8 @@ async def update(user_id: int, user_update: UserUpdate, *, settings: dict[str, d
                 )
             )
         user.email = user_update.email
+        user.invitation_digest = None
+        user.invitation_expires_at = None
 
     if user_update.display_name is not None:
         user.display_name = user_update.display_name

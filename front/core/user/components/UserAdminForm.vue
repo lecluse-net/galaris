@@ -20,34 +20,30 @@
         />
 
         <q-input
-          v-model="form.password"
-          :label="$t('auth.password')"
-          :type="showPassword ? 'text' : 'password'"
-          outlined
-          dense
-          hide-bottom-space
-          maxlength="72"
-          :rules="isEdit ? [val => !val || val.length >= 12 || $t('userAdmin.passwordMin')] : [val => !!val || $t('auth.passwordRequired'), val => val.length >= 12 || $t('userAdmin.passwordMin')]"
-          :hint="isEdit ? $t('userAdmin.passwordKeep') : undefined"
-        >
-          <template #append>
-            <q-btn
-              flat round dense color="primary"
-              :icon="showPassword ? 'visibility_off' : 'visibility'"
-              :aria-label="$t(showPassword ? 'userAdmin.hidePassword' : 'userAdmin.showPassword')"
-              @click="showPassword = !showPassword"
-            />
-          </template>
-        </q-input>
-
-        <q-input
           v-model="form.display_name"
           :label="$t('userAdmin.displayName')"
           outlined
           dense
         />
 
+        <q-toggle v-if="!isEdit" v-model="invite" class="user-admin-wide"
+          color="primary" :label="$t('userInvitation.send')" />
+
+        <PasswordFields v-if="!invite && !pendingInvitation"
+          v-model="form.password" :optional="isEdit" class="user-admin-wide" />
+
+        <div v-if="invite || pendingInvitation" class="user-admin-wide">
+          <p class="text-caption q-mb-sm">{{ $t('userInvitation.pendingHint') }}</p>
+          <q-btn v-if="pendingInvitation && canSubmit" outline color="primary" icon="mail"
+            :label="$t('userInvitation.resend')" :disable="form.email !== user?.email"
+            :loading="loading" @click="emit('resend')" />
+          <p v-if="pendingInvitation && form.email !== user?.email" class="text-caption q-mt-xs q-mb-none">
+            {{ $t('userInvitation.saveEmailFirst') }}
+          </p>
+        </div>
+
         <q-toggle
+          v-else
           v-model="form.is_active"
           :label="$t('userAdmin.accountActive')"
           color="solaire-green"
@@ -81,6 +77,7 @@ import { privileges, usePrivilegeStore } from '@/core/authorize'
 import { DialogHeader } from '@/core/util'
 import type { User, UserAccessDraft, UserAdminSubmission } from '../services/authService'
 import { userTabs } from '../userTabs'
+import PasswordFields from './PasswordFields.vue'
 import UserAdminAccess from './UserAdminAccess.vue'
 
 const { user = null, loading = false, refreshUserList } = defineProps<{
@@ -88,7 +85,7 @@ const { user = null, loading = false, refreshUserList } = defineProps<{
   loading?: boolean
   refreshUserList?: () => void
 }>()
-const emit = defineEmits<{ submit: [submission: UserAdminSubmission] }>()
+const emit = defineEmits<{ submit: [submission: UserAdminSubmission]; resend: [] }>()
 
 const privilegeStore = usePrivilegeStore()
 const accountFormId = useId()
@@ -97,7 +94,8 @@ const isEdit = computed(() => !!user)
 const canSubmit = computed(() => privilegeStore.hasPrivilege(
   isEdit.value ? privileges.UPDATE_USER : privileges.CREATE_USER,
 ))
-const showPassword = ref(false)
+const invite = ref(false)
+const pendingInvitation = computed(() => user?.invitation_pending === true)
 const form = reactive({
   email: user?.email ?? '',
   display_name: user?.display_name ?? '',
@@ -121,10 +119,15 @@ function onSubmit() {
   if (user) {
     emit('submit', {
       userId: user.id,
-      update: { ...form, password: form.password || undefined, ...preferences },
+      update: {
+        ...form, is_active: pendingInvitation.value ? undefined : form.is_active,
+        password: form.password || undefined, ...preferences,
+      },
     })
   } else {
-    emit('submit', { create: { ...form, ...access.value, ...preferences } })
+    emit('submit', {
+      create: { ...form, password: invite.value ? undefined : form.password, invite: invite.value, ...access.value, ...preferences },
+    })
   }
 }
 </script>
@@ -144,6 +147,8 @@ function onSubmit() {
   align-self: center;
   justify-self: start;
 }
+
+.user-admin-wide { grid-column: 1 / -1; }
 
 @media (min-width: 1024px) {
   .user-admin-fields {

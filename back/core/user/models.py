@@ -19,6 +19,9 @@ class User(Base):
     hashed_password: Mapped[str] = mapped_column(String, nullable=False)
     auth_version: Mapped[int] = mapped_column(default=0, server_default="0", nullable=False)
     is_active: Mapped[bool] = mapped_column(default=True)
+    invitation_pending: Mapped[bool] = mapped_column(default=False, server_default="false", nullable=False)
+    invitation_digest: Mapped[str | None] = mapped_column(String(64), unique=True, index=True)
+    invitation_expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     language: Mapped[Optional[str]] = mapped_column(String(5), nullable=True)
     document_open_mode: Mapped[str] = mapped_column(
         String(16), default="split", server_default="split", nullable=False,

@@ -152,7 +152,18 @@ test('creates a user with assignments and teams, then manages their saved access
   }
   await page.getByRole('button', { name: 'New User', exact: true }).click()
   await dialog.getByLabel('Email', { exact: true }).fill(user.email)
-  await dialog.getByLabel('Password', { exact: true }).fill('synthetic-password-123')
+  const password = dialog.getByLabel('Password', { exact: true })
+  const confirmation = dialog.getByLabel('Confirm password', { exact: true })
+  const create = dialog.getByRole('button', { name: 'Create', exact: true })
+  await password.fill('password-123')
+  await confirmation.fill('password-123')
+  await create.click()
+  await expect(password).toHaveAttribute('aria-invalid', 'true')
+  await password.fill('synthetic-password-123')
+  await create.click()
+  await expect(confirmation).toHaveAttribute('aria-invalid', 'true')
+  expect(createAttempts).toBe(0)
+  await confirmation.fill('synthetic-password-123')
   await dialog.getByLabel('LLM profile', { exact: true }).click()
   await page.getByRole('option', { name: 'Research profile', exact: true }).click()
   const addAssignment = dialog.getByRole('button', { name: 'Add assignment', exact: true })
@@ -210,4 +221,64 @@ test('creates a user with assignments and teams, then manages their saved access
   await expect(readerDefault).toBeChecked()
   await expect(dialog.getByRole('cell', { name: 'Support', exact: true })).toBeVisible()
   await expect(dialog.getByRole('cell', { name: 'Research', exact: true })).toHaveCount(0)
+})
+
+test('retries invitation delivery from the pending account after creation', async ({ page }) => {
+  const user = {
+    id: 23, email: 'invited@example.invalid', is_active: false, invitation_pending: true,
+    created_at: '2026-01-01T00:00:00Z',
+  }
+  let created = false
+  await jsonRoute(page, '**/api/authorize/role-options', [])
+  await stubUserModels(page, user.id)
+  await page.route('**/api/auth/users?*', route => route.fulfill({
+    headers: { 'x-total-count': created ? '1' : '0' },
+    json: created ? [user] : [],
+  }))
+  await page.route('**/api/auth/users', route => {
+    const draft = route.request().postDataJSON()
+    expect(draft).toMatchObject({ email: user.email, invite: true })
+    expect(draft).not.toHaveProperty('password')
+    created = true
+    return route.fulfill({ status: 201, json: { ...user, invitation_sent: false } })
+  })
+  await page.route('**/api/auth/users/23/invitation', route => route.fulfill({ status: 204 }))
+  await mount(page, 'core/user/pages/users.vue', {
+    route: '/users', shell: true, privileges: ['READ_USER', 'CREATE_USER', 'UPDATE_USER'],
+  })
+  await page.getByRole('button', { name: 'New User', exact: true }).click()
+  const dialog = page.getByRole('dialog')
+  await dialog.getByLabel('Email', { exact: true }).fill(user.email)
+  await dialog.getByRole('switch', { name: 'Send an invitation by email' }).press('Space')
+  await dialog.getByRole('button', { name: 'Create', exact: true }).click()
+  await expect(page.getByText(/Account created\. Email delivery failed/)).toBeVisible()
+  const resend = dialog.getByRole('button', { name: 'Resend invitation' })
+  await expect(resend).toBeEnabled()
+  await resend.click()
+  await expect(page.getByText('Invitation sent.', { exact: true })).toBeVisible()
+})
+
+test('a guest can complete account activation after a temporary error', async ({ page }, testInfo) => {
+  const token = 'a'.repeat(43)
+  const password = 'Copper roofs above the valley'
+  let attempts = 0
+  await page.setViewportSize({ width: 390, height: 844 })
+  await page.route('**/api/auth/invitations/accept', route => {
+    expect(route.request().postDataJSON()).toEqual({ token, password, password_confirmation: password })
+    if (++attempts === 1) return route.fulfill({ status: 503, json: { detail: 'Temporary error. Try again.' } })
+    return route.fulfill({ status: 204 })
+  })
+  await mount(page, 'core/user/pages/invitation.vue', {
+    route: `/user/invitation#${token}`, authenticated: false, dark: true,
+  })
+  const passwordInput = page.getByLabel('New password', { exact: true })
+  const confirmInput = page.getByLabel('Confirm password', { exact: true })
+  await passwordInput.fill(password)
+  await confirmInput.fill(password)
+  await confirmInput.press('Enter')
+  await expect(page.getByRole('alert')).toContainText('Temporary error. Try again.')
+  await expect(passwordInput).toHaveValue(password)
+  await page.screenshot({ path: testInfo.outputPath('invitation-mobile-dark.png') })
+  await confirmInput.press('Enter')
+  await expect.poll(() => page.evaluate(() => window.testApp.router.currentRoute.value.fullPath)).toBe('/user/login')
 })

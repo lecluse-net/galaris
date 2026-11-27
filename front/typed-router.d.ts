@@ -423,6 +423,13 @@ declare module 'vue-router/auto-routes' {
       Record<never, never>,
       | never
     >,
+    '//user/invitation': RouteRecordInfo<
+      '//user/invitation',
+      '/user/invitation',
+      Record<never, never>,
+      Record<never, never>,
+      | never
+    >,
     '//user/login': RouteRecordInfo<
       '//user/login',
       '/user/login',
@@ -900,6 +907,14 @@ declare module 'vue-router/auto-routes' {
     'core/user/pages/users.vue': {
       routes:
         | '//user/users'
+      views:
+        | never
+      pathParamNames:
+        | never
+    }
+    'core/user/pages/invitation.vue': {
+      routes:
+        | '//user/invitation'
       views:
         | never
       pathParamNames:

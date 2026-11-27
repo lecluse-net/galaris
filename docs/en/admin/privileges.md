@@ -81,7 +81,7 @@ also permits reading its family's values.
 
 | Settings family | Read | Edit |
 |---|---|---|
-| System: registration, HTTP rate limit | `PARAMS_ACCESS` | `PARAMS_EDIT` |
+| System: registration, platform SMTP, HTTP rate limit | `PARAMS_ACCESS` | `PARAMS_EDIT` |
 | Language and localization | `LANGUAGE_CONFIG_ACCESS` | `LANGUAGE_CONFIG_EDIT` |
 | Messaging | `MESSAGING_CONFIG_ACCESS` | `MESSAGING_CONFIG_EDIT` |
 | Memory and sessions | `MEMORY_CONFIG_ACCESS` | `MEMORY_CONFIG_EDIT` |

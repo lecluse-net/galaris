@@ -1,5 +1,25 @@
 export default {
   fr: {
+    userInvitation: {
+      send: "Envoyer une invitation par e-mail",
+      pending: "Invitation en attente",
+      pendingHint: "Le destinataire choisira son mot de passe et activera son compte. Le lien expire après 24 heures.",
+      resend: "Renvoyer l’invitation",
+      saveEmailFirst: "Enregistrez la nouvelle adresse avant de renvoyer l’invitation.",
+      sent: "Invitation envoyée.",
+      createdUnsent: "Compte créé. L’envoi a échoué. Vous pouvez réessayer depuis sa fiche.",
+      createdAndSent: "Compte créé et invitation envoyée.",
+      title: "Activer votre compte",
+      activate: "Activer mon compte",
+      activated: "Compte activé. Vous pouvez vous connecter.",
+      invalidLink: "Ce lien d’invitation est invalide.",
+    },
+    passwordPolicy: {
+      guidance: "Au moins 12 caractères. Vous pouvez utiliser une phrase secrète.",
+      tooLong: "Le mot de passe dépasse 72 octets UTF-8.",
+      predictable: "Choisissez un mot de passe moins prévisible.",
+      acceptable: "Le mot de passe respecte les critères.",
+    },
     contextHelp: {
       "label": "Aide contextuelle",
       "understood": "J’ai compris",
@@ -227,6 +247,26 @@ export default {
     },
   },
   en: {
+    userInvitation: {
+      send: "Send an invitation by email",
+      pending: "Invitation pending",
+      pendingHint: "The recipient will choose their password and activate their account. The link expires after 24 hours.",
+      resend: "Resend invitation",
+      saveEmailFirst: "Save the new email address before resending the invitation.",
+      sent: "Invitation sent.",
+      createdUnsent: "Account created. Email delivery failed. You can retry from the account details.",
+      createdAndSent: "Account created and invitation sent.",
+      title: "Activate your account",
+      activate: "Activate my account",
+      activated: "Account activated. You can sign in.",
+      invalidLink: "This invitation link is invalid.",
+    },
+    passwordPolicy: {
+      guidance: "Use at least 12 characters. A passphrase is welcome.",
+      tooLong: "The password exceeds 72 UTF-8 bytes.",
+      predictable: "Choose a less predictable password.",
+      acceptable: "The password meets the requirements.",
+    },
     contextHelp: {
       "label": "Contextual help",
       "understood": "Got it",
@@ -454,6 +494,26 @@ export default {
     },
   },
   zh: {
+    userInvitation: {
+      send: "通过邮件发送邀请",
+      pending: "等待接受邀请",
+      pendingHint: "收件人将设置密码并激活账户。链接在 24 小时后过期。",
+      resend: "重新发送邀请",
+      saveEmailFirst: "请先保存新的邮箱地址，再重新发送邀请。",
+      sent: "邀请已发送。",
+      createdUnsent: "账户已创建，邮件发送失败。您可以从账户详情重试。",
+      createdAndSent: "账户已创建，邀请已发送。",
+      title: "激活您的账户",
+      activate: "激活我的账户",
+      activated: "账户已激活。您可以登录。",
+      invalidLink: "此邀请链接无效。",
+    },
+    passwordPolicy: {
+      guidance: "至少使用 12 个字符，也可以使用密码短语。",
+      tooLong: "密码超过 72 个 UTF-8 字节。",
+      predictable: "请选择更难猜测的密码。",
+      acceptable: "密码符合要求。",
+    },
     contextHelp: {
       "label": "上下文帮助",
       "understood": "我明白了",

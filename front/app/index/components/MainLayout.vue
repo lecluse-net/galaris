@@ -69,7 +69,7 @@ const route = useRoute()
 usePageTitle()
 
 const isMobileLayout = computed(() => $q.screen.lt.md)
-const guestLoginHiddenPaths = new Set(['/', '/user/login', '/user/register'])
+const guestLoginHiddenPaths = new Set(['/', '/user/login', '/user/register', '/user/invitation'])
 const normalizedPath = computed(() => route.path.replace(/\/+/g, '/').replace(/\/+$/, '') || '/')
 const showTopRightUserMenu = computed(() => {
   return authStore.isAuthenticated || !guestLoginHiddenPaths.has(normalizedPath.value)

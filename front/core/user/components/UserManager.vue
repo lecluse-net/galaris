@@ -41,8 +41,8 @@
                   <div class="text-caption text-grey-7 ellipsis">{{ props.row.email }}</div>
                   <div class="text-caption text-grey-7">#{{ props.row.id }}</div>
                 </div>
-                <q-chip :color="props.row.is_active ? 'positive' : 'negative'" text-color="white" size="sm">
-                  {{ props.row.is_active ? $t('user.active') : $t('user.inactive') }}
+                <q-chip :color="userStatusColor(props.row)" text-color="white" size="sm">
+                  {{ userStatusLabel(props.row) }}
                 </q-chip>
               </div>
             </q-card-section>
@@ -78,11 +78,11 @@
       <template v-slot:body-cell-is_active="props">
         <q-td :props="props">
           <q-chip
-            :color="props.value ? 'positive' : 'negative'"
+            :color="userStatusColor(props.row)"
             text-color="white"
             size="sm"
           >
-            {{ props.value ? $t('user.active') : $t('user.inactive') }}
+            {{ userStatusLabel(props.row) }}
           </q-chip>
         </q-td>
       </template>
@@ -114,6 +114,7 @@
         :loading="submitting"
         :refresh-user-list="fetchUsers"
         @submit="handleSubmit"
+        @resend="resendInvitation"
       />
     </q-dialog>
   </div>
@@ -274,6 +275,30 @@ function openEditDialog(user: User) {
   showDialog.value = true
 }
 
+function userStatusLabel(user: User) {
+  return user.invitation_pending ? t('userInvitation.pending') : t(user.is_active ? 'user.active' : 'user.inactive')
+}
+
+function userStatusColor(user: User) {
+  return user.invitation_pending ? 'primary' : user.is_active ? 'positive' : 'negative'
+}
+
+async function resendInvitation() {
+  const user = selectedUser.value
+  if (!user?.invitation_pending || submitting.value) return
+  submitting.value = true
+  try {
+    await authService.resendInvitation(user.id)
+    $q.notify({ type: 'positive', message: t('userInvitation.sent') })
+  } catch (error) {
+    const detail = isAxiosError<{ detail?: string }>(error) ? error.response?.data?.detail : undefined
+    $q.notify({ type: 'negative', message: typeof detail === 'string' ? detail : t('common.anError') })
+    await fetchUsers()
+  } finally {
+    submitting.value = false
+  }
+}
+
 async function handleSubmit(submission: UserAdminSubmission) {
   if (submitting.value) return
   const version = dialogVersion.value
@@ -283,8 +308,18 @@ async function handleSubmit(submission: UserAdminSubmission) {
       await authService.updateUserAdmin(submission.userId, submission.update)
       $q.notify({ type: 'positive', message: t('usersAdmin.updated') })
     } else {
-      await authService.createUser(submission.create)
-      $q.notify({ type: 'positive', message: t('usersAdmin.created') })
+      const created = await authService.createUser(submission.create)
+      if (created.invitation_sent === false) {
+        $q.notify({ type: 'warning', message: t('userInvitation.createdUnsent') })
+        if (version === dialogVersion.value && showDialog.value && canUpdate.value) {
+          openEditDialog(created)
+        }
+      } else {
+        $q.notify({
+          type: 'positive',
+          message: t(created.invitation_sent ? 'userInvitation.createdAndSent' : 'usersAdmin.created'),
+        })
+      }
     }
     if (version === dialogVersion.value) showDialog.value = false
     await fetchUsers()

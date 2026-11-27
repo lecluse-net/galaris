@@ -1,5 +1,66 @@
 import { test, expect, mount, setPrivileges, jsonRoute } from './fixtures.mjs'
 
+test('platform SMTP editors can test the saved relay with a recipient entered on the page', async ({ page }, testInfo) => {
+  const address = 'smtp-test@example.invalid'
+  const sends = []
+  await jsonRoute(page, '**/api/llm-budget/me', {
+    account: { user_id: 1, label: 'Test User', referrer_user_id: null, weekly_reset_hour: 0, envelopes: [], requests: [] },
+    can_configure: false,
+  })
+  const saved = new Map([
+    ['PLATFORM_SMTP_HOST', 'smtp.example.invalid'],
+    ['PLATFORM_SMTP_SECURITY', 'starttls'],
+    ['PLATFORM_SMTP_AUTHENTICATION', 'auto'],
+    ['PLATFORM_SMTP_USERNAME', 'synthetic-smtp-user'],
+  ])
+  const param = ([name, value]) => ({ name, value, configured: true, secret: false, prompt: null })
+  await page.route('**/api/params', route => route.fulfill({ json: { params: Array.from(saved, param) } }))
+  await page.route('**/api/params/PLATFORM_SMTP_*', route => {
+    const name = new URL(route.request().url()).pathname.split('/').at(-1)
+    const { value } = route.request().postDataJSON()
+    saved.set(name, value)
+    return route.fulfill({ json: { ...param([name, value]), status: 'success' } })
+  })
+  await page.route('**/api/auth/platform-smtp/test', route => {
+    sends.push(route.request().postDataJSON())
+    if (sends.length === 1) return route.fulfill({ status: 502, json: { detail: 'The relay rejected the test email.' } })
+    return route.fulfill({ status: 204 })
+  })
+  await mount(page, 'core/params/components/PreferencesSectionPage.vue', {
+    props: { section: 'system' }, route: '/params/system', privileges: ['PARAMS_ACCESS'], shell: true,
+  })
+  const block = page.getByRole('region', { name: 'Platform SMTP', exact: true })
+  const recipient = block.getByRole('textbox', { name: 'Recipient email', exact: true })
+  const send = block.getByRole('button', { name: 'Send test email', exact: true })
+  await expect(recipient).toHaveCount(0)
+  await setPrivileges(page, ['PARAMS_EDIT'])
+  await expect(recipient).toBeEditable()
+  const security = block.getByRole('combobox', { name: 'Connection security' })
+  await security.click()
+  await page.getByRole('option', { name: 'SSL/TLS', exact: true }).click()
+  await expect.poll(() => saved.get('PLATFORM_SMTP_SECURITY')).toBe('tls')
+  const authentication = block.getByRole('combobox', { name: 'Authentication method' })
+  await authentication.click()
+  await page.getByRole('option', { name: 'No authentication', exact: true }).click()
+  const username = block.getByRole('textbox', { name: 'SMTP username' })
+  await expect(username).toHaveCount(0)
+  await authentication.click()
+  await page.getByRole('option', { name: 'Normal password', exact: true }).click()
+  await expect(username).toHaveValue('synthetic-smtp-user')
+  await expect.poll(() => saved.get('PLATFORM_SMTP_AUTHENTICATION')).toBe('password')
+  await recipient.fill(address)
+  await send.click()
+  await expect(page.getByText('The relay rejected the test email.', { exact: true })).toBeVisible()
+  await expect(recipient).toHaveValue(address)
+  await recipient.press('Enter')
+  await expect(page.getByText('The SMTP relay accepted the test email.', { exact: true })).toBeVisible()
+  expect(sends).toEqual([{ recipient: address }, { recipient: address }])
+  await block.screenshot({ path: testInfo.outputPath('platform-smtp-light.png') })
+  await page.setViewportSize({ width: 390, height: 844 })
+  await page.evaluate(() => window.testApp.dark(true))
+  await block.screenshot({ path: testInfo.outputPath('platform-smtp-mobile-dark.png') })
+})
+
 test('personal chat display preferences require an enabled accessible chat and retain the saved choice on failure', async ({ page }) => {
   await page.addInitScript(() => localStorage.setItem('access_token', 'component-test'))
   let enabled = false

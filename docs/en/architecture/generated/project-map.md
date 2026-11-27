@@ -17,10 +17,10 @@ tests remain authoritative for behavior.
 - 30 directly bidirectional domain pairs;
 - 1 strongly connected components;
 - 0 directly bidirectional frontend pairs;
-- 849 detected HTTP/WebSocket handlers;
+- 852 detected HTTP/WebSocket handlers;
 - 212 detected SQLAlchemy tables;
 - 290 detected native MCP tools;
-- 59 detected Vue pages.
+- 60 detected Vue pages.
 
 ## Backend Modules
 
@@ -111,7 +111,7 @@ tests remain authoritative for behavior.
 
 | Module | Exists | Capabilities | Pages |
 |---|---:|---|---:|
-| `core/user` | yes | `components`, `i18n.ts`, `navigation.ts`, `pages`, `services`, `stores` | 4 |
+| `core/user` | yes | `components`, `i18n.ts`, `navigation.ts`, `pages`, `services`, `stores` | 5 |
 | `core/team` | yes | `components`, `i18n.ts`, `pages`, `services` | 1 |
 | `core/authorize` | yes | `components`, `i18n.ts`, `pages`, `presentation.ts`, `services`, `stores` | 2 |
 | `core/params` | yes | `components`, `i18n.ts`, `navigation.ts`, `pages`, `presentation.ts`, `services`, `stores` | 3 |
@@ -806,9 +806,9 @@ tests remain authoritative for behavior.
 | `core.team` | `core.database` | `back/core/team/__init__.py`, `back/core/team/models.py`, `back/core/team/router.py`, `back/core/team/service.py` |
 | `core.team` | `core.user` | `back/core/team/service.py` |
 | `core.user` | `core.authorize` | `back/core/user/authContextMiddleware.py`, `back/core/user/auth_service.py`, `back/core/user/router.py`, `back/core/user/user_service.py` |
-| `core.user` | `core.database` | `back/core/user/auth_service.py`, `back/core/user/help_service.py`, `back/core/user/mfa_service.py`, `back/core/user/models.py`, `back/core/user/refresh_session_service.py`, `back/core/user/router.py`, `back/core/user/token_service.py`, `back/core/user/user_service.py` |
-| `core.user` | `core.i18n` | `back/core/user/auth_service.py`, `back/core/user/dependencies.py`, `back/core/user/router.py`, `back/core/user/user_service.py` |
-| `core.user` | `core.params` | `back/core/user/user_service.py` |
+| `core.user` | `core.database` | `back/core/user/auth_service.py`, `back/core/user/help_service.py`, `back/core/user/invitation_service.py`, `back/core/user/mfa_service.py`, `back/core/user/models.py`, `back/core/user/refresh_session_service.py`, `back/core/user/router.py`, `back/core/user/token_service.py`, `back/core/user/user_service.py` |
+| `core.user` | `core.i18n` | `back/core/user/auth_service.py`, `back/core/user/dependencies.py`, `back/core/user/invitation_service.py`, `back/core/user/platform_mail.py`, `back/core/user/router.py`, `back/core/user/user_service.py` |
+| `core.user` | `core.params` | `back/core/user/platform_mail.py`, `back/core/user/user_service.py` |
 | `core.user` | `core.rate_limit` | `back/core/user/router.py` |
 | `core.user` | `core.secrets` | `back/core/user/authContextMiddleware.py`, `back/core/user/auth_service.py`, `back/core/user/mfa_service.py`, `back/core/user/refresh_session_service.py`, `back/core/user/router.py` |
 | `core.user` | `core.team` | `back/core/user/user_service.py` |
@@ -1040,7 +1040,7 @@ tests remain authoritative for behavior.
 | `core/team` | `core/authorize` | `front/core/team/components/TeamEditor.vue`, `front/core/team/components/TeamManager.vue`, `front/core/team/components/TeamMembersDialog.vue` |
 | `core/team` | `core/user` | `front/core/team/components/TeamEditor.vue`, `front/core/team/components/TeamHumanSummary.vue`, `front/core/team/userTeams.ts` |
 | `core/team` | `core/util` | `front/core/team/components/TeamEditor.vue`, `front/core/team/components/TeamManager.vue`, `front/core/team/components/TeamMembersDialog.vue` |
-| `core/user` | `core/api` | `front/core/user/components/UserManager.vue`, `front/core/user/services/authService.ts`, `front/core/user/services/helpService.ts`, `front/core/user/services/tokenService.ts`, `front/core/user/services/userService.ts`, `front/core/user/stores/authStore.ts`, `front/core/user/stores/helpStore.ts` |
+| `core/user` | `core/api` | `front/core/user/components/UserManager.vue`, `front/core/user/pages/invitation.vue`, `front/core/user/services/authService.ts`, `front/core/user/services/helpService.ts`, `front/core/user/services/tokenService.ts`, `front/core/user/services/userService.ts`, `front/core/user/stores/authStore.ts`, `front/core/user/stores/helpStore.ts` |
 | `core/user` | `core/authorize` | `front/core/user/access.ts`, `front/core/user/components/UserAdminAccess.vue`, `front/core/user/components/UserAdminForm.vue`, `front/core/user/components/UserManager.vue`, `front/core/user/components/UserMenu.vue`, `front/core/user/navigation.ts`, `front/core/user/pages/users.vue` |
 | `core/user` | `core/i18n` | `front/core/user/stores/authStore.ts`, `front/core/user/stores/tokenStore.ts` |
 | `core/user` | `core/navigation` | `front/core/user/navigation.ts`, `front/core/user/pages/tokens.vue`, `front/core/user/pages/users.vue` |
@@ -1316,35 +1316,38 @@ No cyclic component detected.
 | GET | `/api/health/live` | `core.api` | `liveness_check` | no | `back/core/api.py:275` |
 | GET | `/api/health/ready` | `core.api` | `readiness_check` | no | `back/core/api.py:281` |
 | GET | `/api/openapi.json` | `core.api` | `get_public_openapi_endpoint` | no | `back/core/api.py:233` |
-| GET | `/auth/avatars/{avatar_key}` | `core.user` | `read_user_avatar` | no | `back/core/user/router.py:413` |
-| POST | `/auth/keep-alive` | `core.user` | `keep_alive` | yes | `back/core/user/router.py:386` |
-| POST | `/auth/login` | `core.user` | `login` | no | `back/core/user/router.py:211` |
-| POST | `/auth/login-json` | `core.user` | `login_json` | no | `back/core/user/router.py:235` |
-| POST | `/auth/logout` | `core.user` | `logout` | no | `back/core/user/router.py:328` |
-| DELETE | `/auth/me` | `core.user` | `delete_user_me` | yes | `back/core/user/router.py:479` |
-| GET | `/auth/me` | `core.user` | `read_users_me` | yes | `back/core/user/router.py:405` |
-| PUT | `/auth/me` | `core.user` | `update_user_me` | yes | `back/core/user/router.py:523` |
-| DELETE | `/auth/me/avatar` | `core.user` | `delete_user_avatar` | yes | `back/core/user/router.py:467` |
-| POST | `/auth/me/avatar` | `core.user` | `upload_user_avatar` | yes | `back/core/user/router.py:430` |
-| GET | `/auth/me/help-dismissals` | `core.user` | `list_help_dismissals` | yes | `back/core/user/router.py:499` |
-| PUT | `/auth/me/help-dismissals/{help_key}` | `core.user` | `dismiss_help` | yes | `back/core/user/router.py:512` |
-| GET | `/auth/me/tokens` | `core.user` | `list_my_tokens` | yes | `back/core/user/router.py:660` |
-| POST | `/auth/me/tokens` | `core.user` | `create_my_token` | yes | `back/core/user/router.py:676` |
-| DELETE | `/auth/me/tokens/{token_id}` | `core.user` | `delete_my_token` | yes | `back/core/user/router.py:719` |
-| PUT | `/auth/me/tokens/{token_id}` | `core.user` | `update_my_token` | yes | `back/core/user/router.py:697` |
-| POST | `/auth/mfa/confirm` | `core.user` | `confirm_mfa` | yes | `back/core/user/router.py:289` |
-| POST | `/auth/mfa/disable` | `core.user` | `disable_mfa` | yes | `back/core/user/router.py:302` |
-| POST | `/auth/mfa/recovery-codes` | `core.user` | `regenerate_mfa_recovery_codes` | yes | `back/core/user/router.py:315` |
-| POST | `/auth/mfa/setup` | `core.user` | `setup_mfa` | yes | `back/core/user/router.py:277` |
-| GET | `/auth/mfa/status` | `core.user` | `read_mfa_status` | yes | `back/core/user/router.py:264` |
-| POST | `/auth/refresh` | `core.user` | `refresh_session` | no | `back/core/user/router.py:346` |
-| POST | `/auth/register` | `core.user` | `register` | no | `back/core/user/router.py:136` |
-| GET | `/auth/registration-status` | `core.user` | `registration_status` | no | `back/core/user/router.py:124` |
-| GET | `/auth/users` | `core.user` | `list_users` | yes | `back/core/user/router.py:553` |
-| POST | `/auth/users` | `core.user` | `create_user_endpoint` | yes | `back/core/user/router.py:589` |
-| DELETE | `/auth/users/{user_id}` | `core.user` | `delete_user_endpoint` | yes | `back/core/user/router.py:644` |
-| GET | `/auth/users/{user_id}` | `core.user` | `read_user` | yes | `back/core/user/router.py:618` |
-| PUT | `/auth/users/{user_id}` | `core.user` | `update_user_endpoint` | yes | `back/core/user/router.py:627` |
+| GET | `/auth/avatars/{avatar_key}` | `core.user` | `read_user_avatar` | no | `back/core/user/router.py:418` |
+| POST | `/auth/invitations/accept` | `core.user` | `accept_user_invitation` | no | `back/core/user/router.py:647` |
+| POST | `/auth/keep-alive` | `core.user` | `keep_alive` | yes | `back/core/user/router.py:391` |
+| POST | `/auth/login` | `core.user` | `login` | no | `back/core/user/router.py:216` |
+| POST | `/auth/login-json` | `core.user` | `login_json` | no | `back/core/user/router.py:240` |
+| POST | `/auth/logout` | `core.user` | `logout` | no | `back/core/user/router.py:333` |
+| DELETE | `/auth/me` | `core.user` | `delete_user_me` | yes | `back/core/user/router.py:484` |
+| GET | `/auth/me` | `core.user` | `read_users_me` | yes | `back/core/user/router.py:410` |
+| PUT | `/auth/me` | `core.user` | `update_user_me` | yes | `back/core/user/router.py:528` |
+| DELETE | `/auth/me/avatar` | `core.user` | `delete_user_avatar` | yes | `back/core/user/router.py:472` |
+| POST | `/auth/me/avatar` | `core.user` | `upload_user_avatar` | yes | `back/core/user/router.py:435` |
+| GET | `/auth/me/help-dismissals` | `core.user` | `list_help_dismissals` | yes | `back/core/user/router.py:504` |
+| PUT | `/auth/me/help-dismissals/{help_key}` | `core.user` | `dismiss_help` | yes | `back/core/user/router.py:517` |
+| GET | `/auth/me/tokens` | `core.user` | `list_my_tokens` | yes | `back/core/user/router.py:709` |
+| POST | `/auth/me/tokens` | `core.user` | `create_my_token` | yes | `back/core/user/router.py:725` |
+| DELETE | `/auth/me/tokens/{token_id}` | `core.user` | `delete_my_token` | yes | `back/core/user/router.py:768` |
+| PUT | `/auth/me/tokens/{token_id}` | `core.user` | `update_my_token` | yes | `back/core/user/router.py:746` |
+| POST | `/auth/mfa/confirm` | `core.user` | `confirm_mfa` | yes | `back/core/user/router.py:294` |
+| POST | `/auth/mfa/disable` | `core.user` | `disable_mfa` | yes | `back/core/user/router.py:307` |
+| POST | `/auth/mfa/recovery-codes` | `core.user` | `regenerate_mfa_recovery_codes` | yes | `back/core/user/router.py:320` |
+| POST | `/auth/mfa/setup` | `core.user` | `setup_mfa` | yes | `back/core/user/router.py:282` |
+| GET | `/auth/mfa/status` | `core.user` | `read_mfa_status` | yes | `back/core/user/router.py:269` |
+| POST | `/auth/platform-smtp/test` | `core.user` | `send_platform_smtp_test` | yes | `back/core/user/router.py:654` |
+| POST | `/auth/refresh` | `core.user` | `refresh_session` | no | `back/core/user/router.py:351` |
+| POST | `/auth/register` | `core.user` | `register` | no | `back/core/user/router.py:141` |
+| GET | `/auth/registration-status` | `core.user` | `registration_status` | no | `back/core/user/router.py:129` |
+| GET | `/auth/users` | `core.user` | `list_users` | yes | `back/core/user/router.py:558` |
+| POST | `/auth/users` | `core.user` | `create_user_endpoint` | yes | `back/core/user/router.py:595` |
+| DELETE | `/auth/users/{user_id}` | `core.user` | `delete_user_endpoint` | yes | `back/core/user/router.py:693` |
+| GET | `/auth/users/{user_id}` | `core.user` | `read_user` | yes | `back/core/user/router.py:667` |
+| PUT | `/auth/users/{user_id}` | `core.user` | `update_user_endpoint` | yes | `back/core/user/router.py:676` |
+| POST | `/auth/users/{user_id}/invitation` | `core.user` | `resend_user_invitation` | yes | `back/core/user/router.py:633` |
 | GET | `/authorize/assignment-user-options` | `core.authorize` | `assignment_user_options` | yes | `back/core/authorize/router.py:141` |
 | GET | `/authorize/assignments` | `core.authorize` | `list_assignments` | yes | `back/core/authorize/router.py:287` |
 | POST | `/authorize/assignments` | `core.authorize` | `create_assignment` | yes | `back/core/authorize/router.py:339` |
@@ -2331,10 +2334,10 @@ No cyclic component detected.
 | `titles` | `Title` | `app.agent` | no | — | `back/app/agent/models.py:27` |
 | `tool_search_documents` | `ToolSearchDocument` | `app.services` | no | — | `back/app/services/models.py:83` |
 | `topics` | `Topic` | `app.topic` | yes | `memory_items.id` | `back/app/topic/models.py:15` |
-| `user_help_dismissals` | `UserHelpDismissal` | `core.user` | no | `users.id` | `back/core/user/models.py:83` |
+| `user_help_dismissals` | `UserHelpDismissal` | `core.user` | no | `users.id` | `back/core/user/models.py:86` |
 | `user_llm_preferences` | `UserLlmPreferences` | `app.llm` | no | `llm_profiles.id`, `llms.id`, `users.id` | `back/app/llm/profile_models.py:120` |
-| `user_refresh_sessions` | `UserRefreshSession` | `core.user` | no | `users.id` | `back/core/user/models.py:122` |
-| `user_tokens` | `UserToken` | `core.user` | no | `users.id` | `back/core/user/models.py:95` |
+| `user_refresh_sessions` | `UserRefreshSession` | `core.user` | no | `users.id` | `back/core/user/models.py:125` |
+| `user_tokens` | `UserToken` | `core.user` | no | `users.id` | `back/core/user/models.py:98` |
 | `users` | `User` | `core.user` | no | — | `back/core/user/models.py:13` |
 | `voice_sessions` | `VoiceConversationSession` | `app.voice` | yes | `messenger_rooms.id`, `users.id` | `back/app/voice/models.py:59` |
 | `voice_turn_deletions` | `VoiceTurnDeletion` | `app.voice` | no | `agents.id`, `voice_sessions.id` | `back/app/voice/models.py:93` |
@@ -2840,6 +2843,7 @@ No cyclic component detected.
 | `/tools` | `app/services` | `front/app/services/pages/legacy.vue` |
 | `/topic` | `app/topic` | `front/app/topic/pages/index.vue` |
 | `/topic/:id` | `app/topic` | `front/app/topic/pages/[id].vue` |
+| `/user/invitation` | `core/user` | `front/core/user/pages/invitation.vue` |
 | `/user/login` | `core/user` | `front/core/user/pages/login.vue` |
 | `/user/register` | `core/user` | `front/core/user/pages/register.vue` |
 | `/user/tokens` | `core/user` | `front/core/user/pages/tokens.vue` |
