@@ -19,6 +19,8 @@ from app.agent.contracts import AgentTaskState
 from app.services import service
 from app.services.facade import administration_scope
 from app.connection import Connection, connection_service
+from app.process.facade import (ScheduledProcessOption, ScheduledProcessRun, inspect_scheduled_runs,
+    scheduled_process_identity, scheduled_process_options, validate_scheduled_process)
 from core.database import get_db, get_db_session
 from core.params import runtime_settings
 from . import ical, store
@@ -548,7 +550,14 @@ async def _writable_calendar(calendar_id: int, agent_id: int) -> CalendarFeed:
     return feed
 
 
-async def create_calendar_event(calendar_id: int, agent_id: int, data: CalendarEventCreate) -> CalendarMutationReceipt:
+async def event_process_options(calendar_id: int) -> list[ScheduledProcessOption]:
+    _, connection = await feed_context(calendar_id, require_active_connection=True)
+    await _writable_calendar(calendar_id, connection.agent_id)
+    return await scheduled_process_options(connection.agent_id)
+
+
+async def create_calendar_event(calendar_id: int, agent_id: int, data: CalendarEventCreate, *,
+                                process_scheduled_by_agent: bool = False) -> CalendarMutationReceipt:
     feed = await _writable_calendar(calendar_id, agent_id)
     if data.contact_id is not None:
         from app.contact.facade import require_contact_reference
@@ -561,16 +570,21 @@ async def create_calendar_event(calendar_id: int, agent_id: int, data: CalendarE
     existing = await get_db().scalar(select(CalendarEvent).where(CalendarEvent.calendar_id == calendar_id, CalendarEvent.uid == uid)
         .execution_options(include_historized=True))
     if existing is not None:
-        if existing.deleted_at is not None or existing.content_hash != resource.digest or existing.contact_id != data.contact_id:
+        if (existing.deleted_at is not None or existing.content_hash != resource.digest
+                or existing.contact_id != data.contact_id or existing.process_definition_id != data.process_definition_id):
             raise store.CalendarConflictError("Event UID already exists with different content")
         return mutation_receipt(feed, existing, "created")
-    event = await store.save_resource(feed, resource, local=True, known=True, contact_id=data.contact_id)
+    if data.process_definition_id is not None:
+        await validate_scheduled_process(agent_id, data.process_definition_id)
+    event = await store.save_resource(feed, resource, local=True, known=True, contact_id=data.contact_id,
+        process_definition_id=data.process_definition_id, process_scheduled_by_agent=process_scheduled_by_agent)
     await store.project_events(feed, [event], agent_id=agent_id)
     await get_db().commit()
     return mutation_receipt(feed, event, "created")
 
 
-async def update_calendar_event(calendar_id: int, agent_id: int, uid: str, data: CalendarEventUpdate) -> CalendarMutationReceipt:
+async def update_calendar_event(calendar_id: int, agent_id: int, uid: str, data: CalendarEventUpdate, *,
+                                process_scheduled_by_agent: bool = False) -> CalendarMutationReceipt:
     feed = await _writable_calendar(calendar_id, agent_id)
     if data.contact_id is not None:
         from app.contact.facade import require_contact_reference
@@ -580,6 +594,13 @@ async def update_calendar_event(calendar_id: int, agent_id: int, uid: str, data:
         raise store.CalendarConflictError("Calendar event changed; reload before editing")
     if feed.source_kind in ("google", "microsoft") and (event.recurring or data.rrule):
         raise ValueError("Edit recurring Google or Microsoft series in the provider calendar")
+    if "process_definition_id" in data.model_fields_set:
+        if data.scope != "series":
+            raise ValueError("The selected process belongs to the whole event; edit the series to change it")
+        if data.process_definition_id is not None:
+            await validate_scheduled_process(agent_id, data.process_definition_id)
+        event.process_definition_id = data.process_definition_id
+        event.process_scheduled_by_agent = data.process_definition_id is not None and process_scheduled_by_agent
     if data.clear_contact or "contact_id" in data.model_fields_set:
         contact_id = None if data.clear_contact else data.contact_id
         if data.scope != "series" and contact_id != event.contact_id:
@@ -593,7 +614,8 @@ async def update_calendar_event(calendar_id: int, agent_id: int, uid: str, data:
             await store.save_resource(feed, older, local=True, existing=event, known=True)
             await store.project_events(feed, [event], agent_id=agent_id)
             newer = (await asyncio.to_thread(ical.split_resources, after, feed.timezone))[0]
-            following = await store.save_resource(feed, newer, local=True, known=True, contact_id=event.contact_id)
+            following = await store.save_resource(feed, newer, local=True, known=True, contact_id=event.contact_id,
+                process_definition_id=event.process_definition_id, process_scheduled_by_agent=event.process_scheduled_by_agent)
             following.parent_event_id = event.id
             await store.project_events(feed, [following], agent_id=agent_id)
             await get_db().commit()
@@ -674,10 +696,21 @@ async def list_actions(calendar_id: int, uid: str) -> list[CalendarActionRead]:
         instructions=decrypt(row.instructions_encrypted), active=row.active, max_lateness_minutes=row.max_lateness_minutes) for row in actions]
 
 
-def _execution_state(row: CalendarTrigger, task: AgentTaskState | None, agent_id: int) -> CalendarReminderState:
+def _execution_state(row: CalendarTrigger, task: AgentTaskState | None, agent_id: int,
+                     run: ScheduledProcessRun | None) -> CalendarReminderState:
     if task is not None and task.agent_id == agent_id:
         states: dict[str, CalendarReminderState] = {"QUEUED": "queued", "RUNNING": "running", "WAITING": "waiting", "PAUSED": "paused"}
         return "done" if task.status == "SUCCESS" else "error" if task.status in ("ERROR", "CANCELLED") else states.get(task.operational_state, "queued")
+    if run is not None:
+        match run.status:
+            case "success": return "done"
+            case "cancelled": return "cancelled"
+            case "error": return "error"
+            case "running": return "running"
+            case "waiting": return "waiting"
+            case "paused": return "paused"
+            case "queued": return "queued"
+            case _: return "unavailable"
     return cast(CalendarReminderState, row.status) if row.status in ("scheduled", "cancelled", "skipped", "pending") else "dispatch_error" if row.status == "error" else "unavailable"
 
 
@@ -692,14 +725,16 @@ async def execution_summaries(connection_id: int, occurrences: Sequence[Calendar
     # launch per action. Grid badges never need the encrypted dispatch snapshots.
     rows = (await get_db().execute(select(CalendarTrigger, func.count().over(
         partition_by=(CalendarTrigger.event_id, CalendarTrigger.recurrence_key)))
-        .options(load_only(CalendarTrigger.event_id, CalendarTrigger.recurrence_key, CalendarTrigger.task_id,
+        .options(load_only(CalendarTrigger.event_id, CalendarTrigger.recurrence_key, CalendarTrigger.task_id, CalendarTrigger.process_run_id,
             CalendarTrigger.status, raiseload=True)).join(CalendarFeed, CalendarFeed.id == CalendarTrigger.calendar_id)
         .where(predicate).distinct(CalendarTrigger.event_id, CalendarTrigger.recurrence_key, CalendarTrigger.action_key)
         .order_by(CalendarTrigger.event_id, CalendarTrigger.recurrence_key, CalendarTrigger.action_key, CalendarTrigger.launch_number.desc()))).all()
     tasks = await inspect_task_states(list({row.task_id for row, _ in rows if row.task_id}))
+    runs = await inspect_scheduled_runs({row.process_run_id for row, _ in rows if row.process_run_id}, connection.agent_id)
     result = {identity: CalendarExecutionSummary(event_id=identity[0], recurrence_key=identity[1], total=0) for identity in identities}
     for row, total in rows:
-        state = _execution_state(row, tasks.get(row.task_id) if row.task_id else None, connection.agent_id)
+        state = _execution_state(row, tasks.get(row.task_id) if row.task_id else None, connection.agent_id,
+            runs.get(row.process_run_id) if row.process_run_id else None)
         summary = result[(row.event_id, row.recurrence_key)]
         summary.total = total
         summary.states[state] = summary.states.get(state, 0) + 1
@@ -707,7 +742,8 @@ async def execution_summaries(connection_id: int, occurrences: Sequence[Calendar
 
 
 async def list_reminders(connection_id: int, *, skip: int = 0, limit: int = 50,
-                         event_id: UUID | None = None, recurrence_key: str | None = None) -> CalendarReminderPage:
+                         event_id: UUID | None = None, recurrence_key: str | None = None,
+                         include_process_links: bool = True) -> CalendarReminderPage:
     if skip < 0 or not 1 <= limit <= 500:
         raise ValueError("Invalid reminder pagination")
     connection = await _calendar_connection(connection_id)
@@ -719,6 +755,7 @@ async def list_reminders(connection_id: int, *, skip: int = 0, limit: int = 50,
     total = await get_db().scalar(select(func.count()).select_from(query.subquery())) or 0
     rows = (await get_db().execute(query.order_by(CalendarTrigger.occurrence_at.desc(), CalendarTrigger.id).offset(skip).limit(limit))).all()
     tasks = await inspect_task_states([row.task_id for row, _ in rows if row.task_id])
+    runs = await inspect_scheduled_runs({row.process_run_id for row, _ in rows if row.process_run_id}, connection.agent_id)
     from .dispatch import DispatchSnapshot
     result: list[CalendarReminderRead] = []
     for row, label in rows:
@@ -726,13 +763,16 @@ async def list_reminders(connection_id: int, *, skip: int = 0, limit: int = 50,
         event_data = snapshot.payload.get("event")
         summary = str(cast(dict[str, object], event_data).get("summary") or row.event_uid) if isinstance(event_data, dict) else row.event_uid
         task = tasks.get(row.task_id) if row.task_id else None
-        state = _execution_state(row, task, connection.agent_id)
+        run = runs.get(row.process_run_id) if row.process_run_id else None
+        state = _execution_state(row, task, connection.agent_id, run)
         task_uri, task_status = None, None
         if task is not None and task.agent_id == connection.agent_id:
             task_uri, task_status = f"galaris://task/{row.task_id}", task.status
         result.append(CalendarReminderRead(id=row.id, calendar_id=row.calendar_id, calendar_label=label,
             event_uid=row.event_uid, event_summary=summary, reminder_at=row.occurrence_at, dispatch_status=row.status,
             task_uri=task_uri, task_status=task_status, state=state, treated=state == "done", event_id=row.event_id,
+            process_run_id=row.process_run_id if run and include_process_links else None,
+            process_run_engine=run.engine if run and include_process_links else None,
             recurrence_key=row.recurrence_key, action_key=row.action_key, reason=row.error_message))
     return CalendarReminderPage(items=result, total=total)
 
@@ -837,7 +877,7 @@ async def sync_external_calendars() -> int:
 
 
 async def event_detail(calendar_id: int, uid: str, recurrence_key: str | None = None) -> CalendarEventDetail:
-    feed, _ = await feed_context(calendar_id)
+    feed, connection = await feed_context(calendar_id)
     event = await store.event_by_uid(calendar_id, uid, deleted=True)
     content = await store.resource_content(event)
     if recurrence_key is not None:
@@ -847,8 +887,11 @@ async def event_detail(calendar_id: int, uid: str, recurrence_key: str | None = 
     else:
         parsed = await asyncio.to_thread(ical.master_event, content, feed.timezone)
     rule, dates, excluded = await asyncio.to_thread(ical.recurrence_definition, content)
+    process = await scheduled_process_identity(connection.agent_id, event.process_definition_id) if event.process_definition_id else None
     return CalendarEventDetail(event_id=event.id, calendar_id=calendar_id, uid=event.uid, revision=event.revision,
         contact_id=event.contact_id,
+        process_definition_id=event.process_definition_id, process_label=process[0] if process else None,
+        process_code=process[1] if process else None,
         timezone=parsed.timezone_name, summary=parsed.summary, description=parsed.description, location=parsed.location,
         start=parsed.start, end=parsed.end, all_day=parsed.all_day, recurring=event.recurring,
         deleted=event.deleted_at is not None, parent_event_id=event.parent_event_id,
@@ -885,6 +928,7 @@ async def resolve_conflict(calendar_id: int, agent_id: int, uid: str, expected_r
         event.revision += 1
         content = (await store.resource_content(event)).decode()
         get_db().add(CalendarEventRevision(event_id=event.id, revision=event.revision, contact_id=event.contact_id,
+            process_definition_id=event.process_definition_id,
             content_encrypted=encrypt(content), deleting=event.deleted_at is not None))
         get_db().add(CalendarSyncOperation(calendar_id=calendar_id, event_id=event.id, revision=event.revision,
             deleting=event.deleted_at is not None, content_encrypted=encrypt(content), content_hash=event.content_hash))
@@ -899,7 +943,7 @@ async def resolve_conflict(calendar_id: int, agent_id: int, uid: str, expected_r
 def mutation_receipt(feed: CalendarFeed, event: CalendarEvent, state: Literal["created", "updated", "deleted"]) -> CalendarMutationReceipt:
     sync_state: Literal["local", "pending", "synced", "conflict"] = "local" if feed.source_kind == "internal" else "conflict" if event.conflict else "synced" if event.synced_revision == event.revision else "pending"
     return CalendarMutationReceipt(calendar_id=feed.id, uid=event.uid, event_id=event.id, revision=event.revision,
-                                   contact_id=event.contact_id,
+                                   contact_id=event.contact_id, process_definition_id=event.process_definition_id,
                                    state=state, sync_state=sync_state)
 
 
@@ -909,6 +953,7 @@ async def event_history(calendar_id: int, uid: str, *, skip: int = 0, limit: int
     rows = (await get_db().scalars(select(CalendarEventRevision).where(CalendarEventRevision.event_id == event.id)
         .order_by(CalendarEventRevision.revision.desc()).offset(skip).limit(limit))).all()
     return [CalendarEventHistoryRead(revision=row.revision, contact_id=row.contact_id, deleted=row.deleting, created_at=row.created_at,
+                                     process_definition_id=row.process_definition_id,
                                      ical=decrypt(row.content_encrypted)) for row in rows]
 
 
@@ -938,7 +983,7 @@ async def sync_runs(calendar_id: int, *, skip: int = 0, limit: int = 50, run_id:
 
 
 async def relaunch_execution(calendar_id: int, trigger_id: UUID, agent_id: int, request_key: UUID,
-                             expected_event_revision: int) -> CalendarExecutionReceipt:
+                             expected_event_revision: int, *, can_launch_process: bool = True) -> CalendarExecutionReceipt:
     from uuid import uuid5
     from .crypto import digest
     from .dispatch import DispatchSnapshot
@@ -952,13 +997,20 @@ async def relaunch_execution(calendar_id: int, trigger_id: UUID, agent_id: int, 
     event = await get_db().scalar(select(CalendarEvent).where(CalendarEvent.id == original.event_id).with_for_update())
     if event is None or event.revision != expected_event_revision:
         raise store.CalendarConflictError("Calendar event changed")
+    if event.process_definition_id is not None and not can_launch_process:
+        raise PermissionError("Process launch permission is required")
     identity = uuid5(trigger_id, str(request_key))
     existing = await get_db().scalar(select(CalendarTrigger).where(CalendarTrigger.id == identity))
     if existing is not None:
-        return CalendarExecutionReceipt(id=identity, task_uri=f"galaris://task/{existing.task_id}" if existing.task_id else None, state=existing.status)
+        return CalendarExecutionReceipt(id=identity, task_uri=f"galaris://task/{existing.task_id}" if existing.task_id else None,
+            process_run_id=existing.process_run_id if can_launch_process else None, state=existing.status)
     recovered = await find_background_tasks(agent_id, [f"calendar:{original.id}"])
     task_id = original.task_id or recovered.get(f"calendar:{original.id}")
-    if task_id:
+    if original.process_run_id:
+        run = (await inspect_scheduled_runs([original.process_run_id], agent_id)).get(original.process_run_id)
+        if run is None or not run.terminal:
+            raise store.CalendarConflictError("The previous process is active or unavailable")
+    elif task_id:
         task = (await inspect_task_states([task_id])).get(task_id)
         if task is None or task.operational_state != "TERMINAL":
             raise store.CalendarConflictError("The previous task is active or unavailable")

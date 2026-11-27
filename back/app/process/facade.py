@@ -1,6 +1,6 @@
 """Public current-definition and durable-run port for the Lab and other domains."""
 
-from typing import Any
+from typing import Any, Literal
 from collections.abc import Collection
 from dataclasses import dataclass
 from datetime import datetime
@@ -286,8 +286,18 @@ class ScheduledProcessOption:
     label: str
 
 
-def _scheduled_definitions(agent_id: int) -> Select[tuple[int, str, str]]:
-    return select(ProcessDefinition.id, ProcessDefinition.label, ProcessDefinition.engine_process_id).where(
+@dataclass(frozen=True)
+class ScheduledProcessRun:
+    engine: str
+    status: str
+
+    @property
+    def terminal(self) -> bool:
+        return self.status in process_service.TERMINAL_STATUSES
+
+
+def _scheduled_definitions(agent_id: int) -> Select[tuple[int, str, str, str | None]]:
+    return select(ProcessDefinition.id, ProcessDefinition.label, ProcessDefinition.engine_process_id, ProcessDefinition.code).where(
         process_service.agent_definition_access(agent_id),
         ProcessDefinition.deleted_at.is_(None),
         ProcessDefinition.archived.is_(False),
@@ -298,7 +308,7 @@ def _scheduled_definitions(agent_id: int) -> Select[tuple[int, str, str]]:
 
 async def scheduled_process_options(agent_id: int) -> list[ScheduledProcessOption]:
     rows = await get_db().execute(_scheduled_definitions(agent_id).order_by(ProcessDefinition.label, ProcessDefinition.id))
-    return [ScheduledProcessOption(identity, label) for identity, label, _ in rows]
+    return [ScheduledProcessOption(identity, label) for identity, label, _, _ in rows]
 
 
 async def _scheduled_workflow(agent_id: int, definition_id: int) -> str:
@@ -306,7 +316,7 @@ async def _scheduled_workflow(agent_id: int, definition_id: int) -> str:
         _scheduled_definitions(agent_id).where(ProcessDefinition.id == definition_id)
     )).one_or_none()
     if row is None:
-        raise PermissionError("The selected process is unavailable to the Goal's agent.")
+        raise PermissionError("The selected process is unavailable to the scheduled agent.")
     return row[2]
 
 
@@ -314,13 +324,58 @@ async def validate_scheduled_process(agent_id: int, definition_id: int) -> None:
     await _scheduled_workflow(agent_id, definition_id)
 
 
+async def scheduled_process_identity(agent_id: int, definition_id: int) -> tuple[str, str | None] | None:
+    row = (await get_db().execute(_scheduled_definitions(agent_id).where(ProcessDefinition.id == definition_id))).one_or_none()
+    if row is None:
+        return None
+    _, label, _, code = row
+    return label, code
+
+
+async def require_automatic_process_start(agent_id: int) -> None:
+    from app.services.facade import has_active_native_function
+
+    if not await has_active_native_function(agent_id, "process_start"):
+        raise PermissionError("Automatic process launch is not enabled for this agent")
+
+
+async def resolve_agent_scheduled_process(agent_id: int, process_code: str) -> int:
+    await require_automatic_process_start(agent_id)
+    identity = await get_db().scalar(_scheduled_definitions(agent_id).where(ProcessDefinition.code == process_code))
+    if identity is None:
+        raise PermissionError("Select the code of a process available to this agent")
+    return identity
+
+
 async def stage_scheduled_process(agent_id: int, definition_id: int, *, cycle_id: UUID) -> ProcessStartResponse:
-    """Stage a run and its outbox job in the cycle's transaction."""
+    return await _stage_scheduled_process(agent_id, definition_id, source="goal-cycle", trigger_id=cycle_id)
+
+
+async def stage_calendar_process(agent_id: int, definition_id: int, *, trigger_id: UUID,
+                                 scheduled_by_agent: bool) -> ProcessStartResponse:
+    if scheduled_by_agent:
+        await require_automatic_process_start(agent_id)
+    return await _stage_scheduled_process(agent_id, definition_id, source="calendar-trigger", trigger_id=trigger_id,
+                                          scheduled_by_agent=scheduled_by_agent)
+
+
+async def _stage_scheduled_process(agent_id: int, definition_id: int, *, source: Literal["goal-cycle", "calendar-trigger"],
+                                   trigger_id: UUID, scheduled_by_agent: bool = False) -> ProcessStartResponse:
+    """Stage a run and its outbox job in the scheduler's transaction."""
     workflow_id = await _scheduled_workflow(agent_id, definition_id)
     return await process_service.start_process(
         agent_id=agent_id, workflow_id=workflow_id, input_data={},
-        idempotency_key=f"goal-cycle:{cycle_id}", _scheduled_definition_id=definition_id,
+        idempotency_key=f"{source}:{trigger_id}", _scheduled_definition_id=definition_id,
+        _calendar_trigger=source == "calendar-trigger", _scheduled_by_agent=scheduled_by_agent,
     )
+
+
+async def inspect_scheduled_runs(run_ids: Collection[UUID], agent_id: int) -> dict[UUID, ScheduledProcessRun]:
+    if not run_ids:
+        return {}
+    rows = await get_db().execute(select(ProcessRun.id, ProcessRun.engine_code, ProcessRun.status).where(
+        ProcessRun.id.in_(run_ids), ProcessRun.launcher_agent_id == agent_id, ProcessRun.deleted_at.is_(None)))
+    return {identity: ScheduledProcessRun(engine, status) for identity, engine, status in rows}
 
 
 async def publish_scheduled_process(run: ProcessStartResponse) -> None:

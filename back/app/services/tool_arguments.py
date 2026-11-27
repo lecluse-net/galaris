@@ -62,8 +62,12 @@ class ToolArgumentsMiddleware(Middleware):
         if tool is None:
             return await call_next(context)
         if self.native_names is not None and context.message.name in self.native_names:
-            retired = {"connection_id", "connection_ids", "referrer_connection_id", "service_id", "tool_id"}
-            if "service_code" in tool.parameters.get("properties", {}) and retired.intersection(context.message.arguments):
+            properties = tool.parameters.get("properties", {})
+            retired_service = {"connection_id", "connection_ids", "referrer_connection_id", "service_id", "tool_id"}
+            retired_process = {"process_workflow_id", "process_definition_id", "process_id", "workflow_id"}
+            if ("service_code" in properties and retired_service.intersection(context.message.arguments)
+                    or context.message.name in {"calendar_create_event", "calendar_update_event"}
+                    and retired_process.intersection(context.message.arguments)):
                 # Preserve the unknown selector for strict validation and execution evidence.
                 return await call_next(context)
         arguments, ignored = normalize_tool_arguments(context.message.arguments, tool.parameters)

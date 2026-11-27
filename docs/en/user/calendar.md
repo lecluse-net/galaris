@@ -107,7 +107,14 @@ remain read-only.
 
 ## Replace a notification with a Task
 
-Every event automatically schedules a Task at its start, with no checkbox or second save.
+In the create or edit dialog, **Action to trigger** lets users with process launch rights select
+a process available to the calendar's agent. **No process, launch a task** is the default. The
+choice is visible in event details and applies to the whole series for recurring events. On their
+own calendars, agents can pass an authorized native Process code as `process_code` to
+`calendar_create_event` or `calendar_update_event`. The code is available in the assigned Process
+catalog and as `metadata.native_code` from `file_list("galaris://processes/")`. The interface also
+supports selecting external processes without a business code.
+With no reminder or scheduled action, the launch occurs at the start of the event.
 Launches are enabled by default on new internal and synchronized calendars, including
 automatically discovered calendars. Explicitly disabling a calendar's launches in settings
 is preserved by later synchronization.
@@ -128,11 +135,11 @@ takes precedence in the queue, even when a calendar Task has been waiting longer
 priority does not forcibly stop work already in progress.
 
 Calendar cards show each action's latest state for that occurrence. Event details list every
-launch, deadline, error and link to an accessible Task. For recurring events, **Whole series**
+launch, deadline, error and link to an accessible Task or Process run. For recurring events, **Whole series**
 expands the execution history. States refresh automatically; use Refresh for an immediate read.
 
-**Launch again** creates a separate execution after a terminal Task or a failed, cancelled or
-skipped launch. The previous Task retains its outcome. Active Tasks cannot be relaunched.
+**Launch again** triggers the currently configured action after a terminal Task or Process run,
+or a failed, cancelled or skipped launch.
 Retries of the same action save and manual relaunch use stable request keys to avoid duplicates.
 
 ## Synchronization and access

@@ -1,5 +1,5 @@
 <template>
-  <q-dialog :model-value="true" :position="$q.screen.lt.md ? 'standard' : 'right'" :maximized="$q.screen.lt.md" @update:model-value="!$event && emit('close')">
+  <q-dialog :model-value="true" :maximized="$q.screen.lt.md" @update:model-value="!$event && emit('close')">
     <q-card class="event-panel">
       <DialogHeader :title="detail?.summary || event.summary" :close-label="t('agenda.close')" :close-popup="false" @close="emit('close')" />
       <q-linear-progress v-if="loading" indeterminate color="primary" />
@@ -10,6 +10,11 @@
           <div class="text-caption">{{ detail.timezone }}</div>
           <div v-if="detail.recurring" class="row items-center q-gutter-sm"><q-icon name="repeat" /><span>{{ t('agenda.repeated') }}</span></div>
           <div v-if="detail.location" class="row items-center q-gutter-sm"><q-icon name="location_on" /><span>{{ detail.location }}</span></div>
+          <div class="row items-center q-gutter-sm"><q-icon name="bolt" color="primary" />
+            <div><div class="text-caption">{{ t('agenda.triggerAction') }}</div>
+              <div>{{ detail.process_label ?? t(detail.process_definition_id ? 'agenda.processUnavailable' : 'agenda.defaultTask') }}</div>
+            </div>
+          </div>
           <q-btn v-if="detail.contact_id" outline color="primary" icon="person" :label="t('agenda.linkedContact')" @click="contactOpen = true" />
           <div v-if="detail.description" class="event-description">{{ detail.description }}</div>
           <q-expansion-item v-if="detail.recurring" icon="repeat" :label="t('agenda.recurrence')">
@@ -107,7 +112,7 @@ onMounted(load)
 onBeforeUnmount(() => { alive = false; controller.abort(); generation++; historyGeneration++ })
 </script>
 <style scoped>
-.event-panel { width: 560px; max-width: 100vw; height: 100%; overflow-y: auto; }
+.event-panel { width: 560px; max-width: 100vw; overflow-y: auto; }
 .event-description { white-space: pre-wrap; overflow-wrap: anywhere; max-height: 240px; overflow-y: auto; padding: 10px 0; }
 .ical { white-space: pre-wrap; overflow-wrap: anywhere; max-height: 300px; overflow-y: auto; font-size: 12px; padding: 12px; }
 </style>

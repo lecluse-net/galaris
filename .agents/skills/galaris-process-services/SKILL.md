@@ -69,14 +69,20 @@ besoin de suivi durable ne changent pas leur nature : leur domaine possède cet 
 ### Agendas et objectifs
 
 `app.calendar` possède les agendas, événements iCalendar historisés, projections locales,
-actions et exécutions liées aux Tasks. `bridge.calendar` traduit CalDAV (protocole de référence)
+actions et références aux exécutions de Tasks ou de processus. `bridge.calendar` traduit CalDAV (protocole de référence)
 et les abonnements iCalendar HTTPS en lecture seule. Les consultations et commandes restent
 locales ; la synchronisation bidirectionnelle utilise un outbox transactionnel, les jetons
 CalDAV, les ETag et des écritures conditionnelles, sans écrasement des conflits.
 Le service système Agenda (`calendar`) est actif par défaut et sans identifiants externes ; une source
 externe est optionnelle. Les fonctions `calendar_*` gardent leurs contrôles habituels et choisissent
 l’agenda personnel par défaut. Un identifiant de calendrier lie l’appel à sa connexion réelle.
-Les actions admettent des Tasks idempotentes indépendamment des périodes consultées. Les
+`calendar_create_event` et `calendar_update_event` reçoivent le champ facultatif `process_code`.
+Publier le code natif exact dans le catalogue assigné et utiliser `metadata.native_code` dans
+`file_list("galaris://processes/")`. Résoudre le code côté serveur sous les droits de l’agent.
+Refuser les paramètres d’identifiant de processus avant toute mutation de l’événement, car les
+ignorer reviendrait à programmer une tâche par défaut. Les processus externes sans code métier
+restent sélectionnables dans l’IHM par les utilisateurs habilités.
+Les actions admettent le processus configuré ou une Task de manière idempotente, indépendamment des périodes consultées. Les
 modifications contrôlent les révisions et l'identité d'origine des occurrences. Une admission
 dont le reçu a été perdu est réconciliée avant modification ou relance ; une création de Task
 ne vaut pas traitement réussi. `pending` ne vaut jamais confirmation d'une écriture externe.

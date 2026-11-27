@@ -438,6 +438,16 @@
       },
       {
         "files": [
+          "back/app/calendar/dispatch.py",
+          "back/app/calendar/mcp.py",
+          "back/app/calendar/router.py",
+          "back/app/calendar/service.py"
+        ],
+        "source": "app.calendar",
+        "target": "app.process"
+      },
+      {
+        "files": [
           "back/app/calendar/__init__.py",
           "back/app/calendar/connection_diagnostics.py",
           "back/app/calendar/dbadmin.py",
@@ -487,6 +497,13 @@
         ],
         "source": "app.calendar",
         "target": "core.params"
+      },
+      {
+        "files": [
+          "back/app/calendar/router.py"
+        ],
+        "source": "app.calendar",
+        "target": "core.user"
       },
       {
         "files": [
@@ -4237,6 +4254,7 @@
           "back/app/process/catalogue.py",
           "back/app/process/code_broker.py",
           "back/app/process/dbadmin.py",
+          "back/app/process/facade.py",
           "back/app/process/input_preparation.py",
           "back/app/process/mcp.py",
           "back/app/process/native_access.py",
@@ -7121,7 +7139,7 @@
           "app.task"
         ]
       ],
-      "domain_edges": 310,
+      "domain_edges": 311,
       "fan_in": [
         {
           "count": 45,
@@ -7365,10 +7383,11 @@
           ]
         },
         {
-          "count": 15,
+          "count": 16,
           "module": "app.process",
           "modules": [
             "app.agent",
+            "app.calendar",
             "app.conversation",
             "app.document",
             "app.dream",
@@ -7893,6 +7912,19 @@
         },
         {
           "count": 7,
+          "module": "app.calendar",
+          "modules": [
+            "app.agent",
+            "app.connection",
+            "app.contact",
+            "app.file_share",
+            "app.memory",
+            "app.process",
+            "app.services"
+          ]
+        },
+        {
+          "count": 7,
           "module": "app.contact",
           "modules": [
             "app.agent",
@@ -7940,18 +7972,6 @@
             "app.services",
             "app.task",
             "bridge.youtube"
-          ]
-        },
-        {
-          "count": 6,
-          "module": "app.calendar",
-          "modules": [
-            "app.agent",
-            "app.connection",
-            "app.contact",
-            "app.file_share",
-            "app.memory",
-            "app.services"
           ]
         },
         {
@@ -8834,7 +8854,7 @@
       {
         "file": "back/app/calendar/mcp.py",
         "handler": "calendar_action_set",
-        "line": 298,
+        "line": 328,
         "module": "app.calendar",
         "name": "calendar_action_set",
         "namespace": "calendar"
@@ -8842,7 +8862,7 @@
       {
         "file": "back/app/calendar/mcp.py",
         "handler": "calendar_actions",
-        "line": 290,
+        "line": 320,
         "module": "app.calendar",
         "name": "calendar_actions",
         "namespace": "calendar"
@@ -8850,7 +8870,7 @@
       {
         "file": "back/app/calendar/mcp.py",
         "handler": "calendar_create_event",
-        "line": 166,
+        "line": 179,
         "module": "app.calendar",
         "name": "calendar_create_event",
         "namespace": "calendar"
@@ -8858,7 +8878,7 @@
       {
         "file": "back/app/calendar/mcp.py",
         "handler": "calendar_delete_event",
-        "line": 257,
+        "line": 287,
         "module": "app.calendar",
         "name": "calendar_delete_event",
         "namespace": "calendar"
@@ -8866,7 +8886,7 @@
       {
         "file": "back/app/calendar/mcp.py",
         "handler": "calendar_event_get",
-        "line": 281,
+        "line": 311,
         "module": "app.calendar",
         "name": "calendar_event_get",
         "namespace": "calendar"
@@ -8874,7 +8894,7 @@
       {
         "file": "back/app/calendar/mcp.py",
         "handler": "calendar_events",
-        "line": 66,
+        "line": 76,
         "module": "app.calendar",
         "name": "calendar_events",
         "namespace": "calendar"
@@ -8882,7 +8902,7 @@
       {
         "file": "back/app/calendar/mcp.py",
         "handler": "calendar_find_free_slots",
-        "line": 127,
+        "line": 137,
         "module": "app.calendar",
         "name": "calendar_find_free_slots",
         "namespace": "calendar"
@@ -8890,7 +8910,7 @@
       {
         "file": "back/app/calendar/mcp.py",
         "handler": "calendar_is_available",
-        "line": 101,
+        "line": 111,
         "module": "app.calendar",
         "name": "calendar_is_available",
         "namespace": "calendar"
@@ -8898,7 +8918,7 @@
       {
         "file": "back/app/calendar/mcp.py",
         "handler": "calendar_list",
-        "line": 43,
+        "line": 53,
         "module": "app.calendar",
         "name": "calendar_list",
         "namespace": "calendar"
@@ -8906,7 +8926,7 @@
       {
         "file": "back/app/calendar/mcp.py",
         "handler": "calendar_update_event",
-        "line": 208,
+        "line": 229,
         "module": "app.calendar",
         "name": "calendar_update_event",
         "namespace": "calendar"
@@ -10809,7 +10829,7 @@
           "calendar_events.id"
         ],
         "history_mixin": true,
-        "line": 122,
+        "line": 124,
         "module": "app.calendar",
         "table": "calendar_actions"
       },
@@ -10820,7 +10840,7 @@
           "calendar_events.id"
         ],
         "history_mixin": false,
-        "line": 81,
+        "line": 83,
         "module": "app.calendar",
         "table": "calendar_event_exceptions"
       },
@@ -10829,10 +10849,11 @@
         "file": "back/app/calendar/models.py",
         "foreign_keys": [
           "calendar_events.id",
-          "memory_items.id"
+          "memory_items.id",
+          "process_definitions.id"
         ],
         "history_mixin": false,
-        "line": 180,
+        "line": 182,
         "module": "app.calendar",
         "table": "calendar_event_revisions"
       },
@@ -10842,7 +10863,8 @@
         "foreign_keys": [
           "calendar_events.id",
           "calendar_feeds.id",
-          "memory_items.id"
+          "memory_items.id",
+          "process_definitions.id"
         ],
         "history_mixin": true,
         "line": 50,
@@ -10868,7 +10890,7 @@
           "calendar_feeds.id"
         ],
         "history_mixin": false,
-        "line": 90,
+        "line": 92,
         "module": "app.calendar",
         "table": "calendar_occurrences"
       },
@@ -10879,7 +10901,7 @@
           "calendar_events.id"
         ],
         "history_mixin": false,
-        "line": 109,
+        "line": 111,
         "module": "app.calendar",
         "table": "calendar_projection_windows"
       },
@@ -10891,7 +10913,7 @@
           "calendar_feeds.id"
         ],
         "history_mixin": false,
-        "line": 139,
+        "line": 141,
         "module": "app.calendar",
         "table": "calendar_sync_operations"
       },
@@ -10903,7 +10925,7 @@
           "calendar_sync_operations.id"
         ],
         "history_mixin": false,
-        "line": 162,
+        "line": 164,
         "module": "app.calendar",
         "table": "calendar_sync_runs"
       },
@@ -10913,10 +10935,11 @@
         "foreign_keys": [
           "calendar_events.id",
           "calendar_feeds.id",
+          "process_runs.id",
           "tasks.id"
         ],
         "history_mixin": false,
-        "line": 192,
+        "line": 195,
         "module": "app.calendar",
         "table": "calendar_triggers"
       },
@@ -16297,7 +16320,7 @@
         "declared_path": "/calendars",
         "file": "back/app/calendar/router.py",
         "handler": "read_calendars",
-        "line": 96,
+        "line": 102,
         "method": "GET",
         "module": "app.calendar"
       },
@@ -16306,7 +16329,7 @@
         "declared_path": "/calendars",
         "file": "back/app/calendar/router.py",
         "handler": "create_calendar",
-        "line": 259,
+        "line": 282,
         "method": "POST",
         "module": "app.calendar"
       },
@@ -16315,7 +16338,7 @@
         "declared_path": "/calendars/connection-options",
         "file": "back/app/calendar/router.py",
         "handler": "connection_options",
-        "line": 89,
+        "line": 95,
         "method": "GET",
         "module": "app.calendar"
       },
@@ -16324,7 +16347,7 @@
         "declared_path": "/calendars/events",
         "file": "back/app/calendar/router.py",
         "handler": "read_events",
-        "line": 150,
+        "line": 159,
         "method": "GET",
         "module": "app.calendar"
       },
@@ -16333,7 +16356,7 @@
         "declared_path": "/calendars/execution-states",
         "file": "back/app/calendar/router.py",
         "handler": "execution_states",
-        "line": 142,
+        "line": 151,
         "method": "POST",
         "module": "app.calendar"
       },
@@ -16342,7 +16365,7 @@
         "declared_path": "/calendars/reminders",
         "file": "back/app/calendar/router.py",
         "handler": "read_reminders",
-        "line": 128,
+        "line": 134,
         "method": "GET",
         "module": "app.calendar"
       },
@@ -16351,7 +16374,7 @@
         "declared_path": "/calendars/resources",
         "file": "back/app/calendar/router.py",
         "handler": "search_resources",
-        "line": 111,
+        "line": 117,
         "method": "GET",
         "module": "app.calendar"
       },
@@ -16360,7 +16383,7 @@
         "declared_path": "/calendars/{calendar_id:int}",
         "file": "back/app/calendar/router.py",
         "handler": "read_calendar",
-        "line": 120,
+        "line": 126,
         "method": "GET",
         "module": "app.calendar"
       },
@@ -16369,7 +16392,7 @@
         "declared_path": "/calendars/{calendar_id}",
         "file": "back/app/calendar/router.py",
         "handler": "delete_calendar",
-        "line": 296,
+        "line": 320,
         "method": "DELETE",
         "module": "app.calendar"
       },
@@ -16378,7 +16401,7 @@
         "declared_path": "/calendars/{calendar_id}",
         "file": "back/app/calendar/router.py",
         "handler": "update_calendar",
-        "line": 282,
+        "line": 306,
         "method": "PUT",
         "module": "app.calendar"
       },
@@ -16387,7 +16410,7 @@
         "declared_path": "/calendars/{calendar_id}/conflicts",
         "file": "back/app/calendar/router.py",
         "handler": "calendar_conflicts",
-        "line": 200,
+        "line": 223,
         "method": "GET",
         "module": "app.calendar"
       },
@@ -16396,7 +16419,7 @@
         "declared_path": "/calendars/{calendar_id}/events",
         "file": "back/app/calendar/router.py",
         "handler": "create_event",
-        "line": 165,
+        "line": 174,
         "method": "POST",
         "module": "app.calendar"
       },
@@ -16405,7 +16428,7 @@
         "declared_path": "/calendars/{calendar_id}/events/{event_id}",
         "file": "back/app/calendar/router.py",
         "handler": "delete_event",
-        "line": 224,
+        "line": 247,
         "method": "DELETE",
         "module": "app.calendar"
       },
@@ -16414,7 +16437,7 @@
         "declared_path": "/calendars/{calendar_id}/events/{event_id}",
         "file": "back/app/calendar/router.py",
         "handler": "event_detail",
-        "line": 183,
+        "line": 206,
         "method": "GET",
         "module": "app.calendar"
       },
@@ -16423,7 +16446,7 @@
         "declared_path": "/calendars/{calendar_id}/events/{event_id}",
         "file": "back/app/calendar/router.py",
         "handler": "update_event",
-        "line": 174,
+        "line": 195,
         "method": "PUT",
         "module": "app.calendar"
       },
@@ -16432,7 +16455,7 @@
         "declared_path": "/calendars/{calendar_id}/events/{event_id}/actions",
         "file": "back/app/calendar/router.py",
         "handler": "read_actions",
-        "line": 233,
+        "line": 256,
         "method": "GET",
         "module": "app.calendar"
       },
@@ -16441,7 +16464,7 @@
         "declared_path": "/calendars/{calendar_id}/events/{event_id}/actions",
         "file": "back/app/calendar/router.py",
         "handler": "create_action",
-        "line": 241,
+        "line": 264,
         "method": "POST",
         "module": "app.calendar"
       },
@@ -16450,7 +16473,7 @@
         "declared_path": "/calendars/{calendar_id}/events/{event_id}/actions/{action_id}",
         "file": "back/app/calendar/router.py",
         "handler": "update_action",
-        "line": 250,
+        "line": 273,
         "method": "PUT",
         "module": "app.calendar"
       },
@@ -16459,7 +16482,7 @@
         "declared_path": "/calendars/{calendar_id}/events/{event_id}/history",
         "file": "back/app/calendar/router.py",
         "handler": "event_history",
-        "line": 191,
+        "line": 214,
         "method": "GET",
         "module": "app.calendar"
       },
@@ -16468,7 +16491,7 @@
         "declared_path": "/calendars/{calendar_id}/events/{event_id}/resolve",
         "file": "back/app/calendar/router.py",
         "handler": "resolve_conflict",
-        "line": 208,
+        "line": 231,
         "method": "POST",
         "module": "app.calendar"
       },
@@ -16477,8 +16500,17 @@
         "declared_path": "/calendars/{calendar_id}/executions/{execution_id}/relaunch",
         "file": "back/app/calendar/router.py",
         "handler": "relaunch_execution",
-        "line": 273,
+        "line": 296,
         "method": "POST",
+        "module": "app.calendar"
+      },
+      {
+        "authorized": true,
+        "declared_path": "/calendars/{calendar_id}/process-options",
+        "file": "back/app/calendar/router.py",
+        "handler": "read_event_process_options",
+        "line": 185,
+        "method": "GET",
         "module": "app.calendar"
       },
       {
@@ -16486,7 +16518,7 @@
         "declared_path": "/calendars/{calendar_id}/sync-runs",
         "file": "back/app/calendar/router.py",
         "handler": "sync_runs",
-        "line": 217,
+        "line": 240,
         "method": "GET",
         "module": "app.calendar"
       },
@@ -16495,7 +16527,7 @@
         "declared_path": "/calendars/{calendar_id}/test",
         "file": "back/app/calendar/router.py",
         "handler": "test_calendar",
-        "line": 307,
+        "line": 331,
         "method": "POST",
         "module": "app.calendar"
       },
@@ -23194,6 +23226,7 @@
       },
       {
         "files": [
+          "front/app/calendar/components/CalendarEventEditor.vue",
           "front/app/calendar/components/CalendarEventTasks.vue",
           "front/app/calendar/components/CalendarSettings.vue",
           "front/app/calendar/components/CalendarWorkspace.vue",

@@ -11,13 +11,13 @@ tests restent l’autorité sur le comportement.
 
 - 80 modules backend déclarés ;
 - 41 modules frontend déclarés ;
-- 658 arêtes de dépendance backend ;
+- 660 arêtes de dépendance backend ;
 - 230 arêtes de dépendance frontend ;
-- 310 arêtes entre domaines `app`/`bridge` ;
+- 311 arêtes entre domaines `app`/`bridge` ;
 - 30 paires de domaines directement bidirectionnelles ;
 - 1 composantes fortement connexes ;
 - 0 paires frontend directement bidirectionnelles ;
-- 860 handlers HTTP/WebSocket détectés ;
+- 861 handlers HTTP/WebSocket détectés ;
 - 215 tables SQLAlchemy détectées ;
 - 290 outils MCP natifs détectés ;
 - 61 pages Vue détectées.
@@ -198,11 +198,13 @@ tests restent l’autorité sur le comportement.
 | `app.calendar` | `app.contact` | `back/app/calendar/__init__.py`, `back/app/calendar/service.py` |
 | `app.calendar` | `app.file_share` | `back/app/calendar/__init__.py` |
 | `app.calendar` | `app.memory` | `back/app/calendar/awareness.py`, `back/app/calendar/context.py`, `back/app/calendar/mcp.py` |
+| `app.calendar` | `app.process` | `back/app/calendar/dispatch.py`, `back/app/calendar/mcp.py`, `back/app/calendar/router.py`, `back/app/calendar/service.py` |
 | `app.calendar` | `app.services` | `back/app/calendar/__init__.py`, `back/app/calendar/connection_diagnostics.py`, `back/app/calendar/dbadmin.py`, `back/app/calendar/mcp.py`, `back/app/calendar/resources.py`, `back/app/calendar/service.py`, `back/app/calendar/synchronization.py` |
 | `app.calendar` | `core.authorize` | `back/app/calendar/router.py` |
 | `app.calendar` | `core.database` | `back/app/calendar/connection_diagnostics.py`, `back/app/calendar/contact_links.py`, `back/app/calendar/dispatch.py`, `back/app/calendar/maintenance.py`, `back/app/calendar/models.py`, `back/app/calendar/resources.py`, `back/app/calendar/router.py`, `back/app/calendar/service.py`, `back/app/calendar/store.py`, `back/app/calendar/sync_progress.py`, `back/app/calendar/synchronization.py` |
 | `app.calendar` | `core.dbadmin` | `back/app/calendar/dbadmin.py` |
 | `app.calendar` | `core.params` | `back/app/calendar/context.py`, `back/app/calendar/service.py` |
+| `app.calendar` | `core.user` | `back/app/calendar/router.py` |
 | `app.calendar` | `core.util` | `back/app/calendar/crypto.py` |
 | `app.chat` | `app.agent` | `back/app/chat/assertions.py`, `back/app/chat/document_conversation.py`, `back/app/chat/events.py`, `back/app/chat/router.py`, `back/app/chat/schemas.py` |
 | `app.chat` | `app.browser` | `back/app/chat/router.py`, `back/app/chat/thumbnail_service.py` |
@@ -522,7 +524,7 @@ tests restent l’autorité sur le comportement.
 | `app.process` | `app.file_share` | `back/app/process/facade.py`, `back/app/process/input_provenance.py`, `back/app/process/native_engine.py`, `back/app/process/native_router.py`, `back/app/process/process_service.py`, `back/app/process/router.py`, `back/app/process/run_data.py`, `back/app/process/run_resources.py`, `back/app/process/values.py` |
 | `app.process` | `app.llm` | `back/app/process/__init__.py`, `back/app/process/agent_capabilities.py`, `back/app/process/bpmn.py`, `back/app/process/dbadmin.py`, `back/app/process/llm_decisions.py`, `back/app/process/native_router.py`, `back/app/process/native_runs.py`, `back/app/process/process_service.py` |
 | `app.process` | `app.memory` | `back/app/process/events.py`, `back/app/process/native_actors.py`, `back/app/process/native_router.py`, `back/app/process/native_runs.py`, `back/app/process/router.py` |
-| `app.process` | `app.services` | `back/app/process/__init__.py`, `back/app/process/activity_jobs.py`, `back/app/process/bpmn.py`, `back/app/process/catalogue.py`, `back/app/process/code_broker.py`, `back/app/process/dbadmin.py`, `back/app/process/input_preparation.py`, `back/app/process/mcp.py`, `back/app/process/native_access.py`, `back/app/process/native_definitions.py`, `back/app/process/native_engine.py`, `back/app/process/native_runs.py`, `back/app/process/process_service.py`, `back/app/process/resource_facade.py`, `back/app/process/run_resources.py` |
+| `app.process` | `app.services` | `back/app/process/__init__.py`, `back/app/process/activity_jobs.py`, `back/app/process/bpmn.py`, `back/app/process/catalogue.py`, `back/app/process/code_broker.py`, `back/app/process/dbadmin.py`, `back/app/process/facade.py`, `back/app/process/input_preparation.py`, `back/app/process/mcp.py`, `back/app/process/native_access.py`, `back/app/process/native_definitions.py`, `back/app/process/native_engine.py`, `back/app/process/native_runs.py`, `back/app/process/process_service.py`, `back/app/process/resource_facade.py`, `back/app/process/run_resources.py` |
 | `app.process` | `app.share` | `back/app/process/definition_migration.py`, `back/app/process/models.py`, `back/app/process/native_access.py`, `back/app/process/native_router.py`, `back/app/process/native_sharing.py` |
 | `app.process` | `app.task` | `back/app/process/activity_controls.py`, `back/app/process/activity_jobs.py`, `back/app/process/code_broker.py`, `back/app/process/native_engine.py`, `back/app/process/process_service.py`, `back/app/process/retention.py`, `back/app/process/run_observation.py`, `back/app/process/run_resources.py` |
 | `app.process` | `core.authorize` | `back/app/process/dataset_usage.py`, `back/app/process/facade.py`, `back/app/process/native_access.py`, `back/app/process/native_router.py`, `back/app/process/native_sharing.py`, `back/app/process/router.py` |
@@ -836,7 +838,7 @@ tests restent l’autorité sur le comportement.
 | `app/calendar` | `app/goal` | `front/app/calendar/components/CalendarWorkspace.vue`, `front/app/calendar/services/calendarService.ts` |
 | `app/calendar` | `app/memory` | `front/app/calendar/components/CalendarEventEditor.vue`, `front/app/calendar/components/CalendarEventPanel.vue`, `front/app/calendar/components/CalendarWorkspace.vue`, `front/app/calendar/services/calendarService.ts` |
 | `app/calendar` | `core/api` | `front/app/calendar/components/CalendarEventEditor.vue`, `front/app/calendar/components/CalendarEventPanel.vue`, `front/app/calendar/components/CalendarEventTasks.vue`, `front/app/calendar/components/CalendarResourceDialog.vue`, `front/app/calendar/components/CalendarSettings.vue`, `front/app/calendar/components/CalendarSyncMonitor.vue`, `front/app/calendar/components/CalendarWorkspace.vue`, `front/app/calendar/services/calendarService.ts` |
-| `app/calendar` | `core/authorize` | `front/app/calendar/components/CalendarEventTasks.vue`, `front/app/calendar/components/CalendarSettings.vue`, `front/app/calendar/components/CalendarWorkspace.vue`, `front/app/calendar/navigation.ts` |
+| `app/calendar` | `core/authorize` | `front/app/calendar/components/CalendarEventEditor.vue`, `front/app/calendar/components/CalendarEventTasks.vue`, `front/app/calendar/components/CalendarSettings.vue`, `front/app/calendar/components/CalendarWorkspace.vue`, `front/app/calendar/navigation.ts` |
 | `app/calendar` | `core/navigation` | `front/app/calendar/navigation.ts` |
 | `app/calendar` | `core/user` | `front/app/calendar/components/CalendarWorkspace.vue` |
 | `app/calendar` | `core/util` | `front/app/calendar/calendarDates.ts`, `front/app/calendar/components/CalendarBoard.vue`, `front/app/calendar/components/CalendarColorSelect.vue`, `front/app/calendar/components/CalendarConfirmDialog.vue`, `front/app/calendar/components/CalendarEventChip.vue`, `front/app/calendar/components/CalendarEventEditor.vue`, `front/app/calendar/components/CalendarEventPanel.vue`, `front/app/calendar/components/CalendarEventTasks.vue`, `front/app/calendar/components/CalendarResourceDialog.vue`, `front/app/calendar/components/CalendarRowMenu.vue`, `front/app/calendar/components/CalendarSettings.vue`, `front/app/calendar/components/CalendarWorkspace.vue`, `front/app/calendar/presentation.ts`, `front/app/calendar/richContent.ts` |
@@ -1076,11 +1078,11 @@ tests restent l’autorité sur le comportement.
 | `app.voice` | 9 | `app.agent`, `app.connection`, `app.conversation`, `app.llm`, `app.memory`, `app.messenger`, `app.process`, `app.services`, `app.task` |
 | `app.agent` | 8 | `app.file_share`, `app.image`, `app.llm`, `app.messenger`, `app.process`, `app.services`, `app.share`, `app.skill` |
 | `app.messenger` | 8 | `app.agent`, `app.connection`, `app.conversation`, `app.file_share`, `app.llm`, `app.memory`, `app.services`, `app.task` |
+| `app.calendar` | 7 | `app.agent`, `app.connection`, `app.contact`, `app.file_share`, `app.memory`, `app.process`, `app.services` |
 | `app.contact` | 7 | `app.agent`, `app.conversation`, `app.llm`, `app.memory`, `app.messenger`, `app.services`, `app.task` |
 | `app.goal` | 7 | `app.agent`, `app.connection`, `app.llm`, `app.messenger`, `app.process`, `app.services`, `app.task` |
 | `app.onboarding` | 7 | `app.agent`, `app.connection`, `app.llm`, `app.messenger`, `app.process`, `app.services`, `app.skill` |
 | `app.audio` | 6 | `app.file_share`, `app.llm`, `app.messenger`, `app.services`, `app.task`, `bridge.youtube` |
-| `app.calendar` | 6 | `app.agent`, `app.connection`, `app.contact`, `app.file_share`, `app.memory`, `app.services` |
 | `bridge.codex` | 6 | `app.agent`, `app.harnesses`, `app.llm`, `app.mcp`, `app.skill`, `bridge.harness` |
 | `bridge.deepseek_harness` | 6 | `app.agent`, `app.harnesses`, `app.llm`, `app.mcp`, `app.skill`, `bridge.harness` |
 | `bridge.mail` | 6 | `app.agent`, `app.connection`, `app.contact`, `app.file_share`, `app.messenger`, `app.services` |
@@ -1142,7 +1144,7 @@ tests restent l’autorité sur le comportement.
 | `app.connection` | 22 | `app.browser`, `app.calendar`, `app.console`, `app.conversation`, `app.dream`, `app.file_share`, `app.goal`, `app.lab`, `app.llm`, `app.messenger`, `app.onboarding`, `app.services`, `app.skill`, `app.topic`, `app.voice`, `app.webhook`, `bridge.hermes`, `bridge.mail`, `bridge.matrix`, `bridge.nextcloud`, `bridge.one_bot`, `bridge.whatsapp` |
 | `app.file_share` | 21 | `app.agent`, `app.audio`, `app.browser`, `app.calendar`, `app.chat`, `app.console`, `app.conversation`, `app.document`, `app.harness`, `app.image`, `app.llm`, `app.messenger`, `app.multimedia`, `app.process`, `app.services`, `bridge.calendar`, `bridge.code_server`, `bridge.hermes`, `bridge.mail`, `bridge.nextcloud`, `bridge.samba` |
 | `app.task` | 17 | `app.audio`, `app.contact`, `app.conversation`, `app.dashboard`, `app.document`, `app.dream`, `app.file_share`, `app.goal`, `app.lab`, `app.llm`, `app.memory`, `app.messenger`, `app.process`, `app.services`, `app.topic`, `app.voice`, `app.webhook` |
-| `app.process` | 15 | `app.agent`, `app.conversation`, `app.document`, `app.dream`, `app.file_share`, `app.goal`, `app.harness`, `app.lab`, `app.llm`, `app.memory`, `app.onboarding`, `app.topic`, `app.voice`, `bridge.hermes`, `bridge.n8n` |
+| `app.process` | 16 | `app.agent`, `app.calendar`, `app.conversation`, `app.document`, `app.dream`, `app.file_share`, `app.goal`, `app.harness`, `app.lab`, `app.llm`, `app.memory`, `app.onboarding`, `app.topic`, `app.voice`, `bridge.hermes`, `bridge.n8n` |
 | `app.conversation` | 12 | `app.chat`, `app.contact`, `app.document`, `app.dream`, `app.file_share`, `app.harness`, `app.lab`, `app.llm`, `app.memory`, `app.messenger`, `app.topic`, `app.voice` |
 | `app.memory` | 11 | `app.calendar`, `app.contact`, `app.document`, `app.dream`, `app.file_share`, `app.lab`, `app.messenger`, `app.process`, `app.topic`, `app.voice`, `bridge.hermes` |
 | `app.skill` | 8 | `app.agent`, `app.file_share`, `app.harness`, `app.lab`, `app.onboarding`, `bridge.codex`, `bridge.deepseek_harness`, `bridge.hermes` |
@@ -1385,29 +1387,30 @@ Aucune composante cyclique détectée.
 | GET | `/browser/search` | `app.file_share` | `search` | oui | `back/app/file_share/browser_router.py:104` |
 | GET | `/browser/status` | `app.browser` | `status` | oui | `back/app/browser/router.py:34` |
 | GET | `/browser/thumbnail` | `app.file_share` | `thumbnail` | oui | `back/app/file_share/browser_router.py:122` |
-| GET | `/calendars` | `app.calendar` | `read_calendars` | oui | `back/app/calendar/router.py:96` |
-| POST | `/calendars` | `app.calendar` | `create_calendar` | oui | `back/app/calendar/router.py:259` |
-| GET | `/calendars/connection-options` | `app.calendar` | `connection_options` | oui | `back/app/calendar/router.py:89` |
-| GET | `/calendars/events` | `app.calendar` | `read_events` | oui | `back/app/calendar/router.py:150` |
-| POST | `/calendars/execution-states` | `app.calendar` | `execution_states` | oui | `back/app/calendar/router.py:142` |
-| GET | `/calendars/reminders` | `app.calendar` | `read_reminders` | oui | `back/app/calendar/router.py:128` |
-| GET | `/calendars/resources` | `app.calendar` | `search_resources` | oui | `back/app/calendar/router.py:111` |
-| GET | `/calendars/{calendar_id:int}` | `app.calendar` | `read_calendar` | oui | `back/app/calendar/router.py:120` |
-| DELETE | `/calendars/{calendar_id}` | `app.calendar` | `delete_calendar` | oui | `back/app/calendar/router.py:296` |
-| PUT | `/calendars/{calendar_id}` | `app.calendar` | `update_calendar` | oui | `back/app/calendar/router.py:282` |
-| GET | `/calendars/{calendar_id}/conflicts` | `app.calendar` | `calendar_conflicts` | oui | `back/app/calendar/router.py:200` |
-| POST | `/calendars/{calendar_id}/events` | `app.calendar` | `create_event` | oui | `back/app/calendar/router.py:165` |
-| DELETE | `/calendars/{calendar_id}/events/{event_id}` | `app.calendar` | `delete_event` | oui | `back/app/calendar/router.py:224` |
-| GET | `/calendars/{calendar_id}/events/{event_id}` | `app.calendar` | `event_detail` | oui | `back/app/calendar/router.py:183` |
-| PUT | `/calendars/{calendar_id}/events/{event_id}` | `app.calendar` | `update_event` | oui | `back/app/calendar/router.py:174` |
-| GET | `/calendars/{calendar_id}/events/{event_id}/actions` | `app.calendar` | `read_actions` | oui | `back/app/calendar/router.py:233` |
-| POST | `/calendars/{calendar_id}/events/{event_id}/actions` | `app.calendar` | `create_action` | oui | `back/app/calendar/router.py:241` |
-| PUT | `/calendars/{calendar_id}/events/{event_id}/actions/{action_id}` | `app.calendar` | `update_action` | oui | `back/app/calendar/router.py:250` |
-| GET | `/calendars/{calendar_id}/events/{event_id}/history` | `app.calendar` | `event_history` | oui | `back/app/calendar/router.py:191` |
-| POST | `/calendars/{calendar_id}/events/{event_id}/resolve` | `app.calendar` | `resolve_conflict` | oui | `back/app/calendar/router.py:208` |
-| POST | `/calendars/{calendar_id}/executions/{execution_id}/relaunch` | `app.calendar` | `relaunch_execution` | oui | `back/app/calendar/router.py:273` |
-| GET | `/calendars/{calendar_id}/sync-runs` | `app.calendar` | `sync_runs` | oui | `back/app/calendar/router.py:217` |
-| POST | `/calendars/{calendar_id}/test` | `app.calendar` | `test_calendar` | oui | `back/app/calendar/router.py:307` |
+| GET | `/calendars` | `app.calendar` | `read_calendars` | oui | `back/app/calendar/router.py:102` |
+| POST | `/calendars` | `app.calendar` | `create_calendar` | oui | `back/app/calendar/router.py:282` |
+| GET | `/calendars/connection-options` | `app.calendar` | `connection_options` | oui | `back/app/calendar/router.py:95` |
+| GET | `/calendars/events` | `app.calendar` | `read_events` | oui | `back/app/calendar/router.py:159` |
+| POST | `/calendars/execution-states` | `app.calendar` | `execution_states` | oui | `back/app/calendar/router.py:151` |
+| GET | `/calendars/reminders` | `app.calendar` | `read_reminders` | oui | `back/app/calendar/router.py:134` |
+| GET | `/calendars/resources` | `app.calendar` | `search_resources` | oui | `back/app/calendar/router.py:117` |
+| GET | `/calendars/{calendar_id:int}` | `app.calendar` | `read_calendar` | oui | `back/app/calendar/router.py:126` |
+| DELETE | `/calendars/{calendar_id}` | `app.calendar` | `delete_calendar` | oui | `back/app/calendar/router.py:320` |
+| PUT | `/calendars/{calendar_id}` | `app.calendar` | `update_calendar` | oui | `back/app/calendar/router.py:306` |
+| GET | `/calendars/{calendar_id}/conflicts` | `app.calendar` | `calendar_conflicts` | oui | `back/app/calendar/router.py:223` |
+| POST | `/calendars/{calendar_id}/events` | `app.calendar` | `create_event` | oui | `back/app/calendar/router.py:174` |
+| DELETE | `/calendars/{calendar_id}/events/{event_id}` | `app.calendar` | `delete_event` | oui | `back/app/calendar/router.py:247` |
+| GET | `/calendars/{calendar_id}/events/{event_id}` | `app.calendar` | `event_detail` | oui | `back/app/calendar/router.py:206` |
+| PUT | `/calendars/{calendar_id}/events/{event_id}` | `app.calendar` | `update_event` | oui | `back/app/calendar/router.py:195` |
+| GET | `/calendars/{calendar_id}/events/{event_id}/actions` | `app.calendar` | `read_actions` | oui | `back/app/calendar/router.py:256` |
+| POST | `/calendars/{calendar_id}/events/{event_id}/actions` | `app.calendar` | `create_action` | oui | `back/app/calendar/router.py:264` |
+| PUT | `/calendars/{calendar_id}/events/{event_id}/actions/{action_id}` | `app.calendar` | `update_action` | oui | `back/app/calendar/router.py:273` |
+| GET | `/calendars/{calendar_id}/events/{event_id}/history` | `app.calendar` | `event_history` | oui | `back/app/calendar/router.py:214` |
+| POST | `/calendars/{calendar_id}/events/{event_id}/resolve` | `app.calendar` | `resolve_conflict` | oui | `back/app/calendar/router.py:231` |
+| POST | `/calendars/{calendar_id}/executions/{execution_id}/relaunch` | `app.calendar` | `relaunch_execution` | oui | `back/app/calendar/router.py:296` |
+| GET | `/calendars/{calendar_id}/process-options` | `app.calendar` | `read_event_process_options` | oui | `back/app/calendar/router.py:185` |
+| GET | `/calendars/{calendar_id}/sync-runs` | `app.calendar` | `sync_runs` | oui | `back/app/calendar/router.py:240` |
+| POST | `/calendars/{calendar_id}/test` | `app.calendar` | `test_calendar` | oui | `back/app/calendar/router.py:331` |
 | GET | `/catalogue` | `app.process` | `read_catalogue` | oui | `back/app/process/router.py:94` |
 | GET | `/chat/agents/{agent_id}/avatar` | `app.chat` | `read_agent_avatar` | oui | `back/app/chat/router.py:535` |
 | GET | `/chat/agents/{agent_id}/profile` | `app.chat` | `read_agent_profile` | oui | `back/app/chat/router.py:555` |
@@ -2147,16 +2150,16 @@ Aucune composante cyclique détectée.
 | `agent_teams` | `AgentTeam` | `app.agent` | non | `agent_groups.id`, `agents.id` | `back/app/agent/models.py:17` |
 | `agents` | `Agent` | `app.agent` | oui | `harnesses.id`, `llm_profiles.id`, `memory_items.id`, `titles.id`, `users.id` | `back/app/agent/models.py:37` |
 | `assignments` | `Assignment` | `core.authorize` | oui | `roles.id`, `users.id` | `back/core/authorize/models.py:91` |
-| `calendar_actions` | `CalendarAction` | `app.calendar` | oui | `calendar_events.id` | `back/app/calendar/models.py:122` |
-| `calendar_event_exceptions` | `CalendarEventException` | `app.calendar` | non | `calendar_events.id` | `back/app/calendar/models.py:81` |
-| `calendar_event_revisions` | `CalendarEventRevision` | `app.calendar` | non | `calendar_events.id`, `memory_items.id` | `back/app/calendar/models.py:180` |
-| `calendar_events` | `CalendarEvent` | `app.calendar` | oui | `calendar_events.id`, `calendar_feeds.id`, `memory_items.id` | `back/app/calendar/models.py:50` |
+| `calendar_actions` | `CalendarAction` | `app.calendar` | oui | `calendar_events.id` | `back/app/calendar/models.py:124` |
+| `calendar_event_exceptions` | `CalendarEventException` | `app.calendar` | non | `calendar_events.id` | `back/app/calendar/models.py:83` |
+| `calendar_event_revisions` | `CalendarEventRevision` | `app.calendar` | non | `calendar_events.id`, `memory_items.id`, `process_definitions.id` | `back/app/calendar/models.py:182` |
+| `calendar_events` | `CalendarEvent` | `app.calendar` | oui | `calendar_events.id`, `calendar_feeds.id`, `memory_items.id`, `process_definitions.id` | `back/app/calendar/models.py:50` |
 | `calendar_feeds` | `CalendarFeed` | `app.calendar` | oui | `connections.id` | `back/app/calendar/models.py:12` |
-| `calendar_occurrences` | `CalendarOccurrence` | `app.calendar` | non | `calendar_events.id`, `calendar_feeds.id` | `back/app/calendar/models.py:90` |
-| `calendar_projection_windows` | `CalendarProjectionWindow` | `app.calendar` | non | `calendar_events.id` | `back/app/calendar/models.py:109` |
-| `calendar_sync_operations` | `CalendarSyncOperation` | `app.calendar` | non | `calendar_events.id`, `calendar_feeds.id` | `back/app/calendar/models.py:139` |
-| `calendar_sync_runs` | `CalendarSyncRun` | `app.calendar` | non | `calendar_feeds.id`, `calendar_sync_operations.id` | `back/app/calendar/models.py:162` |
-| `calendar_triggers` | `CalendarTrigger` | `app.calendar` | non | `calendar_events.id`, `calendar_feeds.id`, `tasks.id` | `back/app/calendar/models.py:192` |
+| `calendar_occurrences` | `CalendarOccurrence` | `app.calendar` | non | `calendar_events.id`, `calendar_feeds.id` | `back/app/calendar/models.py:92` |
+| `calendar_projection_windows` | `CalendarProjectionWindow` | `app.calendar` | non | `calendar_events.id` | `back/app/calendar/models.py:111` |
+| `calendar_sync_operations` | `CalendarSyncOperation` | `app.calendar` | non | `calendar_events.id`, `calendar_feeds.id` | `back/app/calendar/models.py:141` |
+| `calendar_sync_runs` | `CalendarSyncRun` | `app.calendar` | non | `calendar_feeds.id`, `calendar_sync_operations.id` | `back/app/calendar/models.py:164` |
+| `calendar_triggers` | `CalendarTrigger` | `app.calendar` | non | `calendar_events.id`, `calendar_feeds.id`, `process_runs.id`, `tasks.id` | `back/app/calendar/models.py:195` |
 | `chat_desktop_screen_requests` | `ChatDesktopScreenRequest` | `app.chat` | non | `chat_desktop_screen_sessions.id`, `conversation_rounds.id`, `messenger_rooms.id` | `back/app/chat/models.py:36` |
 | `chat_desktop_screen_sessions` | `ChatDesktopScreenSession` | `app.chat` | non | `users.id` | `back/app/chat/models.py:25` |
 | `chat_document_conversations` | `ChatDocumentConversation` | `app.chat` | non | `documents.id`, `messenger_rooms.id`, `users.id` | `back/app/chat/models.py:53` |
@@ -2415,16 +2418,16 @@ Aucune composante cyclique détectée.
 | `browser_scroll` | `browser` | `app.browser` | `browser_scroll` | `back/app/browser/mcp.py:463` |
 | `browser_type` | `browser` | `app.browser` | `browser_type` | `back/app/browser/mcp.py:423` |
 | `search_web` | `browser` | `app.services` | `search_web` | `back/app/services/mcp.py:100` |
-| `calendar_action_set` | `calendar` | `app.calendar` | `calendar_action_set` | `back/app/calendar/mcp.py:298` |
-| `calendar_actions` | `calendar` | `app.calendar` | `calendar_actions` | `back/app/calendar/mcp.py:290` |
-| `calendar_create_event` | `calendar` | `app.calendar` | `calendar_create_event` | `back/app/calendar/mcp.py:166` |
-| `calendar_delete_event` | `calendar` | `app.calendar` | `calendar_delete_event` | `back/app/calendar/mcp.py:257` |
-| `calendar_event_get` | `calendar` | `app.calendar` | `calendar_event_get` | `back/app/calendar/mcp.py:281` |
-| `calendar_events` | `calendar` | `app.calendar` | `calendar_events` | `back/app/calendar/mcp.py:66` |
-| `calendar_find_free_slots` | `calendar` | `app.calendar` | `calendar_find_free_slots` | `back/app/calendar/mcp.py:127` |
-| `calendar_is_available` | `calendar` | `app.calendar` | `calendar_is_available` | `back/app/calendar/mcp.py:101` |
-| `calendar_list` | `calendar` | `app.calendar` | `calendar_list` | `back/app/calendar/mcp.py:43` |
-| `calendar_update_event` | `calendar` | `app.calendar` | `calendar_update_event` | `back/app/calendar/mcp.py:208` |
+| `calendar_action_set` | `calendar` | `app.calendar` | `calendar_action_set` | `back/app/calendar/mcp.py:328` |
+| `calendar_actions` | `calendar` | `app.calendar` | `calendar_actions` | `back/app/calendar/mcp.py:320` |
+| `calendar_create_event` | `calendar` | `app.calendar` | `calendar_create_event` | `back/app/calendar/mcp.py:179` |
+| `calendar_delete_event` | `calendar` | `app.calendar` | `calendar_delete_event` | `back/app/calendar/mcp.py:287` |
+| `calendar_event_get` | `calendar` | `app.calendar` | `calendar_event_get` | `back/app/calendar/mcp.py:311` |
+| `calendar_events` | `calendar` | `app.calendar` | `calendar_events` | `back/app/calendar/mcp.py:76` |
+| `calendar_find_free_slots` | `calendar` | `app.calendar` | `calendar_find_free_slots` | `back/app/calendar/mcp.py:137` |
+| `calendar_is_available` | `calendar` | `app.calendar` | `calendar_is_available` | `back/app/calendar/mcp.py:111` |
+| `calendar_list` | `calendar` | `app.calendar` | `calendar_list` | `back/app/calendar/mcp.py:53` |
+| `calendar_update_event` | `calendar` | `app.calendar` | `calendar_update_event` | `back/app/calendar/mcp.py:229` |
 | `chat_choice_resolve` | `chat` | `app.conversation` | `chat_choice_resolve` | `back/app/conversation/mcp.py:924` |
 | `chat_repository_show` | `chat` | `app.conversation` | `chat_repository_show` | `back/app/conversation/mcp.py:128` |
 | `chat_round_get` | `chat` | `app.conversation` | `chat_round_get` | `back/app/conversation/mcp.py:253` |

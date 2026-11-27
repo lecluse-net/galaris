@@ -86,3 +86,48 @@ async def test_calendar_resource_http_reads_require_calendar_privilege_and_owner
     assert [row["id"] for row in listing.json()] == [own_feed]
     assert (await client.get(f"/api/calendars/{foreign_feed}", headers=headers)).status_code == 404
     assert (await client.get("/api/calendars/resources", headers=headers, params={"limit": 501})).status_code == 422
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("can_launch", [False, True])
+async def test_configuring_an_event_process_requires_both_calendar_and_process_rights(client, can_launch):
+    from core.database import get_db_session
+    from core.authorize.tests.test_guard_policy_parameters import actor
+    from core.authorize.tests.test_domain_authorization import owned_agent
+    from app.connection import Connection
+    from app.calendar.models import CalendarFeed
+    from app.process.bpmn import Flow, Node, Workflow
+    from app.process.native_definitions import create
+    from tests.protocol_tools import protocol_tool
+
+    headers, user_id = await actor(["CALENDAR_EDIT", "PROCESS_LAUNCH"] if can_launch else ["CALENDAR_EDIT"])
+    owner = await owned_agent(user_id)
+    async with get_db_session() as db:
+        calendar_tool = await protocol_tool(db, "calendar")
+        connection = Connection(agent_id=owner, service_id=calendar_tool.id, active=True)
+        db.add(connection)
+        await db.flush()
+        feed = CalendarFeed(connection_id=connection.id, label="Synthetic writable calendar",
+            writable=True, source_kind="internal")
+        db.add(feed)
+        await db.flush()
+        process = await create(actor_agent_id=owner, title="Synthetic workflow", graph=Workflow(
+            nodes=[Node(id="start", kind="start"), Node(id="end", kind="end")],
+            flows=[Flow(id="flow", source="start", target="end")]))
+        feed_id, process_id = feed.id, process.id
+
+    base = f"/api/calendars/{feed_id}"
+    options = await client.get(f"{base}/process-options", headers=headers)
+    assert options.status_code == (200 if can_launch else 403), options.text
+    if can_launch:
+        assert options.json() == [{"id": process_id, "label": "Synthetic workflow"}]
+    data = {"summary": "Synthetic event", "start": "2026-12-01T09:00:00Z", "end": "2026-12-01T10:00:00Z"}
+    created = await client.post(f"{base}/events", headers=headers, json={**data, "process_definition_id": process_id})
+    assert created.status_code == (201 if can_launch else 403), created.text
+    if not can_launch:
+        created = await client.post(f"{base}/events", headers=headers, json=data)
+        assert created.status_code == 201, created.text
+    event_id = created.json()["event_id"]
+    detail = await client.get(f"{base}/events/{event_id}", headers=headers)
+    assert detail.status_code == 200, detail.text
+    assert detail.json()["process_definition_id"] == (process_id if can_launch else None)

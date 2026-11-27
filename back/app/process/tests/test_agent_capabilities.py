@@ -41,6 +41,7 @@ async def test_process_advertisement_lists_only_assigned_process_metadata(
         return_value=[
             {
                 "workflow_id": "invoice-recording",
+                "process_code": "record_invoice",
                 "label": "Record an invoice",
                 "description": "Validate and record a supplier invoice.",
                 "service_id": 99,
@@ -61,6 +62,7 @@ async def test_process_advertisement_lists_only_assigned_process_metadata(
     )
 
     assert '"workflow_id": "invoice-recording"' in result
+    assert '"process_code": "record_invoice"' in result
     assert "Validate and record a supplier invoice." in result
     assert "service_id" not in result
     assert "</galaris-tools>" not in result

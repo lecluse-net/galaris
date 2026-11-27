@@ -496,6 +496,45 @@ test('creating an event preserves all-day inclusive dates, recurrence and a fail
   expect(model.detail.contact_id).toBe(contactId)
 })
 
+for (const width of [390, 1440]) test(`calendar saves the selected process on an event and shows its run at ${width}px`, async ({ page }, testInfo) => {
+  await page.setViewportSize({ width, height: 900 })
+  const processName = 'Synthetic stock check'
+  const processId = 196
+  const runId = '00000000-0000-0000-0000-000000000196'
+  const model = await calendar(page, { events: [], executions: [{ ...execution, task_uri: null,
+    process_run_id: runId, process_run_engine: 'galaris' }] })
+  await jsonRoute(page, '**/api/calendars/9/process-options', [{ id: processId, label: processName }])
+  await start(page, { privileges: ['CALENDAR_EDIT', 'PROCESS_LAUNCH', 'PROCESS_READ'] })
+  await page.getByRole('group', { name: 'Create event · Thursday, November 12, 2026', exact: true }).press('Enter')
+  const editor = page.getByRole('dialog')
+  const selector = editor.getByRole('combobox', { name: 'Action to trigger' })
+  await expect(editor.getByText('No process, launch a task')).toBeVisible()
+  await editor.getByLabel('Title', { exact: true }).fill('Synthetic scheduled review')
+  await selector.click()
+  await page.getByRole('option', { name: processName, exact: true }).click()
+  await expect(page.getByRole('option', { name: processName, exact: true })).toBeHidden()
+  for (const dark of [false, true]) {
+    await page.evaluate(dark => window.testApp.dark(dark), dark)
+    await page.screenshot({ path: testInfo.outputPath(`calendar-editor-${dark ? 'dark' : 'light'}.png`), animations: 'disabled' })
+  }
+  await page.route(new RegExp(`/api/calendars/9/events/${id}(?:\\?.*)?$`), route => route.fulfill({
+    json: { ...model.detail, process_label: processName },
+  }))
+  await editor.getByRole('button', { name: 'Save', exact: true }).click()
+  await expect.poll(() => model.writes.find(row => row.method === 'create')?.body.process_definition_id).toBe(processId)
+  const detailPanel = page.getByRole('dialog')
+  await expect(detailPanel.getByText(processName, { exact: true })).toBeVisible()
+  await expect(detailPanel.getByRole('button', { name: 'Open Task', exact: true })).toHaveCount(0)
+  const runUri = `galaris://processes/runs/${runId}`
+  await jsonRoute(page, `**/api/processes/internal/runs/${runId}?*`, { id: runId, label: processName, status: 'success',
+    graph: { schema_version: 'galaris.bpmn/v1', nodes: [], flows: [], actors: [] }, nodes: [], total: 0,
+    page: 1, page_size: 50, events: [], event_cursor: 0, breakpoints: [], node_statuses: {}, can_control: false, paused: false,
+    data: {}, files: [], data_revision: 1, data_uri: `${runUri}/data`, attachments_uri: `${runUri}/attachments/` })
+  await jsonRoute(page, `**/api/processes/internal/runs/${runId}/metrics*`, { direct: {}, inclusive: {}, tasks: {}, nodes: {}, partial: false })
+  await detailPanel.getByRole('button', { name: 'View process run', exact: true }).click()
+  await expect(page.getByRole('dialog').last().getByRole('link', { name: `Copy run URL: ${runId}`, exact: true })).toHaveAttribute('href', runUri)
+})
+
 test('clicking a blank day creates an all-day appointment while existing events and day navigation remain usable', async ({ page }) => {
   const model = await calendar(page)
   await start(page)
@@ -758,7 +797,7 @@ test('calendar settings save action activation and resolve conflicts using an ex
   await page.getByRole('button', { name: `Calendar settings · ${feed.label}`, exact: true }).click()
   await page.getByRole('menuitem', { name: 'Calendar settings', exact: true }).click()
   const settings = page.getByRole('dialog')
-  await settings.getByRole('switch', { name: 'Enable Task launches for this calendar', exact: true }).check()
+  await settings.getByRole('switch', { name: 'Enable scheduled actions for this calendar', exact: true }).check()
   await settings.getByRole('button', { name: 'Save', exact: true }).click()
   await expect.poll(() => model.writes.find(row => row.method === 'settings')?.body).toMatchObject({ actions_enabled: true })
   await settings.getByRole('textbox', { name: 'Label', exact: true }).fill('Unsaved synthetic calendar label')

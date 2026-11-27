@@ -9,9 +9,11 @@ from typing import Literal
 
 from fastapi import APIRouter, HTTPException, Query, status
 
-from core.authorize import Privileges, authorize
+from core.authorize import Privileges, authorize, check_privilege
+from core.user import get_current_user
 from app.agent import current_management_scope
 from app.connection.facade import get_connection
+from app.process.facade import ScheduledProcessOption
 
 from . import service, store
 from .models import CalendarEvent
@@ -84,6 +86,10 @@ async def _require_calendar_scope(calendar_id: int) -> None:
     await _require_connection_scope(feed.connection_id)
 
 
+async def _can_launch_process() -> bool:
+    return await check_privilege(await get_current_user(), [Privileges.PROCESS_LAUNCH, Privileges.PROCESS_ADMIN], get_db())
+
+
 @router.get("/connection-options")
 @authorize(privileges=[Privileges.CALENDAR_ACCESS, Privileges.CALENDAR_EDIT])
 async def connection_options() -> list[dict[str, object]]:
@@ -130,7 +136,10 @@ async def read_reminders(connection_id: int = Query(gt=0), skip: int = Query(def
                          recurrence_key: str | None = None) -> CalendarReminderPage:
     await _require_connection_scope(connection_id)
     try:
-        return await service.list_reminders(connection_id, skip=skip, limit=limit, event_id=event_id, recurrence_key=recurrence_key)
+        can_read_processes = await check_privilege(await get_current_user(),
+            [Privileges.PROCESS_READ, Privileges.PROCESS_EDIT, Privileges.PROCESS_LAUNCH, Privileges.PROCESS_ADMIN], get_db())
+        return await service.list_reminders(connection_id, skip=skip, limit=limit, event_id=event_id,
+            recurrence_key=recurrence_key, include_process_links=can_read_processes)
     except LookupError as exc:
         raise _not_found(exc) from exc
     except ValueError as exc:
@@ -165,8 +174,20 @@ async def read_events(agent_id: int, start: datetime | None = None, end: datetim
 async def create_event(calendar_id: int, data: CalendarEventCreate) -> CalendarMutationReceipt:
     await _require_calendar_scope(calendar_id)
     with _errors():
+        if data.process_definition_id is not None and not await _can_launch_process():
+            raise PermissionError("Process launch permission is required")
         _, connection = await service.feed_context(calendar_id, require_active_connection=True)
         return await service.create_calendar_event(calendar_id, connection.agent_id, data)
+
+
+@router.get("/{calendar_id}/process-options", response_model=list[ScheduledProcessOption])
+@authorize(privileges=Privileges.CALENDAR_EDIT)
+async def read_event_process_options(calendar_id: int) -> list[ScheduledProcessOption]:
+    await _require_calendar_scope(calendar_id)
+    with _errors():
+        if not await _can_launch_process():
+            raise PermissionError("Process launch permission is required")
+        return await service.event_process_options(calendar_id)
 
 
 @router.put("/{calendar_id}/events/{event_id}", response_model=CalendarMutationReceipt)
@@ -174,6 +195,8 @@ async def create_event(calendar_id: int, data: CalendarEventCreate) -> CalendarM
 async def update_event(calendar_id: int, event_id: UUID, data: CalendarEventUpdate) -> CalendarMutationReceipt:
     uid = await _event_uid(calendar_id, event_id)
     with _errors():
+        if "process_definition_id" in data.model_fields_set and not await _can_launch_process():
+            raise PermissionError("Process launch permission is required")
         _, connection = await service.feed_context(calendar_id, require_active_connection=True)
         return await service.update_calendar_event(calendar_id, connection.agent_id, uid, data)
 
@@ -274,7 +297,8 @@ async def relaunch_execution(calendar_id: int, execution_id: UUID, data: Calenda
     await _require_calendar_scope(calendar_id)
     with _errors():
         _, connection = await service.feed_context(calendar_id, require_active_connection=True)
-        return await service.relaunch_execution(calendar_id, execution_id, connection.agent_id, data.request_key, data.expected_event_revision)
+        return await service.relaunch_execution(calendar_id, execution_id, connection.agent_id, data.request_key,
+            data.expected_event_revision, can_launch_process=await _can_launch_process())
 
 
 @router.put("/{calendar_id}", response_model=CalendarFeedRead)

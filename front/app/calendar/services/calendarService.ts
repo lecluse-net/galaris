@@ -26,6 +26,7 @@ export interface CalendarEvent {
 }
 export interface EventDetail {
   contact_id?: string | null
+  process_definition_id?: number | null; process_label?: string | null
   event_id: string; calendar_id: number; uid: string; revision: number; timezone: string; summary: string
   description: string; location: string; start: string; end: string; all_day: boolean
   start_date: string | null; end_date: string | null; recurring: boolean; deleted: boolean
@@ -35,6 +36,7 @@ export interface EventDetail {
 export interface CalendarReminder {
   id: string; calendar_id: number; calendar_label: string; event_uid: string; event_summary: string
   reminder_at: string; dispatch_status: string; task_uri: string | null; task_status: string | null
+  process_run_id?: string | null; process_run_engine?: string | null
   state: ExecutionState; treated: boolean; event_id: string | null; recurrence_key: string; action_key: string; reason: string | null
 }
 export interface CalendarAction {
@@ -44,11 +46,13 @@ export interface CalendarAction {
 export type ActionWrite = Omit<CalendarAction, 'id' | 'event_id' | 'revision'> & { expected_revision?: number; request_key?: string }
 export interface EventCreate {
   contact_id?: string | null
+  process_definition_id?: number | null
   summary: string; description: string; location: string; start: string; end: string; timezone: string
   uid?: string; rrule?: string | null; reminder_minutes_before?: number | null
 }
 export type EventUpdate = Partial<EventCreate> & { expected_revision: number; scope: EventScope; recurrence_key?: string; clear_recurrence?: boolean; clear_reminder?: boolean }
 export interface MutationReceipt { event_id: string; calendar_id: number; uid: string; revision: number; sync_state: SyncState; state: string }
+export interface CalendarProcessOption { id: number; label: string }
 export interface CalendarConnectionStatus { calendar_id: number; ok: boolean; sync_run_id?: string | null; events_seen: number; next_events: { uid: string; summary: string; start: string; end: string; all_day: boolean }[] }
 export interface EventWindow { items: CalendarEvent[]; total: number; complete: boolean; stale_calendar_ids: number[] }
 export interface CalendarConflict { event_id: string; uid: string; revision: number; local_deleted: boolean; remote_deleted: boolean; local_ical: string; remote_ical: string | null }
@@ -82,6 +86,9 @@ export const calendarService = {
   },
   async detail(calendar: number, event: string, recurrenceKey?: string, signal?: AbortSignal): Promise<EventDetail> {
     return (await api.get(eventPath(calendar, event), { params: { recurrence_key: recurrenceKey }, signal })).data
+  },
+  async processOptions(calendar: number, signal: AbortSignal): Promise<CalendarProcessOption[]> {
+    return (await api.get(`/calendars/${calendar}/process-options`, { signal })).data
   },
   async createEvent(calendar: number, data: EventCreate): Promise<MutationReceipt> { return (await api.post(`/calendars/${calendar}/events`, data)).data },
   async updateEvent(calendar: number, event: string, data: EventUpdate): Promise<MutationReceipt> { return (await api.put(eventPath(calendar, event), data)).data },

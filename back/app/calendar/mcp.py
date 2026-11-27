@@ -3,14 +3,17 @@
 from __future__ import annotations
 
 from datetime import date, datetime, timedelta, timezone
-from typing import Literal
+from typing import Annotated, Literal
 from uuid import UUID
 
+from pydantic import Field
+
+from app.process.facade import resolve_agent_scheduled_process, scheduled_process_identity
 from app.services import McpToolContext, mcp_tool
 
 from . import service
 from .awareness import memory_read_enabled, with_memory_events
-from .schemas import CalendarEventCreate, CalendarEventUpdate, CalendarEventDelete, CalendarActionWrite
+from .schemas import CalendarEventCreate, CalendarEventUpdate, CalendarEventDelete, CalendarActionWrite, CalendarMutationReceipt
 
 
 def _datetime(value: str, name: str) -> datetime:
@@ -30,6 +33,13 @@ def _date_or_datetime(value: str, name: str) -> date | datetime:
         except ValueError as exc:
             raise ValueError(f"{name} must be an ISO 8601 date or datetime") from exc
     return _datetime(value, name)
+
+
+async def _event_receipt_for_tool(receipt: CalendarMutationReceipt, agent_id: int) -> dict[str, object]:
+    definition_id = receipt.process_definition_id
+    process = await scheduled_process_identity(agent_id, definition_id) if definition_id is not None else None
+    return {**receipt.model_dump(mode="json", exclude={"process_definition_id"}),
+        "process_code": process[1] if process else None, "process_label": process[0] if process else None}
 
 
 @mcp_tool("calendar", approval="enabled", approval_reason="Governed bounded read or control without a new sensitive effect",
@@ -161,7 +171,10 @@ async def calendar_find_free_slots(
     conversation_policy="deferred",
     description=("Create one event in a writable calendar. Use ISO 8601 dates or datetimes; timed start/end require an explicit offset such as +01:00 or Z. "
         "For your own calendar, optionally set contact_id to the contact's memory_item_id from contact_list/contact_get, never an identities[].id. "
-        "The contact stays local and receives no automatic invitation."),
+        "The contact stays local and receives no automatic invitation. To schedule a business process in your own calendar, "
+        "set process_code to the native process code from your assigned Processes, or metadata.native_code in file_list('galaris://processes/'). "
+        "The process launches at the event's scheduled action time "
+        "and requires process_start to be enabled for automatic use. Omit it to schedule an ordinary Task."),
 )
 async def calendar_create_event(
     ctx: McpToolContext,
@@ -177,12 +190,17 @@ async def calendar_create_event(
     rrule: str | None = None,
     service_code: str | None = None, account_email: str | None = None,
     contact_id: UUID | None = None,
+    process_code: Annotated[str, Field(min_length=1, max_length=255)] | None = None,
 ) -> object:
+    owner = await service.calendar_tool_owner(ctx.agent_id, calendar_id, ctx.resource("source_connection_id"))
+    if process_code is not None and owner != ctx.agent_id:
+        raise PermissionError("You can schedule a process only in your own calendar")
+    process_id = await resolve_agent_scheduled_process(ctx.agent_id, process_code) if process_code is not None else None
     result = await service.create_calendar_event(
-        calendar_id,
-        await service.calendar_tool_owner(ctx.agent_id, calendar_id, ctx.resource("source_connection_id")),
+        calendar_id, owner,
         CalendarEventCreate(
             contact_id=contact_id,
+            process_definition_id=process_id,
             summary=summary,
             description=description,
             location=location,
@@ -193,8 +211,9 @@ async def calendar_create_event(
             timezone=timezone_name,
             rrule=rrule,
         ),
+        process_scheduled_by_agent=process_id is not None,
     )
-    return result.model_dump(mode="json")
+    return await _event_receipt_for_tool(result, owner)
 
 
 @mcp_tool("calendar", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",
@@ -203,7 +222,9 @@ async def calendar_create_event(
     conversation_policy="deferred",
     description=("Update an event or recurrence scope using its current revision and original occurrence identity. "
         "To reschedule, supply start/end with explicit timezone offsets. For your own calendar, contact_id optionally links a Contact using its memory_item_id, never an identity UUID; "
-        "omit it to preserve the link, use clear_contact=True to remove it. Change the contact with scope=series."),
+        "omit it to preserve the link, use clear_contact=True to remove it. Change the contact with scope=series. "
+        "In your own calendar, use the exact native process_code to change the scheduled process, or clear_process=True to schedule a Task. "
+        "Use scope=series and omit both arguments to keep the current choice."),
 )
 async def calendar_update_event(
     ctx: McpToolContext,
@@ -223,12 +244,21 @@ async def calendar_update_event(
     service_code: str | None = None, account_email: str | None = None,
     contact_id: UUID | None = None,
     clear_contact: bool = False,
+    process_code: Annotated[str, Field(min_length=1, max_length=255)] | None = None,
+    clear_process: bool = False,
 ) -> object:
     if clear_contact and contact_id is not None:
         raise ValueError("Supply contact_id or clear_contact, not both")
+    if clear_process and process_code is not None:
+        raise ValueError("Supply process_code or clear_process, not both")
+    owner = await service.calendar_tool_owner(ctx.agent_id, calendar_id, ctx.resource("source_connection_id"))
+    changes: dict[str, object] = {"contact_id": contact_id} if contact_id is not None else {"clear_contact": True} if clear_contact else {}
+    if clear_process or process_code is not None:
+        if owner != ctx.agent_id:
+            raise PermissionError("You can change the scheduled process only in your own calendar")
+        changes["process_definition_id"] = await resolve_agent_scheduled_process(ctx.agent_id, process_code) if process_code is not None else None
     result = await service.update_calendar_event(
-        calendar_id,
-        await service.calendar_tool_owner(ctx.agent_id, calendar_id, ctx.resource("source_connection_id")),
+        calendar_id, owner,
         uid,
         CalendarEventUpdate(
             expected_revision=expected_revision,
@@ -242,10 +272,10 @@ async def calendar_update_event(
             clear_reminder=clear_reminder,
             start=_date_or_datetime(start, "start") if start else None,
             end=_date_or_datetime(end, "end") if end else None,
-        ).model_copy(update={"contact_id": contact_id} if contact_id is not None else
-                     {"clear_contact": True} if clear_contact else {}),
+        ).model_copy(update=changes),
+        process_scheduled_by_agent=process_code is not None,
     )
-    return result.model_dump(mode="json")
+    return await _event_receipt_for_tool(result, owner)
 
 
 @mcp_tool("calendar", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",
@@ -260,7 +290,7 @@ async def calendar_delete_event(ctx: McpToolContext, calendar_id: int, uid: str,
     owner = await service.calendar_tool_owner(ctx.agent_id, calendar_id, ctx.resource("source_connection_id"))
     result = await service.delete_calendar_event(calendar_id, owner, uid,
         CalendarEventDelete(expected_revision=expected_revision, scope=scope, recurrence_key=recurrence_key))
-    return result.model_dump(mode="json")
+    return await _event_receipt_for_tool(result, owner)
 
 
 __all__ = [
@@ -277,11 +307,11 @@ __all__ = [
 
 @mcp_tool("calendar", approval="enabled", approval_reason="Read an authorized local calendar resource",
     conversation_policy="short",
-    name="calendar_event_get", description="Read one event and its revision from the local replica, optionally for an original recurrence identity. External synchronization state is separate.")
+    name="calendar_event_get", description="Read one event, its revision and scheduled process code from the local replica, optionally for an original recurrence identity. External synchronization state is separate.")
 async def calendar_event_get(ctx: McpToolContext, calendar_id: int, uid: str, recurrence_key: str | None = None,
                              service_code: str | None = None, account_email: str | None = None) -> object:
     await service.calendar_tool_owner(ctx.agent_id, calendar_id, ctx.resource("source_connection_id"))
-    return (await service.event_detail(calendar_id, uid, recurrence_key)).model_dump(mode="json")
+    return (await service.event_detail(calendar_id, uid, recurrence_key)).model_dump(mode="json", exclude={"process_definition_id"})
 
 
 @mcp_tool("calendar", approval="enabled", approval_reason="Read authorized calendar action definitions",

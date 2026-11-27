@@ -254,11 +254,11 @@ interrompue sans modifier le résultat terminal ni réexécuter le Process.
 
 Le bridge Calendar enregistre dans une transaction le curseur et tous les reçus découverts.
 Chaque reçu contient un snapshot chiffré de l'action et utilise un lease récupérable pour
-son dispatch. Chaque notification VALARM soumet une tâche avec une clé d'idempotence stable ; la reprise
-des reçus ne nécessite plus de relire le calendrier distant. Voir l'ADR 0067 pour les limites
-de reprise des reçus historiques antérieurs à ce contrat.
-La tâche peut lancer un Process par les outils ordinaires. Calendar ne choisit plus d’action
-Process ni d’instructions particulières ; le journal des relances suit le résultat de chaque tâche.
+son dispatch. Chaque échéance utilise une clé d’idempotence stable et admet le processus choisi
+ou une tâche si l’événement n’a pas de processus. Les outils agenda prennent le `process_code`
+pour programmer un processus natif. Le serveur résout ce code dans les processus accessibles à
+l’agent et conserve la référence interne. La reprise utilise les reçus locaux. Voir l’ADR 0067
+pour les limites de reprise historiques et le [flux Agenda](calendar.md) pour l’admission et le suivi.
 
 ## Fichiers
 

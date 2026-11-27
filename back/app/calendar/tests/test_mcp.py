@@ -59,6 +59,65 @@ async def test_calendar_availability_is_scoped_to_current_agent(monkeypatch) -> 
 
 
 @pytest.mark.asyncio
+async def test_calendar_create_tool_persists_an_authorized_process_and_rechecks_at_launch(db, agent, personal):
+    import json
+    from datetime import datetime, timedelta, timezone
+
+    from app.calendar import dispatch
+    from app.connection import Connection
+    from app.process import ProcessDefinition, ProcessRun
+    from app.process.bpmn import Flow, Node, Workflow
+    from app.process.native_definitions import create
+    from app.services.models import Service
+    from app.task.models import Task
+
+    _, feed = personal
+    process_connection = (await db.scalars(select(Connection).join(Service, Service.id == Connection.service_id)
+        .where(Connection.agent_id == agent.id, Service.code == "process"))).one()
+    code = "synthetic_calendar_workflow"
+    graph = Workflow(
+        nodes=[Node(id="start", kind="start"), Node(id="end", kind="end")],
+        flows=[Flow(id="flow", source="start", target="end")])
+    process = await create(actor_agent_id=agent.id, title="Synthetic calendar workflow", code=code, graph=graph)
+    replacement = await create(actor_agent_id=agent.id, title="Synthetic replacement", code="synthetic_replacement", graph=graph)
+    external = Service(code="synthetic-calendar-engine", label="Synthetic process engine")
+    db.add(external)
+    await db.flush()
+    db.add(ProcessDefinition(agent_id=agent.id, service_id=external.id, engine_process_id="synthetic_engine_only",
+        label="Synthetic external process"))
+    await db.commit()
+    start = datetime.now(timezone.utc) + timedelta(hours=1)
+    payload = {"calendar_id": feed.id, "summary": "Synthetic event with process", "start": start.isoformat(),
+        "end": (start + timedelta(hours=1)).isoformat()}
+    await set_connection_function_state(process_connection.id, "process_start", "enabled")
+    async with Client(await build_agent_mcp(agent.id)) as client:
+        tool = next(item for item in await client.list_tools() if item.name == "calendar_create_event")
+        assert "process_code" in tool.input_schema["properties"]
+        assert "process_workflow_id" not in tool.input_schema["properties"]
+        for selector in ({"process_code": "unknown-workflow"}, {"process_code": "synthetic_engine_only"},
+                         {"process_code": process.id}, {"process_workflow_id": code}, {"process_definition_id": process.id}):
+            rejected = await client.call_tool("calendar_create_event", {**payload, **selector}, raise_on_error=False)
+            assert rejected.is_error, selector
+        created = await client.call_tool("calendar_create_event", {**payload, "process_code": code})
+        receipt = json.loads(created.content[0].text)
+        assert receipt["process_code"] == code and "process_definition_id" not in receipt
+        target = {"calendar_id": feed.id, "uid": receipt["uid"]}
+        changed = await client.call_tool("calendar_update_event", {**target,
+            "expected_revision": receipt["revision"], "process_code": replacement.code})
+        assert json.loads(changed.content[0].text)["process_code"] == replacement.code
+        detail = await client.call_tool("calendar_event_get", target)
+        saved = json.loads(detail.content[0].text)
+        assert saved["process_code"] == replacement.code and "process_definition_id" not in saved
+    await set_connection_function_state(process_connection.id, "process_start", "disabled")
+    assert await dispatch.dispatch_due(now=start) == 0
+    assert await dispatch.dispatch_due(now=start + timedelta(minutes=1)) == 0
+    trigger = (await db.scalars(select(CalendarTrigger))).one()
+    assert trigger.status == "error" and trigger.error_message == "process_unavailable"
+    assert not (await db.scalars(select(ProcessRun))).all()
+    assert not (await db.scalars(select(Task))).all()
+
+
+@pytest.mark.asyncio
 async def test_calendar_scope_governs_live_mcp_reads_and_writes(db, agent, personal, calendar_connection):
     import json
     from datetime import datetime, timedelta, timezone

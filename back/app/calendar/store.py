@@ -51,7 +51,8 @@ async def resource_content(event: CalendarEvent) -> bytes:
 
 
 async def save_resource(feed: CalendarFeed, resource: ical.EventResource, *, local: bool,
-                        existing: CalendarEvent | None = None, known: bool = False, contact_id: UUID | None = None) -> CalendarEvent:
+                        existing: CalendarEvent | None = None, known: bool = False, contact_id: UUID | None = None,
+                        process_definition_id: int | None = None, process_scheduled_by_agent: bool = False) -> CalendarEvent:
     if not known:
         existing = await get_db().scalar(select(CalendarEvent).where(CalendarEvent.calendar_id == feed.id,
             CalendarEvent.uid == resource.uid).execution_options(include_historized=True).with_for_update())
@@ -59,7 +60,8 @@ async def save_resource(feed: CalendarFeed, resource: ical.EventResource, *, loc
     if event is None:
         event = CalendarEvent(id=uuid4(), calendar_id=feed.id, uid=resource.uid, revision=1, synced_revision=0,
             content_encrypted=encrypt(resource.master), content_hash=resource.digest, start_at=resource.start,
-            end_at=resource.end, recurring=resource.recurring, conflict=False, contact_id=contact_id)
+            end_at=resource.end, recurring=resource.recurring, conflict=False, contact_id=contact_id,
+            process_definition_id=process_definition_id, process_scheduled_by_agent=process_scheduled_by_agent)
         get_db().add(event)
     else:
         event.revision += 1
@@ -77,6 +79,7 @@ async def save_resource(feed: CalendarFeed, resource: ical.EventResource, *, loc
             recurrence_key=key, content_encrypted=encrypt(content)) for key, content in resource.exceptions])
     content = ical.join_resource(resource.master, [value for _, value in resource.exceptions]).decode() if resource.exceptions else resource.master
     get_db().add(CalendarEventRevision(event_id=event.id, revision=event.revision, contact_id=event.contact_id,
+        process_definition_id=event.process_definition_id,
         content_encrypted=encrypt(content), deleting=False))
     if local and feed.source_kind not in ("internal", "ical"):
         get_db().add(CalendarSyncOperation(calendar_id=feed.id, event_id=event.id, revision=event.revision,
@@ -94,6 +97,7 @@ async def delete_local_event(feed: CalendarFeed, event: CalendarEvent, *, local:
     event.revision += 1
     event.soft_delete()
     get_db().add(CalendarEventRevision(event_id=event.id, revision=event.revision, contact_id=event.contact_id,
+        process_definition_id=event.process_definition_id,
         content_encrypted=encrypt(content), deleting=True))
     if local and feed.source_kind not in ("internal", "ical"):
         get_db().add(CalendarSyncOperation(calendar_id=feed.id, event_id=event.id, revision=event.revision,
@@ -106,12 +110,14 @@ async def delete_local_event(feed: CalendarFeed, event: CalendarEvent, *, local:
 async def cancel_pending(event_ids: Sequence[UUID]) -> None:
     await get_db().execute(update(CalendarTrigger).where(CalendarTrigger.event_id.in_(event_ids),
         CalendarTrigger.status.in_(("scheduled", "pending", "error")), CalendarTrigger.task_id.is_(None),
+        CalendarTrigger.process_run_id.is_(None), CalendarTrigger.completed_at.is_(None),
         CalendarTrigger.lease_token.is_(None)).values(status="cancelled"))
 
 
 async def reconcile_admissions(event_ids: Sequence[UUID], agent_id: int) -> None:
     rows = list((await get_db().scalars(select(CalendarTrigger).where(CalendarTrigger.event_id.in_(event_ids),
-        CalendarTrigger.task_id.is_(None), or_(CalendarTrigger.status.in_(("pending", "error")), CalendarTrigger.lease_token.is_not(None))))).all())
+        CalendarTrigger.task_id.is_(None), CalendarTrigger.process_run_id.is_(None), CalendarTrigger.completed_at.is_(None),
+        or_(CalendarTrigger.status.in_(("pending", "error")), CalendarTrigger.lease_token.is_not(None))))).all())
     for index in range(0, len(rows), 500):
         batch = rows[index:index + 500]
         tasks = await find_background_tasks(agent_id, [f"calendar:{row.id}" for row in batch])
@@ -233,7 +239,8 @@ async def project_events(feed: CalendarFeed, events: Sequence[CalendarEvent], *,
             statement = insert(CalendarTrigger).values(deadlines[index:index + 200])
             await get_db().execute(statement.on_conflict_do_update(constraint="uq_calendar_action_launch",
                 set_={**{name: getattr(statement.excluded, name) for name in ("event_revision", "action_revision", "occurrence_at", "dispatch_encrypted", "max_lateness_minutes", "status")}, "error_message": None},
-                where=(CalendarTrigger.task_id.is_(None) & (CalendarTrigger.status != "submitted"))))
+                where=(CalendarTrigger.task_id.is_(None) & CalendarTrigger.process_run_id.is_(None)
+                    & CalendarTrigger.completed_at.is_(None) & (CalendarTrigger.status != "submitted"))))
     await get_db().flush()
 
 

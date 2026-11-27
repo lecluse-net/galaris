@@ -115,8 +115,15 @@ version actuelle avant de reprendre. Les abonnements iCalendar restent en lectur
 
 ## Remplacer une notification par une tâche
 
-Chaque événement planifie automatiquement une tâche pour son début : aucune case ni second
-enregistrement n’est nécessaire. Le titre et la description précisent le travail attendu.
+Dans la modale de création ou de modification, **Action à déclencher** permet de choisir un
+processus accessible à l’agent de l’agenda si vous avez le droit de lancer des processus.
+**Pas de processus, lance une tâche** est l’option par défaut. Le choix est visible dans la fiche
+de l’événement et s’applique à toute la série pour un événement récurrent. Dans son propre
+agenda, l’agent peut programmer un processus natif autorisé en passant son `process_code` à
+`calendar_create_event` ou à `calendar_update_event`. Le code figure dans son catalogue de
+processus et dans `metadata.native_code` avec `file_list("galaris://processes/")`. L’IHM permet
+aussi de choisir les processus externes qui n’ont pas de code métier.
+En l’absence de rappel ou d’action planifiée, le lancement a lieu au début de l’événement.
 Les lancements sont activés par défaut sur les nouveaux agendas internes et synchronisés,
 y compris ceux découverts automatiquement. Une désactivation explicite dans les réglages
 reste conservée lors des synchronisations suivantes.
@@ -139,12 +146,12 @@ d’un travail déjà en cours.
 
 Les cartes du calendrier affichent le dernier état de chaque action, pour l’occurrence
 concernée. Le détail affiche tous les lancements, leurs échéances, erreurs et liens vers les
-Tasks accessibles. Pour une série, le bouton **Toute la série** élargit cet historique. Les
+tâches ou les exécutions de processus accessibles. Pour une série, le bouton **Toute la série** élargit cet historique. Les
 états se rafraîchissent automatiquement ; le bouton Actualiser permet une lecture immédiate.
 
-**Lancer à nouveau** crée une nouvelle exécution après une tâche terminée ou un lancement
-échoué, annulé ou ignoré. L’ancienne tâche garde son résultat. Une tâche active ne peut pas
-être relancée. Les retries de sauvegarde d’une même action et de relance utilisent une clé
+**Lancer à nouveau** crée une nouvelle exécution de l’action actuellement configurée après une
+tâche ou un processus terminé, ou après un lancement échoué, annulé ou ignoré. Les retries de
+sauvegarde d’une même action et de relance utilisent une clé
 stable pour éviter les doublons.
 
 ## Synchronisation et droits

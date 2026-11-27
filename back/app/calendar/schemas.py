@@ -144,6 +144,8 @@ class CalendarReminderRead(BaseModel):
     dispatch_status: str
     task_uri: str | None = None
     task_status: str | None = None
+    process_run_id: UUID | None = None
+    process_run_engine: str | None = None
     state: CalendarReminderState
     treated: bool = False
     event_id: UUID | None = None
@@ -198,6 +200,7 @@ class CalendarEventCreate(BaseModel):
     end: datetime | date
     uid: str | None = Field(default=None, max_length=255)
     contact_id: UUID | None = None
+    process_definition_id: int | None = Field(default=None, gt=0)
     reminder_minutes_before: int | None = Field(default=None, ge=0, le=525_600)
     timezone: str = "Europe/Paris"
     rrule: str | None = Field(default=None, max_length=2000)
@@ -226,6 +229,7 @@ class CalendarEventUpdate(BaseModel):
     clear_reminder: bool = False
     expected_revision: int = Field(ge=1)
     contact_id: UUID | None = None
+    process_definition_id: int | None = Field(default=None, gt=0)
     clear_contact: bool = False
     scope: Literal["series", "occurrence", "following"] = "series"
     recurrence_key: str | None = Field(default=None, max_length=100)
@@ -251,6 +255,7 @@ class CalendarEventUpdate(BaseModel):
 
 class CalendarMutationReceipt(BaseModel):
     contact_id: UUID | None = None
+    process_definition_id: int | None = None
     event_id: UUID | None = None
     revision: int = 1
     sync_state: Literal["local", "pending", "synced", "conflict"] = "local"
@@ -317,6 +322,9 @@ class CalendarAlarmRead(BaseModel):
 
 class CalendarEventDetail(BaseModel):
     contact_id: UUID | None = None
+    process_definition_id: int | None = None
+    process_label: str | None = None
+    process_code: str | None = None
     event_id: UUID
     calendar_id: int
     uid: str
@@ -343,6 +351,7 @@ class CalendarEventDetail(BaseModel):
 
 class CalendarEventHistoryRead(BaseModel):
     contact_id: UUID | None = None
+    process_definition_id: int | None = None
     revision: int
     deleted: bool
     created_at: datetime
@@ -400,6 +409,7 @@ class CalendarExecutionRelaunch(BaseModel):
 class CalendarExecutionReceipt(BaseModel):
     id: UUID
     task_uri: str | None
+    process_run_id: UUID | None = None
     state: str
 
 

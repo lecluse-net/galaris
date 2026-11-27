@@ -247,11 +247,11 @@ this interrupted step without changing the terminal output or rerunning the Proc
 
 The Calendar bridge stores its cursor and all discovered receipts in one transaction.
 Each receipt contains an encrypted action snapshot and uses a recoverable dispatch lease.
-Each VALARM notification submits a Task with a stable idempotency key; replaying receipts no longer requires
-reading the remote calendar. ADR 0067 documents the recovery limits of historical receipts
-created before this contract.
-The Task may start a Process through ordinary tools. Calendar no longer selects a Process
-action or custom instructions; its reminder journal tracks each Task outcome.
+Each deadline uses a stable idempotency key and admits the selected Process or a Task when the
+event has no Process. Calendar tools use `process_code` to schedule a native Process. The server
+resolves the code within the agent's accessible Processes and stores the internal reference.
+Recovery uses local receipts. See ADR 0067 for historical recovery limits and the
+[Calendar flow](calendar.md) for admission and tracking.
 
 ## Files
 

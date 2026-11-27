@@ -110,25 +110,27 @@ contents and block writes until explicit revision-checked resolution. Errors pre
 operations, progressive retry delays, and structured local evidence: calendar, run, operation,
 stage, category, HTTP status and code location, without private URLs or contents.
 
-## Actions and Tasks
+## Actions, Tasks and Processes
 
-An action is a scheduled Task admission through the public `app.agent` facade. It may run
-before/start/after an event. Several actions may share a deadline with distinct identities.
-Without a specific action, each event launches a Task at its start; configured alarms and actions
-replace that launch. New internal and synchronized agendas enable actions by default, preserving
+An action can run before, at the start of, or after an event. Several actions may share a
+deadline with distinct identities. Configured alarms and actions replace the default deadline
+at event start. An optional Process choice is stored locally on the event and its series. At
+the deadline, Agenda admits the selected Process through `app.process.facade` or a Task through
+`app.agent` if the selection is empty. New internal and synchronized agendas enable actions by default, preserving
 explicit deactivations. Read-only events may have local actions. Tasks retain ordinary tool
 permissions and policies.
 
 The local worker checks deadlines every ten seconds independently of providers or open views.
 It checks activation, revision, occurrence and lateness; overdue actions become `skipped`.
 Admission uses a stable key. Tasks whose admission receipts were lost are reconciled before
-edits/retries/relaunches. Full context is frozen at admission in Task and the receipt.
-`submitted` means that a Task exists; only `Task.SUCCESS` marks an action treated. Missing or
-inaccessible Tasks remain unavailable.
+edits/retries/relaunches. Full event context is frozen at admission for the Task and its receipt.
+Process admission records the run, its start job and the Agenda receipt in one transaction.
+Agent rights are verified at admission and at Process start. A rejection is recorded as a
+launch failure. `submitted` means that a Task or Process was admitted. The action is treated
+when the execution succeeds.
 
-The journal filters by event/occurrence and exposes `galaris://task/<uuid>`. Manual relaunches
-use a separate key and launch number, preserving the previous terminal Task. Cancelled events
-do not produce new actions.
+The journal filters by event or occurrence and exposes the Task or Process run reference.
+Manual relaunches use a separate key and launch number. Cancelled events do not produce new actions.
 
 Agenda owns dated commitments and reminders. Goal owns durable outcomes and work cycles: never
 copy a Goal cycle into Agenda. Reminder Tasks receive no implicit `goal_id`. A Task may use

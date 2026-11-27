@@ -124,13 +124,13 @@ sa résolution explicite est elle-même contrôlée par révision. Les erreurs c
 un recul progressif des tentatives, et une trace locale structurée : agenda, passage,
 opération, étape, catégorie, statut HTTP et emplacement de code, sans URL ni contenu privé.
 
-## Actions et Tasks
+## Actions, Tasks et Process
 
-Une action n'est pas une notification d'interface : son échéance admet une Task par la façade
-publique `app.agent`. Elle peut agir avant le début, au début ou après la fin. Plusieurs actions
-peuvent partager une heure tout en conservant des identités distinctes. Sans action particulière,
-chaque événement lance une Task à son début ; les alarmes et actions configurées remplacent
-ce lancement. Les nouveaux agendas internes et synchronisés activent les actions par défaut,
+Une action peut se déclencher avant le début, au début ou après la fin de l'événement. Plusieurs
+actions peuvent partager une heure tout en conservant des identités distinctes. Les alarmes et
+actions configurées remplacent l'échéance au début de l'événement. Le choix facultatif d'un Process
+est une donnée locale de l'événement et de sa série. À l'échéance, l'Agenda admet ce Process via
+`app.process.facade` ou une Task via `app.agent` si le choix est vide. Les nouveaux agendas internes et synchronisés activent les actions par défaut,
 en conservant les désactivations explicites. Une source en lecture seule peut porter des
 consignes locales. Les Tasks restent soumises aux droits et politiques de leurs outils.
 
@@ -138,13 +138,15 @@ Le worker local examine les échéances toutes les dix secondes, indépendamment
 des vues ouvertes. Il vérifie activation, révision, occurrence et politique de retard ; une
 échéance trop tardive est marquée `skipped`. L'admission utilise une clé stable. Une Task déjà
 créée dont le reçu a été perdu est retrouvée avant modification, reprise ou relance, sans
-nouvelle admission. Le contexte complet est figé à l'admission, puis reste dans Task et le reçu.
-Le reçu `submitted` signifie uniquement que la Task existe ; seul `Task.SUCCESS` signifie que
-l'action est traitée. Une Task absente/inaccessible reste indisponible.
+nouvelle admission. Le contexte complet est figé à l'admission pour la Task et le reçu.
+L'admission d'un Process enregistre l'exécution, sa demande de démarrage et le reçu de l'Agenda
+dans une transaction. Les droits de l'agent sont vérifiés au déclenchement et au démarrage du
+Process. Un refus est conservé comme échec du lancement. L'état `submitted` indique que la Task
+ou le Process a été admis. L'action est traitée lorsque cette exécution réussit.
 
-Le journal se filtre par événement et occurrence et expose `galaris://task/<uuid>`. Une relance
-manuelle possède sa propre clé et un nouveau numéro de lancement ; elle ne rouvre pas la Task
-terminale précédente. Un événement annulé ne produit pas de nouvelle action.
+Le journal se filtre par événement et occurrence et expose la référence de la Task ou du Process
+exécuté. Une relance manuelle possède sa propre clé et un nouveau numéro de lancement. Un
+événement annulé ne produit pas de nouvelle action.
 
 L'Agenda porte les engagements datés et rappels. Goal possède les résultats durables et leurs
 cycles : ne pas recopier un prochain cycle de Goal dans l'Agenda. Les Tasks de rappel ne

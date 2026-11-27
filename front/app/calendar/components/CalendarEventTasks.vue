@@ -1,6 +1,5 @@
 <template>
   <div class="q-gutter-y-md">
-    <p class="text-caption">{{ t('agenda.automaticTask') }} {{ t('agenda.taskHelp') }}</p>
     <q-banner v-if="!feed.actions_enabled">{{ t('agenda.actionsDisabled') }}</q-banner>
     <q-banner v-if="actionsError" role="alert">{{ actionsError }}<template #action><q-btn outline color="primary" :label="t('agenda.retry')" @click="loadActions" /></template></q-banner>
     <q-linear-progress v-if="actionsLoading" indeterminate color="primary" />
@@ -17,13 +16,18 @@
     <q-banner v-if="executionsError" role="alert">{{ executionsError }}<template #action><q-btn outline color="primary" :label="t('agenda.retry')" @click="loadExecutions" /></template></q-banner>
     <q-table v-model:pagination="pagination" :rows="executions" :columns="columns" row-key="id" flat :loading="executionsLoading" :grid="$q.screen.lt.md"
       :rows-per-page-options="[10, 20, 50, 100, 500]" :no-data-label="t('agenda.noExecutions')" @request="pageRequest">
-      <template #body-cell-state="scope"><q-td :props="scope"><ExecutionBadge :state="scope.row.state" /><div v-if="scope.row.reason" class="text-caption">{{ scope.row.reason }}</div></q-td></template>
+      <template #body-cell-state="scope"><q-td :props="scope"><ExecutionBadge :state="scope.row.state" /><div v-if="scope.row.reason" class="text-caption">{{ executionReason(scope.row) }}</div></q-td></template>
       <template #body-cell-actions="scope"><q-td :props="scope"><div class="row q-gutter-xs no-wrap">
         <q-btn v-if="scope.row.task_uri && canReadTasks" outline color="primary" size="sm" :label="t('agenda.openTask')" @click="openTask(scope.row.task_uri)" />
+        <q-btn v-else-if="canReadProcess(scope.row)" outline color="primary" size="sm" icon="account_tree" :label="t('agenda.openProcessRun')" @click="openProcess(scope.row)" />
         <q-btn v-if="canRelaunch(scope.row)" flat round color="primary" icon="replay" :aria-label="t('agenda.relaunch')" @click="relaunchTarget = scope.row" />
       </div></q-td></template>
-      <template #item="scope"><article class="col-12 q-mb-sm"><q-card flat bordered><q-card-section class="q-gutter-y-sm"><div>{{ format(scope.row.reminder_at) }}</div><ExecutionBadge :state="scope.row.state" /><p v-if="scope.row.reason">{{ scope.row.reason }}</p>
-        <div class="row q-gutter-sm"><q-btn v-if="scope.row.task_uri && canReadTasks" outline color="primary" :label="t('agenda.openTask')" @click="openTask(scope.row.task_uri)" /><q-btn v-if="canRelaunch(scope.row)" outline color="primary" icon="replay" :label="t('agenda.relaunch')" @click="relaunchTarget = scope.row" /></div>
+      <template #item="scope"><article class="col-12 q-mb-sm"><q-card flat bordered><q-card-section class="q-gutter-y-sm"><div>{{ format(scope.row.reminder_at) }}</div><ExecutionBadge :state="scope.row.state" /><p v-if="scope.row.reason">{{ executionReason(scope.row) }}</p>
+        <div class="row q-gutter-sm">
+          <q-btn v-if="scope.row.task_uri && canReadTasks" outline color="primary" :label="t('agenda.openTask')" @click="openTask(scope.row.task_uri)" />
+          <q-btn v-else-if="canReadProcess(scope.row)" outline color="primary" icon="account_tree" :label="t('agenda.openProcessRun')" @click="openProcess(scope.row)" />
+          <q-btn v-if="canRelaunch(scope.row)" outline color="primary" icon="replay" :label="t('agenda.relaunch')" @click="relaunchTarget = scope.row" />
+        </div>
       </q-card-section></q-card></article></template>
     </q-table>
     <q-dialog v-model="actionDialog"><q-card class="galaris-dialog-card action-dialog"><DialogHeader :title="t(editingAction ? 'agenda.editAction' : 'agenda.addAction')" :close-label="t('agenda.close')" />
@@ -37,7 +41,7 @@
       </q-card-section><q-card-actions class="galaris-dialog-actions" align="right"><q-btn v-close-popup outline color="primary" :label="t('agenda.cancel')" /><q-btn color="primary" type="submit" :label="t('agenda.saveAction')" :loading="saving" /></q-card-actions></q-form>
     </q-card></q-dialog>
     <CalendarConfirmDialog v-if="relaunchTarget" :title="t('agenda.relaunch')" :message="t('agenda.relaunchConfirm')" :hint="t('agenda.relaunchHint')" :confirm="t('agenda.relaunch')" :busy="relaunching" :error="relaunchError" @close="relaunchTarget = null; relaunchError = ''" @confirm="relaunch" />
-    <ResourceDetailDialog v-if="selectedTask && canReadTasks" :target="selectedTask" @close="selectedTask = null" @changed="loadExecutions(); emit('changed')" />
+    <ResourceDetailDialog v-if="selection" :target="selection" @close="selection = null" @changed="loadExecutions(); emit('changed')" />
   </div>
 </template>
 <script setup lang="ts">
@@ -56,6 +60,7 @@ const props = defineProps<{ feed: CalendarFeed; detail: EventDetail; recurrenceK
 const emit = defineEmits<{ changed: [] }>()
 const { t, locale } = useI18n(), $q = useQuasar(), privilegeStore = usePrivilegeStore()
 const canReadTasks = computed(() => privilegeStore.hasAnyPrivilege([privileges.TASK_ACCESS, privileges.TASK_EDIT]))
+const canLaunchProcesses = computed(() => privilegeStore.hasAnyPrivilege([privileges.PROCESS_LAUNCH, privileges.PROCESS_ADMIN]))
 const actions = ref<CalendarAction[]>([]), actionsLoading = ref(false), actionsError = ref(''), toggling = ref<string | null>(null)
 const executions = ref<CalendarReminder[]>([]), executionsLoading = ref(false), executionsError = ref(''), wholeSeries = ref(false)
 const pagination = ref({ page: 1, rowsPerPage: 50, rowsNumber: 0 })
@@ -63,8 +68,22 @@ let alive = true, request = 0, actionRequest = 0, timer: ReturnType<typeof setIn
 const controller = new AbortController()
 const format = (value: string) => new Intl.DateTimeFormat(locale.value, { timeZone: props.detail.timezone, dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value))
 const columns = computed<QTableColumn[]>(() => [{ name: 'date', field: (row: CalendarReminder) => format(row.reminder_at), label: t('agenda.launchAt'), align: 'left' }, { name: 'state', field: 'state', label: t('calendars.state'), align: 'left' }, { name: 'actions', field: 'id', label: '', align: 'right' }])
-const selectedTask = ref<ResourceDetailTarget | null>(null)
-function openTask(uri: string): void { selectedTask.value = { kind: 'task', id: uri.slice('galaris://task/'.length), title: '' } }
+const selection = ref<ResourceDetailTarget | null>(null)
+function openTask(uri: string): void { selection.value = { kind: 'task', id: uri.slice('galaris://task/'.length), title: '' } }
+function canReadProcess(row: CalendarReminder): boolean {
+  return Boolean(row.process_run_id) && privilegeStore.hasAnyPrivilege([
+    privileges.PROCESS_READ, privileges.PROCESS_ADMIN,
+    row.process_run_engine === 'galaris' ? privileges.PROCESS_EDIT : privileges.PROCESS_LAUNCH,
+  ])
+}
+function openProcess(row: CalendarReminder): void {
+  if (!row.process_run_id || !canReadProcess(row)) return
+  selection.value = { kind: row.process_run_engine === 'galaris' ? 'process_run' : 'external_process_run',
+    id: row.process_run_id, title: '' }
+}
+function executionReason(row: CalendarReminder): string {
+  return row.reason === 'process_unavailable' ? t('agenda.processUnavailable') : row.reason ?? ''
+}
 function actionTiming(action: CalendarAction): string { return t(action.offset_minutes < 0 ? 'agenda.minutesBefore' : action.offset_minutes > 0 ? 'agenda.minutesAfter' : 'agenda.atAnchor', { minutes: Math.abs(action.offset_minutes), anchor: t(`agenda.anchors.${action.anchor}`) }) }
 async function loadActions(): Promise<void> {
   const token = ++actionRequest; actionsLoading.value = true; actionsError.value = ''
@@ -118,7 +137,11 @@ async function toggle(action: CalendarAction): Promise<void> {
   finally { if (alive) toggling.value = null }
 }
 const relaunchTarget = ref<CalendarReminder | null>(null), relaunching = ref(false), relaunchError = ref(''), keys = new Map<string, string>()
-function canRelaunch(row: CalendarReminder): boolean { return props.canEdit && props.feed.active && props.feed.actions_enabled && ['done', 'error', 'dispatch_error', 'cancelled', 'skipped'].includes(row.state) }
+function canRelaunch(row: CalendarReminder): boolean {
+  return props.canEdit && props.feed.active && props.feed.actions_enabled
+    && (!props.detail.process_definition_id || canLaunchProcesses.value)
+    && ['done', 'error', 'dispatch_error', 'cancelled', 'skipped'].includes(row.state)
+}
 async function relaunch(): Promise<void> {
   const target = relaunchTarget.value
   if (!target || relaunching.value || !canRelaunch(target)) return

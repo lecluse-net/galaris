@@ -158,6 +158,53 @@ async def test_an_event_without_an_alarm_automatically_admits_one_task_with_its_
 
 
 @pytest.mark.asyncio
+async def test_event_process_is_saved_launched_once_and_replaced_by_a_task_when_cleared(db, agent, personal, monkeypatch):
+    from app.process import ProcessRun, ProcessStartJob, process_service
+    from app.process.bpmn import Flow, Node, Workflow
+    from app.process.native_definitions import create
+
+    _, feed = personal
+    monkeypatch.setattr(task_port, "schedule", lambda _: None)
+    process = await create(actor_agent_id=agent.id, title="Synthetic review workflow", graph=Workflow(
+        nodes=[Node(id="start", kind="start"), Node(id="end", kind="end")],
+        flows=[Flow(id="flow", source="start", target="end")]))
+    event = await service.create_calendar_event(feed.id, agent.id, appointment(
+        uid="synthetic-scheduled-process", process_definition_id=process.id, reminder_minutes_before=10))
+    assert (await service.event_detail(feed.id, event.uid)).process_label == process.label
+    assert (await service.event_history(feed.id, event.uid))[0].process_definition_id == process.id
+    with pytest.raises(store.CalendarConflictError):
+        await service.create_calendar_event(feed.id, agent.id, appointment(uid=event.uid, reminder_minutes_before=10))
+
+    due = NOW + timedelta(minutes=20)
+    assert await dispatch.dispatch_due(now=due - timedelta(seconds=1)) == 0
+    assert await dispatch.dispatch_due(now=due) == 1
+    assert await dispatch.dispatch_due(now=due) == 0
+    run = (await db.scalars(select(ProcessRun))).one()
+    job = (await db.scalars(select(ProcessStartJob))).one()
+    assert run.process_id == process.id and job.run_id == run.id
+    assert not (await db.scalars(select(Task))).all()
+    entry = (await service.list_reminders(feed.connection_id, event_id=event.event_id)).items[0]
+    assert entry.process_run_id == run.id and entry.process_run_engine == "galaris"
+    assert entry.task_uri is None and entry.state == "queued"
+    with pytest.raises(store.CalendarConflictError, match="previous process is active"):
+        await service.relaunch_execution(feed.id, entry.id, agent.id, uuid4(), 1)
+
+    assert await process_service.process_start_jobs(job_id=job.id) == 1
+    for _ in range(5):
+        run = await process_service.refresh_run(run.id)
+        if run.status == "success":
+            break
+    assert run.status == "success", run.error_message
+    cleared = await service.update_calendar_event(feed.id, agent.id, event.uid, CalendarEventUpdate(
+        expected_revision=event.revision, process_definition_id=None))
+    assert (await service.event_detail(feed.id, event.uid)).process_definition_id is None
+    await service.relaunch_execution(feed.id, entry.id, agent.id, uuid4(), cleared.revision)
+    assert await dispatch.dispatch_due(now=datetime.now(timezone.utc) + timedelta(seconds=1)) == 1
+    assert (await db.scalars(select(Task))).one().id is not None
+    assert (await db.scalars(select(ProcessRun))).one().id == run.id
+
+
+@pytest.mark.asyncio
 async def test_existing_personal_calendar_is_adopted_without_creating_a_duplicate(db, personal):
     connection, feed = personal
     feed.is_default = False

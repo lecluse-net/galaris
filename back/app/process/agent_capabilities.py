@@ -42,6 +42,8 @@ def _json_catalog_entry(process: dict[str, Any]) -> str:
             max_chars=_DESCRIPTION_MAX_CHARS,
         ),
     }
+    if process_code := process.get("process_code"):
+        entry["process_code"] = str(process_code)
     # Process metadata is administrator-provided reference data. Escaping angle brackets keeps
     # it from breaking the XML-like prompt section that contains this JSON line.
     return json.dumps(entry, ensure_ascii=False).replace("<", "\\u003c").replace(

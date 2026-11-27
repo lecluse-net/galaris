@@ -405,6 +405,7 @@ async def list_for_agent(agent_id: int) -> list[dict[str, Any]]:
         {
             "definition_id": process.id,
             "workflow_id": process.engine_process_id,
+            "process_code": process.code,
             "resource_uri": process_resource_uri(process),
             "label": process.label,
             "description": process.description,
@@ -740,7 +741,11 @@ async def start_process(
     external_input: bool = False,
     input_origins: dict[str, dict[str, Any]] | None = None,
     _scheduled_definition_id: int | None = None,
+    _calendar_trigger: bool = False,
+    _scheduled_by_agent: bool = False,
 ) -> ProcessStartResponse:
+    if not _calendar_trigger and idempotency_key and idempotency_key.strip().startswith("calendar-trigger:"):
+        raise ValueError("This invocation identity is reserved for Calendar launches")
     provided_input_names = set(input_data)
     if idempotency_key and idempotency_key.strip():
         # Reattach an admitted native operation even when its definition has
@@ -883,7 +888,9 @@ async def start_process(
         "files": serialized_files,
     }
     if _scheduled_definition_id is not None:
-        launch_snapshot["goal_cycle"] = True
+        launch_snapshot["calendar_trigger" if _calendar_trigger else "goal_cycle"] = True
+        if _scheduled_by_agent:
+            launch_snapshot["scheduled_by_agent"] = True
     if native_definition is not None:
         definition = native_definition
         launch_snapshot["definition"] = {key: definition[key] for key in ("xml", "graph", "revision")}
@@ -929,7 +936,7 @@ async def start_process(
                 if requester_user_id is not None else {"kind": "agent"}) for name in selected if name in provided_input_names}
             await record_inputs(run, selected, origins=origins)
         if _scheduled_definition_id is not None:
-            # The scheduler commits the job and its owning cycle together.
+            # The scheduler commits the job and its owning trigger together.
             await db.flush()
             return await _start_response(run, process, deduplicated=False)
         await db.commit()
@@ -1947,7 +1954,8 @@ async def process_start_jobs(*, batch_size: int = 10, engine_code: str | None = 
         await db.commit()
         started = asyncio.get_running_loop().time()
         authorization_permit = run.launch_snapshot.get("authorization_permit")
-        scheduled_cycle = run.launch_snapshot.get("goal_cycle") is True
+        calendar_trigger = run.launch_snapshot.get("calendar_trigger") is True
+        scheduled = calendar_trigger or run.launch_snapshot.get("goal_cycle") is True
         dispatch_claimed = False
         from app.services.facade import claim_deferred_dispatch, finish_action, authorized_request
         try:
@@ -1959,7 +1967,7 @@ async def process_start_jobs(*, batch_size: int = 10, engine_code: str | None = 
                 raise ProcessEngineError(
                     "invalid_launch_snapshot", "Unsupported or invalid durable launch snapshot",
                 ) from error
-            if scheduled_cycle:
+            if scheduled:
                 allowed = await db.scalar(
                     select(ProcessDefinition.id).join(ServiceModel, ServiceModel.id == ProcessDefinition.service_id)
                     .where(
@@ -1972,7 +1980,12 @@ async def process_start_jobs(*, batch_size: int = 10, engine_code: str | None = 
                     )
                 )
                 if allowed is None:
-                    raise ProcessEngineError("goal_process_unavailable", "The scheduled process is no longer available to its agent")
+                    code = "calendar_process_unavailable" if calendar_trigger else "goal_process_unavailable"
+                    raise ProcessEngineError(code, "The scheduled process is no longer available to its agent")
+                if calendar_trigger and run.launch_snapshot.get("scheduled_by_agent") is True:
+                    from app.services.facade import has_active_native_function
+                    if not await has_active_native_function(run.launcher_agent_id, "process_start"):
+                        raise ProcessEngineError("calendar_process_unavailable", "Automatic process launch is no longer authorized")
                 await db.commit()
             payload = ProcessStartPayload(
                 input=snapshot.input, files=snapshot.files,
@@ -1991,7 +2004,7 @@ async def process_start_jobs(*, batch_size: int = 10, engine_code: str | None = 
             with authorized_request(UUID(str(authorization_permit)) if authorization_permit else None):
                 result = await asyncio.wait_for(
                     engine.start_run(
-                        snapshot.workflow_id if scheduled_cycle else process.engine_process_id or "",
+                        snapshot.workflow_id if scheduled else process.engine_process_id or "",
                         _engine_run_reference(run), payload,
                     ),
                     timeout=(engine.start_timeout_seconds if isinstance(engine, IntegratedProcessEngine)

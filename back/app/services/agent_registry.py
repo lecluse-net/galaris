@@ -116,7 +116,9 @@ def _render_native_inventory(functions: tuple[tuple[str, str], ...]) -> AgentToo
         lines.append(
             "Use calendar_create_event with an exact calendar ID and respect read-only and approval "
             "states. With actions enabled, reminder_minutes_before=0 is at the event start and a positive "
-            "value schedules advance notice."
+            "value schedules advance notice. For your own event, pass the assigned native process_code "
+            "if process_start is enabled for automatic use. Discover it in the Process catalog or as "
+            "metadata.native_code in file_list('galaris://processes/'). Omit the code to schedule a Task."
         )
     if "calendar_update_event" in tool_names:
         lines.append("Use calendar_update_event for an existing event with its current revision.")
