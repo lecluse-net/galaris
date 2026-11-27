@@ -507,6 +507,10 @@ renouvellement des droits. `agent-selection.spec.mjs` conserve sélection, réou
 de session. `e2e/specs/rbac-domains.spec.mjs` connecte un rôle Contacts seul à l'application
 assemblée, crée un contact, le retrouve après rechargement et vérifie les refus Memory,
 catalogue Agent et agent étranger sur ordinateur/mobile. Les données sont entièrement fictives.
+`e2e/specs/agent-admin.spec.mjs` ouvre la page Agents sans droits de gestion, affiche les
+fiches de deux équipes et sélectionne un agent d’équipe dans le filtre Connexions.
+`app/agent/tests/test_selection.py` vérifie les profils
+visibles, les refus de modification et la perte d’accès au retrait de l’équipe commune.
 Le même parcours refuse les requêtes API de domaines non autorisés dans l'interface globale.
 Le sélecteur des connexions expose les paramètres globaux hérités aux lecteurs du domaine
 Services uniquement, sans valeur secrète ni configuration privée du transport. Les rôles limités
@@ -1098,10 +1102,6 @@ Les menus fusionnés conservent les liens web, la sélection de texte et l'uploa
 `galaris-links.spec.mjs` remplace les scénarios de l'ancienne recherche de liens par le
 sélecteur interne commun, notamment dans le formulaire Memory au menu réduit : conservation
 du texte et de sa mise en forme, annulation, fermeture, reprise après erreur et rejet d'une
-`e2e/specs/agent-admin.spec.mjs` ouvre la page Agents sans droits de gestion, affiche les
-fiches de deux équipes et sélectionne un agent d’équipe dans le filtre Connexions.
-`app/agent/tests/test_selection.py` vérifie les profils
-visibles, les refus de modification et la perte d’accès au retrait de l’équipe commune.
 sélection après changement de contenu. La navigation et la sélection multiple restent
 couvertes par `internal-file-picker.spec.mjs`.
 `agents.spec.mjs` couvre la carte insérée, son avatar, le choix lien/carte, la sauvegarde

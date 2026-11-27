@@ -925,7 +925,7 @@ an `if driver == ...` test in the facade.
 `EXEC high` requires the harness to declare `uses_llm_calls=true`: execution calls must use
 Galaris model routing and its `LLMCall` journal. An external runtime using its own API or
 subscription keeps standard execution only; without a planner, dispatch requires
-no LLM call. Managed providers, including Claude Agent, currently enforce the Galaris gateway
+no LLM call. Managed providers currently enforce the Galaris gateway
 and retain both effort levels.
 
 The Task dispatcher supports an optional **Decision** model in the LLM profile. Add Jev from
@@ -1418,6 +1418,8 @@ and re-billed on every tool turn.
 
 ### Service REST facade
 
+The `rest_request` MCP entry point checks function authorization and conversation scope before calling the facade with the exact `service_code`. The response preserves remote HTTP status, including errors. [Argument schema and examples](../admin/service-administration.md#rest-request)
+
 An optional `rest_config` capability uses existing global parameters and connections.
 Its public contract is exported by `app.services` and `app.services.facade`:
 
@@ -1530,6 +1532,10 @@ body; use `galaris-dialog-body--layout` for bodies containing flexible panels, o
 `galaris-dialog-body--contained` when the component manages its own scrolling. Never
 restore scrolling on the whole card. Check long content on mobile, an always reachable
 close button, and form submission after scrolling.
+
+The account menu occupies the upper-right corner of the page title. Put page actions in the `PageHeader` actions slot on the row below the title, or beside the content they act on. Use the default filled `QBtn` for standard actions. Table row actions use `flat` icon buttons with accessible labels.
+
+Group footer buttons in a single `<q-card-actions align="right" class="galaris-dialog-actions">` after the scrolling body. Place Cancel before the primary action. Check spacing against **New event** under **Developers → Graphic reference**.
 
 Modal actions use Quasar's native dimensions and shapes: standard text buttons, round
 icon buttons, and `flat round dense` header close buttons. Do not impose a height, `size`,

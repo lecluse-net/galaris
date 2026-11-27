@@ -16,6 +16,7 @@ supplémentaire et ne garantissent pas le bon choix du modèle ; le
 [corpus du Lab](../dev/lab-reference-corpus.md)
 permet de qualifier ces choix.
 
+<a id="enable-documentation"></a>
 ## Activation
 
 1. Dans **Configurer → Services & connexions → Autorisations**, sélectionner la connexion

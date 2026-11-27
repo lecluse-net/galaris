@@ -15,6 +15,7 @@ grant no additional rights and do not guarantee correct model choices; the
 [Lab corpus](../dev/lab-reference-corpus.md)
 supports qualification of those choices.
 
+<a id="enable-documentation"></a>
 ## Enable access
 
 1. In **Configure → Services & connections → Authorizations**, select the agent’s **Galaris**

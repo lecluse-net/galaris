@@ -2,8 +2,7 @@
 
 # Fiabilité du Chat et de l’exécution agentique
 
-La CI `Quality` exécute les tests backend, frontend, typage, build, architecture et
-les parcours navigateur Chat. Pour la même validation locale : `make quality`.
+Le workflow `Quality` automatique lance les contrôles rapides. Pour exercer les parcours navigateur en CI, lancez le workflow manuellement avec `full` activé. En local, `make tests-e2e` exécute ces parcours et `make quality` lance la suite qualité complète.
 
 ## Parcours navigateur
 
@@ -20,7 +19,7 @@ La stack est déclarée dans `compose.e2e.yaml`.
 Les rapports, captures sur échec, traces navigateur et logs de services sont dans
 `artifacts/e2e/`, également conservés sept jours en CI. Les relances automatiques
 sont désactivées : un échec intermittent reste un échec.
-La CI répète chaque parcours trois fois dans la même stack isolée.
+En CI complète, chaque parcours s’exécute une fois par navigateur.
 Chromium, Firefox et WebKit ont chacun leur runner CI et leur artefact
 `chat-e2e-<navigateur>` : leurs stacks ne se disputent pas le CPU et la mémoire
 d’une même machine. Les trois qualifications restent obligatoires ; l’échec

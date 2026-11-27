@@ -2,18 +2,15 @@
 
 # Galaris Documentation
 
-The documentation is organized according to the responsibility of the person reading it. It is
-not necessary to understand the architecture to use Galaris, nor to know the code to administer it.
+## Where should I start?
 
-## Discover the Platform
-
-[Discover Galaris in use](features.md)
-
-This tour shows how capabilities combine in everyday work. The guides below explain the actions
-to perform and remain the home of their respective procedures.
-
-The [exhaustive functional catalogue](reference/functional-catalogue.md) remains a separate reference,
-particularly for preparing the product website: detailed capabilities, conditions, limits and inventories.
+| Your situation | Start here |
+|---|---|
+| I received an invitation | [Activate my account and find my team’s agents](user/README.md#first-login) |
+| I have access to an agent and want to try it | [Turn notes into a document with the guided first mission](user/README.md#first-mission) |
+| I need help using a Galaris screen | [Ask an agent about the installed documentation](user/README.md#ask-about-galaris) |
+| I’m setting up Galaris for my team | [Install the platform and configure the first provider](admin/installation.md) |
+| I’m exploring possibilities or looking for a specific feature | [Explore everyday uses](features.md) · [Browse the functional catalogue](reference/functional-catalogue.md) |
 
 ## 1. User and Beginner
 
@@ -25,10 +22,16 @@ particularly for preparing the product website: detailed capabilities, condition
 
 | Workflow | Guide |
 |---|---|
-| Organize Documents and act on a selection | [Document library](user/documents.md) |
+| Accept an invitation, find your team and open an agent profile | [Home and accounts](user/navigation.md), [teams](user/teams.md) |
+| Understand an inference limit and request credit | [Usage and renewals](user/usage.md#request-credit) |
+| Choose the harness for Chat and Tasks | [Embedded Claude Agent](components/claude-agent.md) |
+| Share a local MCP or a screenshot from your computer | [Windows/Linux client](user/desktop.md) |
+| Find a document mentioned in Chat and get access | [Document results](user/documents.md#find-deliverable) |
+| Answer an agent or understand a waiting Task | [Questions and resumption](user/tasks.md#reply-to-task) |
+| Find a file or retrieve an email attachment | [Agent files](user/files.md#browse-files), [mailboxes](user/files.md#browse-mail) |
+| Connect an API or find out why a tool is missing | [Connect the Service](user/services.md#connect-service), [check access](user/services.md#service-access) |
 | Write, cite an object, share or export | [Rich content](user/rich-content.md) |
 | Create and reuse JSON | [Data documents](user/datasets.md) |
-| Browse an agent's resources | [Files](user/files.md) |
 | Manage generic and personal agent methods | [Skills](user/skills.md) |
 | Work on a Git checkout with an agent | [Code editor](user/code-editor.md) |
 | Design and monitor a BPMN workflow | [Internal Processes](user/internal-processes.md) |
@@ -83,9 +86,7 @@ This path describes the code contract:
 - SQLAlchemy, Atlas, RBAC, API, MCP toolsets, Vue, Pinia, and i18n;
 - isolated tests, strict typing, and contribution rules.
 
-To publish a version, follow the [pre-publication check](dev/security-validation.md):
-the exact commit must pass Quality and Security CI and a fresh source scan before the
-tag and Release are created.
+Before publishing the tag, run `make release-check RELEASE_REF=<commit>`. This requires a successful Security workflow for that exact commit and a fresh source scan. Quality results are reported separately. [Pre-publication checks](dev/security-validation.md)
 
 For maintenance-oriented navigation, also consult
 [`docs/en/architecture`](architecture/README.md): invariants, flows, state machines, and the

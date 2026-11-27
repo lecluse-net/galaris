@@ -137,6 +137,8 @@ See [Service administration](service-administration.md) and [resource sharing](.
 
 ## Organize categories and update roles
 
+Under **Users & Permissions → Roles**, select a role and click the privilege row or its switch. The change takes effect immediately. When the **Plugins** category is first initialized, Galaris groups `PLUGIN_ACCESS` and `PLUGIN_EDIT` there. Subsequent moves by an administrator are preserved.
+
 Initial category labels follow the interface language until renamed. A renamed label is
 literal text. With `MANAGE_PRIVILEGE`, moving a privilege or deleting a category changes
 organization without removing role grants. Later synchronizations preserve renames, moves,

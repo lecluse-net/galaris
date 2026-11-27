@@ -391,6 +391,7 @@ Retirer une image du texte conserve sa pièce jointe. Supprimer cette pièce joi
 la liste, mais les versions historiques restent restaurables avec les droits actuels. Oublier
 définitivement le document supprime aussi ces ressources, sauf protection métier.
 
+<a id="document-history"></a>
 ## Enregistrement et historique
 
 Le titre se modifie dans le champ encadré de l’en-tête du document, à côté de son icône. Les titres
@@ -479,6 +480,7 @@ La flèche à sa droite ouvre le menu **Pause** / **Arrêter la lecture**, sans 
 **Reprendre** continue au même endroit après une pause. Remplacer le contenu ou fermer l’éditeur
 arrête aussi la capture ou la lecture en cours. L’audio utilise les fournisseurs configurés dans Galaris.
 
+<a id="share-document"></a>
 ## Partager un document
 
 Les nouveaux documents sont **Privés**. Leur synthèse mémoire facultative hérite de leurs droits

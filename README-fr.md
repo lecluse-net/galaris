@@ -19,6 +19,7 @@
   <a href="INSTALL.md"><strong>Lancer Galaris</strong></a> ·
   <a href="#ce-que-galaris-apporte">Découvrir la plateforme</a> ·
   <a href="docs/fr/features.md">Tour complet des fonctionnalités</a> ·
+  <a href="docs/fr/reference/functional-catalogue.md">Catalogue fonctionnel détaillé</a> ·
   <a href="docs/fr/README.md">Documentation</a>
 </p>
 
@@ -50,7 +51,7 @@ un incident et construire une connaissance gouvernée à partir du travail accom
 | Une réponse en un coup | Des tâches, plans, délégations, reprises, annulations et checkpoints sûrs |
 | Un contexte à reconstruire | Une session partagée et une mémoire durable avec révisions, provenance, ACL et rappel hybride |
 | Des notes dispersées | Une base de connaissances vivante, faite de documents coécrits par humains et agents et organisés en dossiers thématiques |
-| Des agents figés | Un entretien Dream optionnel qui consolide la mémoire et apprend des retours d’expérience fondés sur des preuves |
+| Des agents figés | Dream consolide la mémoire. Les objectifs d’auto-apprentissage s’appuient sur les résultats des tâches pour enrichir les compétences personnelles. |
 | Une automatisation opaque | Des traces LLM/outils, coûts, erreurs, runs de processus et benchmarks reproductibles dans le Lab IA |
 | L’écosystème d’un fournisseur | Des harnais internes ou externes pour les tâches, des bridges LLM, MCP et des processus comme n8n |
 
@@ -63,7 +64,7 @@ un incident et construire une connaissance gouvernée à partir du travail accom
 3. **Des documents coécrits par humains et agents** — produire ensemble, relire et enrichir
    des documents qui constituent une base de connaissances durable.
 4. **Une mémoire qui entretient la continuité** — retrouver le contexte, consolider les
-   connaissances et apprendre des expériences grâce à Dream.
+   connaissances avec Dream et revoir les tâches terminées grâce aux objectifs d’auto-apprentissage.
 5. **Des modèles spécialisés pour décider** — associer les LLM génératifs à des modèles
    comme Jev pour orienter les tâches et organiser les connaissances.
 6. **Un travail qui survit aux interruptions** — conserver les tâches, reprendre leur
@@ -97,8 +98,7 @@ STT → agent → TTS composable que des fournisseurs speech-to-speech natifs lo
 Galaris associe l’historique récent à une mémoire privée et gouvernée. Les agents recherchent de
 façon lexicale ou sémantique, maintiennent des documents de travail collaboratifs, conservent la
 provenance et organisent les connaissances dans des dossiers thématiques indépendants d’un salon.
-Dream peut profiter des périodes calmes pour dédupliquer et consolider les souvenirs, puis retenir
-une leçon uniquement lorsque les preuves de la tâche la justifient.
+Dream profite des périodes calmes pour dédupliquer et consolider les souvenirs. Chaque agent revoit ses tâches terminées à la cadence choisie dans son objectif d’auto-apprentissage. [Compétences personnelles et preuves](docs/fr/user/skills.md)
 
 ### Mesurer le comportement de l’IA avant de lui faire confiance
 

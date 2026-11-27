@@ -19,6 +19,7 @@
   <a href="INSTALL.md"><strong>Launch Galaris</strong></a> ·
   <a href="#what-galaris-delivers">Explore the platform</a> ·
   <a href="docs/en/features.md">Full feature tour</a> ·
+  <a href="docs/en/reference/functional-catalogue.md">Detailed functional catalogue</a> ·
   <a href="docs/en/README.md">Documentation</a>
 </p>
 
@@ -49,7 +50,7 @@ systems, recover from failures, and build governed knowledge from completed work
 | One-shot answers | Persisted tasks, multi-step plans, delegation, retries, cancellation, safe checkpoints and recovery |
 | Rebuilt context | Shared session context plus governed long-term memory, revisions, provenance, ACLs and hybrid recall |
 | Scattered notes | A living knowledge base built from documents coauthored by people and agents, organized into thematic dossiers |
-| Static agents | Optional Dream maintenance that consolidates memories and learns evidence-backed experience from outcomes |
+| Static agents | Dream consolidates memories. Periodic self-learning Goals turn evidence from completed Tasks into personal skills. |
 | Opaque automation | Inspectable LLM/tool traces, process runs, costs, failures and reproducible AI Lab benchmarks |
 | One provider’s ecosystem | Internal or external task harnesses, provider bridges, MCP tools and processes such as n8n |
 
@@ -61,8 +62,7 @@ systems, recover from failures, and build governed knowledge from completed work
    and build on their results.
 3. **Documents coauthored by people and agents** — create, review and enrich documents
    together to build a lasting knowledge base.
-4. **Memory that maintains continuity** — recall context, consolidate knowledge and learn
-   from experience through Dream.
+4. **Memory that maintains continuity** — recall context and consolidate knowledge through Dream. Agents review completed work in their self-learning Goals.
 5. **Specialized models for decisions** — combine generative LLMs with models such as Jev
    to route tasks and organize knowledge.
 6. **Work that survives interruptions** — persist tasks, resume execution and track
@@ -95,7 +95,7 @@ providers where configured.
 Galaris combines recent conversation context with private, governed memory. Agents can search
 lexically or semantically, maintain collaborative working documents, preserve provenance and
 organize knowledge into thematic dossiers independent of a single room. Dream can use idle time to
-deduplicate and consolidate memories, then retain lessons only when task evidence supports them.
+deduplicate and consolidate memories. Each agent’s self-learning Goal reviews its completed Tasks on a configurable schedule. [Personal skills and evidence](docs/en/user/skills.md)
 
 ### Measure AI behavior before trusting it
 

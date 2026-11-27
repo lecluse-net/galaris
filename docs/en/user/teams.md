@@ -82,7 +82,7 @@ is saved when you confirm the action. When creating an account, its memberships 
 assignments are saved with the account.
 
 Under **Monitor → Usage**, team leads can see the other human members of their teams,
-edit their [usage limits](../dev/inference-budgets.md) and handle credit requests. Invited
+edit their [usage limits](usage.md#review-credit) and handle credit requests. Invited
 accounts gain these permissions once activated.
 
 Managers retain access to their agents, and administrators can contact every agent.

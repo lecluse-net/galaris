@@ -7,26 +7,16 @@ following their work over time. Conversations, tasks, goals, documents, memory, 
 integrations form a common system. An agent can converse, consult authorized information,
 produce deliverables, involve colleagues, trigger external workflows and retain useful knowledge.
 
-This catalogue describes features present in the repository,
-including agent functions, administration screens and background mechanisms. It is organized
-by use, followed by a native MCP inventory and coverage of **every declared module**. Sources
-make that coverage verifiable. This is the exhaustive reference for preparing the product website.
+Each chapter describes a use case, the permissions it requires and its limits. The catalogue covers the source revision you are reading, which can include features added after your installed version. Access depends on your role, connected Services and configured models.
 
-“Available” means implemented: effective access depends on rights, module activation,
-connections, models and external accounts. This describes the software without certifying
-every provider or installation configuration.
+| What do you need? | Where to look |
+|---|---|
+| An example you can follow from request to result | [Complete journeys](#parcours) |
+| An explanation for an unavailable feature | [Availability and limits](#limites) |
+| The name and purpose of a tool an agent can call | [MCP function inventory](#mcp) |
+| The module that owns a feature and its sources | [Module index](#couverture) · [Generated project map](../architecture/generated/project-map.md) |
 
-It presents current capabilities, concepts, access conditions and limits, rather than a change log.
-Coverage includes business features, architecture, APIs, storage, security, operations and
-verification facilities. The Lab's ten AI mechanisms, its Process campaigns and Dream background
-mechanisms are distinct capabilities. Sources and tests describe software guarantees; this catalogue
-does not qualify every installation or provider.
-
-The inventory covers **302 native MCP functions, 80 backend modules and 41 frontend modules**.
-This review includes development code and local changes, beyond the latest published release.
-The desktop client is a separate support application, outside these web-module counts.
-Implemented features remain distinct from intentions in the [plan register](../../../project/plans/README.md).
-Quality controls appear under [operations](#exploitation).
+Release checks appear under [Operations](#exploitation). The [plan register](../../../project/plans/README.md) records proposed changes and their status.
 
 ## Contents
 
@@ -100,7 +90,7 @@ Quality controls appear under [operations](#exploitation).
 | **Topic** | Subject shared across activities | Links conversations, tasks, documents, memories and participants beyond one channel. |
 | **Contact** | Person observed by an agent | Links messaging identities and knowledge within the agent's scope. |
 | **Resource URI** | Canonical object/file address | Lets tools read and transmit the same resource without inventing local paths. |
-| **Dream** | Platform background work | Classifies topics, extracts knowledge, maintains memory and optionally learns procedures. |
+| **Dream** | Platform background work | Classifies topics, extracts knowledge and maintains memory. |
 | **AI Lab** | Experimentation workspace | Captures cases, compares models and measures mechanisms with judgments and evidence. |
 | **Galaris knowledge** | Installed-version documentation searchable by authorized agents | Guides, navigation, architecture, decisions and plans with provenance; plans remain prospective. |
 | **Incident** | Recorded failure | Links error/context, groups occurrences and retains diagnosis/remediation. |
@@ -144,7 +134,7 @@ transport result. Resource origins, executed tools, results and available delive
 - **Welcome journey.** Seven selectable setup steps include the default language. The timeline
   wraps to the available width, provides previous/next navigation and links to configuration
   screens under the user's rights; language selection saves automatically.
-  Welcome remains the account's home page until explicitly confirmed, including on a
+  For the Administrator role, Welcome remains the account's home page until explicitly confirmed, including on a
   preconfigured instance. The Galaris logo returns there while it is pending; a failed save
   keeps the journey visible and offers retry.
 - **Guided home page:** discovery panels check usable chat models, agents, tools, active
@@ -233,6 +223,10 @@ reading require native consent. The server and network remain necessary; closing
 client. Physical peripherals, Web Push and signed upgrades between releases still require
 qualification on the target platforms.
 
+### Share a local tool or show a window from your computer
+
+Use **Galaris → Local MCP** in the Windows/Linux client to discover or import a configuration and select the MCP server to share. With Service editing rights, enable its relay, then configure the agent’s connection and tools. Keep the computer awake and the client open. In text Chat the agent can also request a screenshot. On the device that sent the message, select a screen or window, inspect the preview and decide whether to send it for each request. [Share tools and screenshots](../user/desktop.md)
+
 Sources: [desktop journey](../user/desktop.md),
 [desktop architecture](../../../project/decisions/0292-desktop-client.md),
 [desktop policies and tests](../dev/desktop.md).
@@ -260,6 +254,12 @@ The usual privileges remain necessary in the web interface.
 - Explicit login waits for identity before closing; errors remain visible and late responses
   cannot replace the current account.
 - Named personal integration tokens: create, enable, disable, delete; distinct from agent MCP tokens.
+
+### Invite someone and prepare their home page
+
+Under **Administer → Users & Permissions**, assign roles and teams in the account record. With platform SMTP configured, choose the email invitation. The recipient has 24 hours to follow the link and set a password. If delivery fails, the account stays pending and resending replaces the previous link. [Invite a colleague and retry a failed delivery](../admin/README.md#invite-colleague)
+
+Members see their teams and the agents they can contact on their home page. They can open a teammate’s profile and inspect the Service and status of a team agent’s connection. Viewing parameters or changing the connection requires management access. [Navigation by role](../user/navigation.md)
 
 ### Rights and roles
 
@@ -761,7 +761,7 @@ Harnesses are replaceable while Galaris retains identity, admission, rights, tas
 |---|---|
 | **Internal Pydantic AI** | Native loop, on-demand tools, Galaris model selection, streaming, cancellation, history and effect checkpoints; no harness container |
 | **Hermes** | Per-agent isolated runtime, managed Galaris models, dedicated config/files, projected skills, common memory and console |
-| **Claude Agent** | Per-agent SDK instance connected to Anthropic gateway/MCP; correlated tool progress, final answer and usage |
+| **Claude Agent** | SDK embedded in the backend. Select it in the Agent record for new Chat and voice rounds, Tasks and `@deep` submissions. |
 | **Codex** | Bridge-managed runtime using common model/tool contracts and normalized execution/telemetry |
 | **DeepSeek Harness** | Per-agent DSH with protocol adaptation, streamed messages/tools and terminal result |
 | **Remote Chat Completions-compatible server** | Configurable URL/model/authentication/discovery; only server-exposed capabilities |
@@ -791,7 +791,7 @@ are image-pinned; DSH explicitly uses **Chat Completions**. See [DSH](../compone
 <a id="harness-multitasking"></a>
 ### Managed harness multitasking
 
-One agent can run several Tasks at once with a qualified **Codex**, **Claude Agent** or
+One agent can run several Tasks at once with a qualified **Codex** or
 **DeepSeek Harness** instance. The scheduler allocates available slots. In **Administer →
 Preferences → Harnesses**, set **Maximum concurrent tasks** to cap the number per agent for
 that harness. Leave it blank to use available scheduler capacity. Hermes, generic remote
@@ -818,13 +818,13 @@ Effective support intersects implemented, configured and target-verified capabil
 | Internal | Yes | Yes | Yes |
 | Managed Hermes | Yes | Yes | No |
 | Managed Codex | Yes | Yes | No |
-| Managed Claude Agent | Yes | Yes | No |
+| Embedded Claude Agent | Yes | Yes | Yes |
 | Managed DeepSeek Harness | Yes | Yes | No |
 | Generic compatible server, including runtimes with their own API | Yes | No | No |
 
-High requires Galaris model selection/call accounting. All four managed runtimes require the
+High requires Galaris model selection/call accounting. The managed runtimes require the
 gateway, without independent-subscription mode. SDK reasoning support alone does not establish
-high support. Short conversation's controller remains independent of the Task harness.
+high support. Each admitted Chat or voice round keeps its engine through completion. [Routing by harness](../components/claude-agent.md)
 
 ### Shared document reading and resumable analysis
 
@@ -1398,9 +1398,7 @@ URIs, plus its next action. Tracking does not split one coherent deliverable int
 independent outputs still use the Planner, which passes organization to leaves.
 
 `task_get` exposes tracking and revision; `task_update` records the current Task's milestones
-only for its executor during an active, unpaused phase. Writes check revision and preserve
-checkpoints. `expected_revision` uses `work_plan_revision` from `task_get` (initially 0), independently
-of the global Task revision. Changing completed milestones requires an explicit reason. Declared progress does
+only for its executor during an active, unpaused phase. An ordinary update identifies the milestone and the fields to change. The receipt confirms the saved plan and explains any omitted changes. For a version-checked correction or replacement, use `work_plan_revision` from `task_get` (initially 0) as `expected_revision`. Changing completed milestones requires an explicit reason. Declared progress does
 not replace resource verification or the Task's terminal result.
 
 Ambiguous intent, scope or expected depth triggers a durable question and suspension. The answer
@@ -1479,13 +1477,14 @@ Sources: [closing after failure](../../../project/decisions/0172-requested-closi
 Clarification and approval requests are correlated to the intended interaction: ambiguous answers
 do not grant permission. Grants apply to a connection function or an exact harness action type,
 with a single-action check before effects; there is no global automatic approval mode.
-Delegation does not transfer another agent's consent. External adapters, including Claude Agent,
+Delegation does not transfer another agent's consent. Harnesses, including embedded Claude Agent,
 check Galaris authorization and reject operations without a valid grant rather than manufacture approval.
+
+An action authorization stays open until it is resolved. In Chat, open the card to inspect the action, its arguments and the account involved. You can open a recognized document if you have read access. Answer in Chat or under **Monitor → Permissions**. Pending reply counts include authorizations and open questions and exclude archived chats. [Respond in Chat](../user/README.md)
 
 ### Activity and operator controls
 
-A milestone explicitly blocked at closure makes the Task fail with its partial outcome and no
-automatic retry; durable waits retain priority. Terminal Tasks cannot be amended: expanding scope
+When execution ends normally with a required milestone blocked, the Task shows **Completed · objective unmet**. Read the partial report and select **Retry** to resume blocked work while preserving successful steps. An unavailable optional addition can be omitted. An open wait keeps the Task waiting. Terminal Tasks cannot be amended: expanding scope
 requires a new explicit request. Snapshot exports retain complete evidence, including long tool outputs.
 
 Activity provides search, filters and totals; states and operations; Goal links; Dispatcher,
@@ -1668,6 +1667,8 @@ Additional references: [Goal schemas](../../../back/app/goal/schemas.py),
 
 <a id="memoire"></a>
 ## 12. Memory, recall and the knowledge graph
+
+When a conversation changes subject, recall looks for evidence relevant to the new question. A validity date, a name or a precise document title can distinguish similar sources. A search can return no references. Results from shared documents and files remain subject to current access to the source. [Source selection and access checks](../architecture/flows/memory.md)
 
 ### Records and acquisition
 
@@ -1985,11 +1986,17 @@ cycles without granting access through the host document.
 
 Legacy `html` and `form` codes become `text`, preserving identities, content, versions, rights
 and URIs. The `document_type` fields and `/documents/types` route are removed. The registry
-prepares contributions; it provides neither hot plugin installation nor automatic format upgrades.
+prepares contributions. Format versions follow their compatibility contract.
 
 Sources: [format contract and qualification](../dev/document-formats.md),
 [lifecycle and permissions](../../../back/app/document/tests/test_formats.py),
 [format migration](../../../back/app/document/tests/test_format_migration.py).
+
+### Insert data and present it as a chart
+
+In a Text document or the rich content of a mind map node, choose **Insert → Insert chart**. Enter labels and values and choose a bar, line or pie chart. Select the chart after reopening the document to edit its data. An agent can prepare the same editable chart with `document_chart` and insert it with write access. [Documents guide](../user/documents.md)
+
+To keep tabular results from an MCP service, open a writable Text document beside Chat on desktop. Filter the table if the Service supports it, then insert the displayed rows. The table becomes part of the document’s revision history. [MCP tables](../user/documents.md#mcp-tables)
 
 ### Mind maps
 
@@ -2638,12 +2645,12 @@ Settings control activation, delays, leases and attempts.
 Monitoring remains available without a configured vector model; JSON indexing for Data
 documents reports no newly eligible work.
 
-The twenty registered mechanisms cover Topic classification for messages/Tasks/Text and Data documents/turns; knowledge
+The registered mechanisms cover Topic classification for messages/Tasks/Text and Data documents/turns; knowledge
 extraction from Tasks, conversation rounds and voice turns; memory projection of Process definitions
 and results; duplicate/conflict/ageing findings; deterministic repair of documents, attachments,
 folders and references; file catalogue discovery, fingerprinting and enrichment; persistent
 thumbnail preparation without AI; four optional attachment analyses (text, non-text-extractable documents,
-images and video audio); optional procedural learning from Task outcomes; confirmed contact
+images and video audio); confirmed contact
 deduplication; current Text/Data summaries; and native JSON indexing for Data documents.
 
 Extractors wait for required Topics and proven contact identity for conversational knowledge.
@@ -2711,17 +2718,9 @@ are isolated from interactive processing. Opportunistic Dream promises no repair
 
 ### Procedural learning
 
-Procedural learning has **off**, **observe** and **learn** modes and is off by default. Observe stores
-proposals; learn can apply them. Evidence includes terminal outcomes, tools, attempts, children,
-verdicts, human corrections and memory usage. Learning can create, strengthen, revise or weaken a
-candidate procedure; evidence, polarity, weight, confidence and justification are separate from
-ordinary memory. One success cannot inject a new skill: a score threshold and several distinct
-Tasks—three by default—are required, within the active-skill cap. Historical Tasks are scanned
-progressively. Dream creates **personal packages** with `SKILL.md`, evidence and scores under
-**Personal skills**. Candidates become usable after three distinct Tasks and a 0.75 score by default.
-The same actions edit, transfer, disable or delete them. Reinforcement never reactivates a disabled
-package and late revisions never overwrite manual edits. Migration retains history and suspensions;
-legacy learned-skill links open Personal skills.
+Each agent has a retrospective Goal under **Goals → Self-learning**. It runs weekly by default. Set a cadence in days, weeks, months or years. **Pause all** suspends new cycles in the selected tab. Running cycles can finish.
+
+The retrospective reviews task outcomes for the period, records missing access and can create or revise a personal procedure. Inspect its evidence and score under **Personal skills**. By default, three distinct Tasks and a score of 0.75 make a candidate eligible within the active learned-skill cap. Revisions respect manual edits and explicit deactivation. [Manage personal skills](../user/skills.md)
 
 Sources: [Dream flow](../architecture/flows/dream.md), [registry](../../../back/app/dream/registry.py),
 [attachment processing](../../../back/app/dream/attachment_processing.py),
@@ -2745,7 +2744,7 @@ state/affected agents; and project permitted skills into supporting harnesses.
 
 Agents with the relevant Skills permissions use `skills_list`, `skill_read`, `galaris://skill/` and permitted
 `file_*` operations. A new package starts with valid `SKILL.md`; revisions, system files and main-file
-operations retain their protections. Dream-learned procedures are personal packages with evidence
+operations retain their protections. Procedures learned through retrospectives are personal packages with evidence
 and scores, becoming usable when their state and thresholds permit.
 
 The matrix presents **Global (all)**, **Category** and **This agent** with Active/Blocked controls.
@@ -2756,7 +2755,7 @@ not mean disabled.
 
 ### Personal skills and ownership
 
-**Personal skills** gathers private agent packages, manually created or Dream-learned, separately
+**Personal skills** gathers private agent packages, manually created or learned through retrospectives, separately
 from the generic catalogue. It offers search, an owner filter, text-file/label editing, activation and
 deletion with revision checks. Authorized humans can transfer a package between managed agents.
 Global management can also make a generic package personal or release personal ownership;
@@ -2819,6 +2818,8 @@ Sources: [API](../../../back/app/skill/router.py), [schemas](../../../back/app/s
 
 ### Catalogue and configuration
 
+In development, **Developers → Tool inventory** (`/tool-inventory`) lets you search by tool or Service name. Each row describes the operation and its availability in conversation. Inspect connection parameters, defaults and supported scopes before checking the agent’s effective permissions. [Navigation](../user/navigation.md)
+
 **Custom Services**, initially selected, is separate from **Galaris internal Services**. Connection
 and authorisation selectors retain this origin, including when opening the Connections
 catalogue with a restricted role; using a dedicated bridge does not make a
@@ -2867,7 +2868,7 @@ connections stay protected; humans can configure functions with the same **Activ
 archived during migration. Mandatory activation never bypasses business ACLs or harness/context limits.
 
 Tasks owns `task_*`, Processes owns `process_*`, and Documents owns
-`document_show`. These tools still require conversation context.
+`document_show`. Availability depends on context. For example, `task_run` can also delegate a subtask during execution.
 Chat also owns `chat_round_get` and `voice_turn_get`. Galaris owns `llm_call`
 and `llm_calls`. Each inspection rechecks the function grant and Services scope even if discovery preceded
 revocation. Synchronisation fills missing standard descriptions, updates recognised old defaults
@@ -2905,12 +2906,11 @@ require opt-in per tool under **Conversation tools** on the Service card. Multim
 A configurable Service can expose **MCP and REST** together. Its REST tab configures base URL,
 none/Bearer/header/Basic/query authentication, extra headers, timeout and response-size limit.
 Credentials reference connection parameter names with global inheritance, overrides, encryption
-and masking; no OpenAPI catalogue is required. The facade serves native Process activities without
-adding a public proxy or universal HTTP MCP function. Remote rights follow the third-party token;
-MCP function modes do not filter REST endpoints. Redirects/automatic retries are excluded and
-HTTP errors retain their status.
+and masking; no OpenAPI catalogue is required. The agent calls `rest_request` with the exact `service_code` and a path relative to the configured base URL. If multiple mailboxes share the Service, `account_email` selects the account. The function defaults to **On request** and must also be enabled for conversation use in Chat. The remote account’s rights apply to each request. HTTP errors retain their status. After a write loses its connection, check the remote result before retrying.
 
-MCP **HTTP/SSE** connections offer **Connect account** with OAuth discovery: direct Galaris callback,
+In a saved Service’s **REST** tab, **Generate a skill** assigns the Galaris agent a task to research the API and draft examples. Track the task, review the generic skill in the library and assign it to the relevant agents. [Use a REST Service](../user/services.md)
+
+After you select **OAuth 2.0** as the Service authentication method, MCP **HTTP/SSE** connections offer **Connect account** with OAuth discovery: direct Galaris callback,
 known client, public CIMD metadata or dynamic DCR registration. Device flow is attempted when direct
 preparation is refused and supported; a local relay is a last resort. Pre-registered application
 credentials can be supplied when automatic registration is unavailable. PKCE S256 remains required;
@@ -3555,11 +3555,13 @@ content and adds no contact. Only exact INBOX is eligible, excluding subfolders;
 elsewhere create no reception. The [Mail journal](../user/tasks.md) separates **Reception**
 and **Sending**, with decisions, errors and recovery. Processing consent never authorizes a reply.
 
-Active connections poll INBOX every 60 seconds by default. First activation establishes a baseline
+Active connections poll INBOX every 10 minutes by default. First activation establishes a baseline
 rather than importing all history as Tasks. New messages use a durable journal, deduplication and
 cursor to create dedicated Tasks after processing authorization. IMAP generation changes establish a new baseline. The agent reads
 through Mail; Task completion does **not** automatically reply—SMTP sending is explicit. Observed
 senders/recipients enrich contacts with reception/sending evidence.
+
+In **Mail journal → Reception**, open the message and choose **Follow task** to see its result, waits or error with Task read access. If an automatic inbound Task would use a personal ChatGPT subscription, Galaris looks for an eligible model for the same usage in the fallback profile. The Task record shows the fallback or the missing setting. To change how often a mailbox is checked, set the polling interval in minutes on its connection. [Track incoming mail](../user/tasks.md)
 
 ### Preparing, approving and sending
 
@@ -4029,6 +4031,14 @@ Sources: [Lab guide](../user/lab-ai.md), [contracts](../../../back/app/lab/contr
 <a id="supervision"></a>
 ## 26. Activity, costs and incidents
 
+### Track inference limits and request credit
+
+Under **Monitor → Usage**, the gauges show the inference value attributed to your account and when each allowance renews. Five-hour, weekly and calendar-month limits apply independently. An empty limit allows unlimited usage. Zero suspends new calls.
+
+When you reach a limit, check its gauge and request credit for that period. Another person who leads one of your teams can review your request. Credit expires when the selected period renews. [Request credit](../user/usage.md#request-credit) · [Review a request](../user/usage.md#review-credit)
+
+Usage counts each physical call once, including archived calls and failed attempts with a known inference value. Under a subscription, inference value can differ from the billed amount. [Windows, permissions and cost attribution](../dev/inference-budgets.md)
+
 ### Dashboard
 
 The monthly dashboard shows authorised-scope Task counts/successes/errors, model calls/inference
@@ -4118,7 +4128,7 @@ Sources: [dashboard](../../../back/app/dashboard/schemas.py), [calls](../../../b
 | Modular architecture | Explicit backend/frontend activation; `core` owns infrastructure, `app` business domains and `bridge` external adapters. Public facades/contracts and composition ports govern dependencies, with static boundary/cycle/debt checks. |
 | APIs | FastAPI, Pydantic validation, HTTP/WebSocket contracts, OpenAPI documentation and compatible model/agent APIs; server authentication, RBAC and resource ACLs. |
 | Persistence | PostgreSQL/pgvector, async SQLAlchemy, transactions, history and optimistic locking; leases/claims distribute durable executions. DbAdmin derives schema and applies idempotent contributions. |
-| Orchestration | Agent owns facade, registry, resolution, dispatcher, planner and result application; Harness runs Pydantic AI; Task owns states, attempts and scheduling. Drivers emit exactly one terminal result after events. |
+| Orchestration | Agent owns facade, registry, resolution, dispatcher, planner and result application; Harness runs Pydantic AI or embedded Claude Agent; Task owns states, attempts and scheduling. Drivers emit exactly one terminal result after events. |
 | Messaging | Messenger owns conversations, capabilities, inbound journal and deduplication; bridges translate protocols. Attachments retain canonical URIs/provenance in chronology. |
 | Resources | Document owns typed documents, Memory personal memories, Process BPMN/runs and Storage bytes. File Sharing unifies URIs without moving authority or permissions. |
 | Interface | Vue/Quasar, Pinia, file-derived routes, declared navigation, domain i18n and lazy shared components; common FR/EN parity, theme and mobile boundary. |
@@ -4151,7 +4161,7 @@ value saves restore confirmed values. Fields respect edit rights and remain usab
 | Language/location | Optional fallbacks, with user-profile language taking priority. |
 | Messaging | Channels/bridges, incoming-file limits, voice-note duration, chat contact and notification delay. |
 | Memory | Session window, context activation/size, temporal lookahead, recall candidates/weights, acquisition, duplicates, conflicts and ageing. |
-| Dream | Activation, Topic creation, mechanism prompts, four attachment analyses, learning, evidence/score thresholds, active skills, delays and link reconciliation. |
+| Dream | Activation, Topic creation, mechanism prompts, four attachment analyses, delays and link reconciliation. |
 | Voice | Activation, auto-answer, audio and call discovery. |
 | Tasks/execution | Scheduling, concurrency, leases, recovery, budgets, Goals, collaboration, maximum duration per LLM call, model/tool limits and capability-aware Planner depth/leaves. |
 | Processes | Engine, file references, submission, refresh, waiting, idempotency, recovery and retention. |
@@ -4170,6 +4180,10 @@ language/location may be empty; no location is invented.
 
 Displayed/input MB are decimal (1,000,000 bytes), preserving API units. Defaults include 4 MB for
 embedded input attachments and 20 MB for internal-harness binary files, configurable in preferences.
+
+### Install a plugin and use its contribution
+
+Under **Administer → Plugins**, choose a catalogue version or inspect a signed archive. Check its publisher, supported Galaris versions and capabilities. Installation prepares an inactive version. Activate it to make its contributions available. For a Service preset, open **Configure → Services & connections → New service**, configure a copy and save it. You can then deactivate and uninstall the plugin. The saved Service retains its configuration. [Trusted publishers, formats and installation lifecycle](../dev/plugin-bundles.md)
 
 ### Hosting and durable data
 
@@ -4360,6 +4374,8 @@ the link. An internal conversational round can use `document_show`; the Task its
 can export or the agent can deliver a file. Chat retains Task/document/delivery links and inspectable
 costs/errors.
 
+To pick up the work after closing Chat, [find the deliverable in Documents](../user/documents.md#find-deliverable). If a colleague receives the link but cannot open it, [check the document’s sharing settings](../user/rich-content.md#share-document).
+
 ### Correcting and filing a document together
 
 A human opens a chat preview/search result and edits within their rights, then requests a correction.
@@ -4424,9 +4440,10 @@ cost per verified benchmark success with judge expenses separate. Missing eviden
 
 ### Asking an agent how Galaris works
 
-With Admin/documentation access, an agent searches the installed version, reads sources and provides
+With Galaris documentation access, an agent searches the installed version, reads sources and provides
 section → screen → tab → action guidance with provenance. It distinguishes implemented features from
 plans and checks whether guidance requires rights/configuration beyond its evidence.
+[See a sample question and check the answer](../user/README.md#ask-about-galaris).
 
 ### Delegating an experimental campaign
 
@@ -4460,12 +4477,12 @@ for subsequent calls without editing client files. Logs retain token name and ac
 | Profile API | Stable codes, all profiles' available usages and authorised user tokens; missing usage never borrows another profile. |
 | Specialised decisions | Optional OpenRouter adapter, governed same-profile fallback; no invented probabilities or promised universal gains. |
 | ChatGPT quotas | Account-wide provider windows observed at one instant, not agent quotas or API billing budgets. |
-| Managed harnesses | Standard/high through Galaris. Qualified Codex, Claude Agent and DeepSeek Harness support multitasking within scheduler capacity and the harness cap. Hermes admits one Task per agent. Generic transport has one slot and standard execution. |
+| Managed harnesses | Standard/high through Galaris. Qualified Codex and DeepSeek Harness support multitasking within scheduler capacity and the harness cap. Hermes admits one Task per agent. Generic transport has one slot and standard execution. |
 | Skill synchronisation | Before new execution without interrupting active work; remote continuations retain context and projection failure blocks startup. |
 | Routing | Only the declared EXEC/PLAN and effort pairs. |
 | Durable inference | Prepare without a provider call, start, revision-checked commands and optional global deadline; stream reconnection avoids generation, explicit retry may incur another charge. |
 | Native chat | Human–agent; external group rooms do not imply universal native human messaging. |
-| Learned skills | Off by default; explicit observation/learning with thresholds and evidence. |
+| Learned skills | Periodic Goal per agent, evidence from distinct Tasks and a reliability threshold. |
 | Document collaboration | Saves, revisions, conflicts and sharing, not keystroke-level concurrent editing. |
 | Document formats | `app.document` provides Text (HTML, `document://`), Data (JSON, `data://`) and Mind Map (JSON tree, `document://`) in one library. Each document retains its rights and versions. |
 | Document applications | Automatically rendered isolated HTML/CSS/JS and editable prose, without a Source view; ordinary external loading blocked, browser CPU/memory not capped. |
@@ -4493,7 +4510,7 @@ for subsequent calls without editing client files. Logs retain token name and ac
 | Plan collections | Frozen inventory and sequential waves; up to 1,000 items per collection, with no promise of parallel execution. |
 | Browser permissions | Local networking denied by default; remembered consent cannot bypass connection filters. |
 | Early Topics | Parallel with Decision/Dream text, no admission wait/new rights/replay of completed search. |
-| Product knowledge | Admin/documentation permissions and read-only access; immediate lexical search, configured vector enrichment/hybrid search; plans remain prospective and actual configuration separately verified. |
+| Product knowledge | Galaris documentation permissions and read-only access; immediate lexical search, configured vector enrichment/hybrid search; plans remain prospective and actual configuration separately verified. |
 | Agent Lab | Optional globally off-by-default connection/skill; only the skill is individually granted to the initial assistant. AI benchmarks do not automatically apply settings to production. Process campaigns execute real runs/effects. Captures/diagnosis need Admin. |
 | Synthetic cases | 1–20 contextual cases, all drafts, saved wholly or not at all. |
 | Lab assessments | Missing scores are not zero; agent/human/judge reviews separate; descriptive comparison is not statistical superiority. |
@@ -4518,7 +4535,7 @@ and DbAdmin contributions.
 <a id="mcp"></a>
 ## 30. Inventory of agent-accessible functions
 
-These are the **302 native functions declared with `@mcp_tool` in the reviewed code**, including
+These are native functions grouped by use, including
 conversation-only and administrative functions. They are not all visible to every agent; MCP exposes
 full argument schemas. External MCP servers discover their own evolving functions at connection time,
 with descriptions/status in the effective catalogue. External-runtime capabilities and discovery
@@ -4548,6 +4565,7 @@ selects the concrete Service.
 | `process_start_conversation` | `process` | Start an assigned Process linked to the conversation without awaiting completion. |
 | `process_prepare` | `process` | Prepare verified inputs for an assigned Process in a participant-scoped durable dossier, collecting missing information without starting activities. |
 | `document_show` | `document` | Request opening of a readable document in the current internal text room after rights/freshness checks; no sharing or Task invocation. |
+| `chat_screenshot` | `chat` | Request a screenshot from the desktop that sent the text turn and receive a private file URI after confirmation. |
 | `chat_round_get` | `chat` | Full administrative round dossier: messages, attempts, created/amended Tasks, Processes, result and calls. |
 
 ### Conversation: code and human activities
@@ -4648,8 +4666,8 @@ These 22 functions require Services. Built-in definitions and human delegations 
 | `goal_complete` | `goal` | Finish the objective and stop future cycles. |
 | `goal_run_now` | `goal` | Request an immediate cycle under activation/availability conditions. |
 | `goal_ask_referrer` | `goal` | Ask a correlated human question, await reply and apply reminders/pause. |
-| `goal_retrospective_evidence` | `goal` | During weekly review, sample the agent's own terminal Tasks and read redacted observations and evidence references. |
-| `goal_retrospective_learn` | `goal` | Apply an evidence-backed improvement to a personal skill during weekly review. |
+| `goal_retrospective_evidence` | `goal` | During a self-learning cycle, sample the agent's own terminal Tasks and read redacted observations and evidence references. |
+| `goal_retrospective_learn` | `goal` | Apply an evidence-backed improvement to a personal skill during a self-learning cycle. |
 | `goal_retrospective_record` | `goal` | Save HTML tracking for the active retrospective at the expected revision. |
 | `goal_delete` | `goal` | Logically delete when no unfinished cycle prevents it. |
 
@@ -4675,6 +4693,7 @@ management needs the specialised connection; ordinary actions stay within the ag
 | `memory_summarize` | `memory` | Use the agent model for attributed facts, decisions, commitments and open questions from ≤200 messages/32,000 characters, without replacing memory or saving after model failure. |
 | `document_sharing` | `document` | Read sharing, possible recipients and lock version, with recipient search/filter/pagination. |
 | `document_share` | `document` | Targeted sharing for owned working documents. |
+| `document_chart` | `document` | Prepare editable chart HTML from 1–20 label/value pairs. Inserting the result is a separate write. |
 | `document_revision_list` | `document` | Paginate saved content revisions for an accessible document, newest first. |
 | `document_revision_compare` | `document` | Compare two saved revisions, including pixel changes in an optional region for supported drawing formats. |
 | `skills_list` | `skills` | Discover skills within permitted/administrable scope. |
@@ -4727,6 +4746,7 @@ application–Dataset consent is managed in the human UI, not exposed through MC
 | Function | Family | Action/result |
 |---|---|---|
 | `search_web` | `browser` | Query SearXNG, return sources and report partial/degraded/failed search. |
+| `rest_request` | `rest` | Call a relative endpoint on the authorized Service and account. Return status, headers and body. |
 | `services_list` | `service` | Inspect permitted functions and distinguish current-run availability from a required new context. |
 | `browser_open` | `browser` | Open an isolated session with optional viewport. |
 | `browser_navigate` | `browser` | Change session URL. |
@@ -5034,7 +5054,7 @@ All **80 declared modules** map to one or more sections; runtime activation/conf
 | `app.multimedia` | [Audio/video analysis and domain-owned durable generation](#medias) |
 | `app.mcp` | [Unified server and per-agent tokens](#outils) |
 | `bridge.harness` | [Manager access, diagnostics and infrastructure](#harnais) |
-| `bridge.claude_agent` | [Claude Agent runtime](#harnais) |
+| `bridge.claude_agent` | [Legacy Claude instance transition](../components/claude-agent.md) |
 | `bridge.codex` | [Codex runtime/managed credentials](#harnais) |
 | `bridge.deepseek_harness` | [DSH runtime](#harnais) |
 | `bridge.n8n` | [External workflows](#processus) |

@@ -423,7 +423,7 @@ and remains excluded from recall.
 
 ### Separate Procedural Learning
 
-The weekly retrospective can use observed Memory usage to inform its proposals. Learned procedures
+The agent’s periodic retrospective can use observed Memory usage to inform its proposals. Learned procedures
 and their evidence belong to personal packages in `app.skill`.
 See [decision 0302](../../../../project/decisions/0302-weekly-agent-retrospective.md).
 

@@ -426,10 +426,9 @@ Task PostgreSQL ── app.task scheduler/agent_adapter ──► AgentTaskPort
                       ┌───────┴────────┐
                       ▼                ▼
        app.harness           app.harnesses
-        Pydantic AI        Chat Completions
+   Pydantic AI / Claude    Chat Completions
                          ├─ URL configurée
                          ├─ bridge.deepseek_harness
-                         ├─ bridge.claude_agent
                          └─ bridge.codex
                       └───────┬────────┘
                               ▼

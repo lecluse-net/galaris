@@ -102,7 +102,7 @@ distincts, avec couverture, localisateur et version attestée ou inconnue. Un ap
 ouvre un nouveau reçu idempotent. L'application revalide le checkpoint ; lecture et rappel
 écartent les nouveaux dérivés dont aucune preuve n'est encore disponible. Voir [0169](../../../../project/decisions/0169-conversation-memory-acquired-evidence.md).
 
-L'apprentissage procédural appartient à la [rétrospective hebdomadaire](../../../../project/decisions/0302-weekly-agent-retrospective.md).
+L’apprentissage procédural relève de l’[objectif d’auto-apprentissage](../../../../project/decisions/0302-weekly-agent-retrospective.md).
 Les anciens reçus Dream d'apprentissage restent disponibles dans l'historique.
 
 ## Effets déterministes

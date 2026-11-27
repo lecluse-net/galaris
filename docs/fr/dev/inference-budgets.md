@@ -22,6 +22,11 @@ La fenêtre de cinq heures et le renouvellement hebdomadaire reprennent les règ
 documentées par [Anthropic](https://support.claude.com/en/articles/11647753-how-do-usage-and-length-limits-work).
 Galaris mesure une valeur en dollars avec ses propres tarifs et traces.
 
+<a id="request-credit"></a>
+## Demander des crédits
+
+Pour déposer une demande, suivre sa décision ou traiter celle d’un membre de votre équipe, consultez le [parcours Consommation et crédits](../user/usage.md#request-credit).
+
 ## Configurer les plafonds et accorder des crédits
 
 L’utilisation est illimitée par défaut sur les trois périodes. Tous les comptes connectés peuvent consulter

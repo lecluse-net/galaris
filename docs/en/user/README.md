@@ -2,23 +2,18 @@
 
 # User and Discovery Guide
 
-## Agent operating knowledge
-
-With instruction-configuration privileges, open **Administer → Preferences → Instructions** and
-**Galaris operating knowledge**. This common prompt explains tools, native Goal management,
-Tasks, Processes, Documents, data, Memory, files and collaboration. Task, text-conversation
-and voice executors, including realtime, receive it before their executor-specific additions.
-Changing this guide grants no additional permissions.
-
-Edit the text and save. Saving an empty value disables the common guide; **Reset** restores
-the packaged default. Lab benchmark datasets retain their frozen prompt after these changes.
-
 This guide introduces Galaris without requiring knowledge of models, APIs or Docker.
 Visible screens depend on your account's permissions. For an overview, start with the
 [feature tour](../features.md).
 
 | Your need | Guide |
 |---|---|
+| Activate my account and find an agent | [First login](#first-login) |
+| Ask about a screen or a permission | [Get help in Chat](#ask-about-galaris) |
+| Try Galaris with my own notes | [Start a first mission and open its document](#first-mission) |
+| Track my limits and request temporary credit | [Usage and credits](usage.md#request-credit) |
+| Review an agent’s results and learned skills | [Self-learning](skills.md) |
+| Show an agent a window on my computer | [Desktop client](desktop.md) |
 | Add a service from the catalog | [Services](services.md) |
 | Find a menu or screen | [Navigation and workflows](navigation.md), [generated map](../architecture/generated/navigation.md) |
 | Assign and track work | [Tasks, milestones and recovery](tasks.md) |
@@ -45,19 +40,40 @@ A Galaris Agent is a software collaborator with:
 
 Galaris is the orchestrator around these Agents. It receives a request, chooses an Agent, retains the Task, supervises its execution, and returns the result. A model can make mistakes: the interface therefore shows the steps, tools used, and failures instead of pretending that every response is necessarily a successful action.
 
+<a id="first-login"></a>
 ## First Login and Orientation
 
-Open the address provided by your administrator, then log in with your email address and password. If open registration is displayed, you can create an account; this does not automatically grant you access to Agents or Services.
+1. Open your most recent invitation within 24 hours. On the activation page, choose a password, confirm it and select **Activate my account**.
+
+   ![Account activation form with fields to choose and confirm a password.](screenshots/activate-account.png)
+
+2. Once activation succeeds, the sign-in screen opens. Use the email address that received the invitation and the password you just chose.
+
+   ![Sign-in form for the invited email address and the password just set.](screenshots/sign-in.png)
+
+3. On Home, check **Your teams**, then open a profile under **Agents you can contact** to read the agent’s job description and see its connected tools. To send a message, open **Chat** under **What you can do**, start a conversation and select the agent. [Try a first mission](#first-mission)
+
+   ![Member home with a team, a list of agents and buttons to open Chat or Documents.](screenshots/member-home.png)
+
+   In this example, **Alice Example** opens the agent’s profile. **Open Chat** opens messaging.
+
+The profile also shows the agent’s photo and personality. If your role grants access to Documents, the **Documents** card on Home opens the library where you can find shared results.
+
+| Where you are stuck | What to do |
+|---|---|
+| Your link has expired or is invalid | Ask the person who invited you to resend the invitation from your account record. Open the latest email. |
+| Activation shows a temporary error | Keep the page open and try again. The form keeps what you entered. |
+| Home says you do not belong to a team | Ask the person managing teams to check your membership in the agent’s team. [Teams and chat access](teams.md) |
+| You can see the team but cannot start a conversation | Check your active role in the account menu. Your administrator can check Chat access, permission to create conversations and send messages, and whether the channel is available. [Find a missing menu or button](navigation.md#missing-action) |
+
+If you already have an account, sign in directly with your email and password. If registration is open, you can create an account from the sign-in screen. The administrator can then assign your roles and teams.
+
+### Set up a new instance as an administrator
 
 On an instance with no accounts, the first signup creates the administrator. Registration
 then closes by default. **Preferences → System → Allow users to create their own accounts**
 reopens it immediately; new accounts have no permissions until a role is assigned.
 Disabling this setting closes the signup form and API while existing accounts can still log in.
-
-After login, the member home shows **Your teams**, the agents you can contact, and what you can
-do with your role. Open an agent profile to see their photo, job description, personality, and
-connected external tools. With access to Documents, for example, a card explains how to find
-shared results and opens the library.
 
 With the Administrator role, Home displays Welcome until you confirm setup, even on a
 preconfigured instance. Set the default language, configure a usable LLM and an agent, and select
@@ -77,6 +93,8 @@ same presentation: if the language is unset, users with parameter management per
 choose it directly; otherwise, the saved language is displayed. The choice saves automatically;
 the profile language still takes precedence. In the other steps, the configuration button opens
 the corresponding screen according to your permissions.
+
+### Find your way around
 
 The sidebar shows only the screens authorized by your role:
 
@@ -185,7 +203,6 @@ A server and network connection are still required.
 
 ## Installing Galaris on Android or iPhone
 
-
 Galaris is a Progressive Web App (PWA): it can be added to the home screen and launched from its own icon, like an application installed from a store. After an initial login from this icon, the session is automatically restored for 30 days of inactivity by default.
 
 - on Android, installation is done from the Chrome menu;
@@ -195,22 +212,28 @@ The address must be provided over HTTPS by the administrator. The PWA caches its
 
 The [detailed PWA guide](pwa.md) describes installation step by step, updates, session security, and solutions to common problems.
 
+<a id="ask-about-galaris"></a>
+## Ask about Galaris in Chat
+
+Open **Chat** and choose the **Galaris** assistant if it appears among your contacts, or another agent your team has given documentation access. Say what you want to do and which screen you are on. For example:
+
+> I’m in Documents. How can I give a colleague read access to a private document? Tell me where to click and cite the section of the guide for the installed version.
+
+For this example, the answer should point you to **Sharing** in the editor, then to the recipient search and the eye icon for read access. You can compare the steps with the [sharing guide](rich-content.md#share-document).
+
+If a menu is missing, tell the agent your active role and which controls you can see. The [navigation guide](navigation.md#missing-action) explains what makes a menu visible. If the agent says it cannot consult the guides, the person who configures it can [check its documentation access](../admin/product-knowledge.md#enable-documentation).
+
+<a id="first-mission"></a>
 ## Complete a guided first document
 
-On Welcome (`/welcome`), **Complete your first mission** is available after required setup. Choose an
-active agent you can reach in Discussion, then a notes summary, project brief or work plan.
-Examples are fictional and editable. The journey checks Discussion creation and sending, Task monitoring and Document reading
-permissions before offering to start. Review the request and click **Start mission**; it uses
-your models and their costs. Galaris prepares a conversation and sends a durable Task request
-with a stable identity. Retrying a send reuses that identity. If conversation creation fails,
-check Discussion before trying again.
+Try this with a few notes you would like an agent to turn into a document. After initial setup, open the Welcome page (`/welcome`) and find **Complete your first mission**. You need an active agent you can contact in Chat, permission to create a conversation and send messages, and access to Task monitoring and Document reading.
 
-Progress remains available when returning in the same browser tab. Handle questions, approvals,
-pauses and errors in the discussion or usual monitoring. The journey distinguishes finished
-execution from an available associated document. Open the document to check its content;
-technical success does not mean human acceptance. If it is missing, check tools, access and
-the discussion result, then refresh progress. This journey grants no extra rights and does not
-enable blocked tools.
+1. Select the agent, then **Summarize notes**. Replace the sample notes with your own. You can also choose **Prepare a document** or **Organize a project**.
+2. Read the request and select **Start mission**. Galaris opens a conversation and assigns the work to the agent. The mission uses your configured models and may incur a cost.
+3. If the agent needs clarification or approval, select **Open discussion**. Return to Welcome in the same browser tab and select **Refresh progress**.
+4. When the document link appears, open it and review the summary. If the Task is finished and the link is missing, inspect the result in the discussion, check that the agent could save the document and that you can read it, then refresh progress.
+
+If creating the conversation fails, first check whether it already appears in Chat. If only the send is unconfirmed, **Retry** reuses the same message to avoid starting a second mission.
 
 ## Creating Your First Task in the Interface
 
@@ -488,6 +511,8 @@ Switching conversations updates the browser address. **Back** and **Forward** re
 visited conversations; going back before the first opening returns to the Chat home.
 Selecting the current conversation again does not add a visit. Any open document is saved
 before switching; if saving fails, the conversation and document draft stay open.
+
+If the HTTP response is lost after you send a message, Chat looks for the message in recent history or recognizes its live event. Finding the message confirms delivery and preserves your next draft.
 
 Text and selected attachments remain in the composer until sending is confirmed. After an
 error, you can retry without entering them again; an unchanged retry keeps the message identity
@@ -1120,6 +1145,17 @@ authorizations and recovery after failure.
 Authorized accounts have access to an **AI Lab** that separates two uses: full analysis of a real Task and reproducible benchmarks for the Dispatcher, Planner, and Task/Conversation/Voice executors, as well as Dream/Goal mechanisms.
 
 The [complete AI Lab guide](lab-ai.md) explains how to import a real case, build a reference, run a candidate model, assess relevance, and calibrate the automatic judge. A percentage in the Lab is never sufficient proof on its own: it must be interpreted together with the dimensions, coverage, errors, and dataset.
+
+## Agent operating knowledge
+
+With instruction-configuration privileges, open **Administer → Preferences → Instructions** and
+**Galaris operating knowledge**. This common prompt explains tools, native Goal management,
+Tasks, Processes, Documents, data, Memory, files and collaboration. Task, text-conversation
+and voice executors, including realtime, receive it before their executor-specific additions.
+Changing this guide grants no additional permissions.
+
+Edit the text and save. Saving an empty value disables the common guide; **Reset** restores
+the packaged default. Lab benchmark datasets retain their frozen prompt after these changes.
 
 ## Connect an external Codex or Claude Code client
 

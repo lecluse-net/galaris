@@ -446,7 +446,7 @@ conserve ses dates et sa provenance ; le rappel continue de l'exclure.
 
 ### Apprentissage procédural séparé
 
-La rétrospective hebdomadaire peut tenir compte des usages observés de Memory pour éclairer ses
+La rétrospective périodique de l’agent peut tenir compte des usages observés de Memory pour éclairer ses
 propositions. Les procédures apprises et leurs preuves appartiennent aux packages personnels
 d'`app.skill`. Voir la [décision 0302](../../../../project/decisions/0302-weekly-agent-retrospective.md).
 

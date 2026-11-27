@@ -2,6 +2,20 @@
 
 # Assigning and following a Task
 
+A Task keeps durable work, its state and its result. This guide explains methods,
+milestones, plans, questions and recovery. To create your first request, follow the
+[user guide](README.md); to find commands, see the [menus and workflows](navigation.md).
+
+To find work started in Chat, open the Task from the conversation or under **Monitor → Activity → Tasks**. Compare the original request with the result. For a delivery, inspect its receipt when available. For a document, open the link and check its content using your account.
+
+| What you see | What to do |
+|---|---|
+| The agent needs more information | Use **Reply** on the [Task’s question](#reply-to-task). |
+| An operation needs your approval | [Review the action](#action-approval) and its arguments before deciding. |
+| The work started with an email | Open the incoming message in the [Mail journal](#mail-journal) and select **Follow task**. |
+| The Task has finished and you cannot find the document | Read the report, then [find the document and check sharing](documents.md#find-deliverable). |
+| A milestone is blocked or an attempt failed | [Read the Task status and report](#task-status) before choosing how to resume. |
+
 During text or voice conversations, the agent can start a Task when dialogue tools are insufficient.
 The Task may explore the method and available means: this uncertainty does not require you to do
 the work yourself. Admission confirms that work was accepted, not that the outcome succeeded.
@@ -20,10 +34,6 @@ under **Activity → LLM calls** and in the Task cost report.
 
 A link to the Tasks tab or a Task retains its target while your permissions are checked.
 Content opens once access is confirmed; unauthorized tabs remain absent.
-
-A Task keeps durable work, its state and its result. This guide explains methods,
-milestones, plans, questions and recovery. To create your first request, follow the
-[user guide](README.md); to find commands, see the [menus and workflows](navigation.md).
 
 Conversation context includes the agent's active Tasks and Processes, including work started
 in another discussion: queued, running or waiting, with the known question or dependency.
@@ -263,7 +273,41 @@ These aids are enabled per driver. In the current configuration:
 
 Hermès therefore retains its own capabilities without being confined to a second harness.
 
+<a id="reply-to-task"></a>
 ## When Galaris Asks a Question
+
+Essential information may be missing: recipient, file, period, authorization, or an irreversible choice. The Agent must then ask a short question and wait rather than guess. A question is a valid result of the current turn; reply in the same conversation to continue.
+
+Use **Reply** on the question or its reminder, or include its `#…` reference.
+New Planner clarification requests prompt reminders in the same conversation after about
+4 hours and 24 hours. These requests expire after three days.
+When a Process Task asks a question during an activity, the reminders are spaced further apart,
+after about one day and three days. Reminders carry the original question reference and stop
+once the answer is recorded.
+
+Two waits have different outcomes. When choosing the organization of an ambiguous mission,
+the agent may ask another question if your answer leaves an essential ambiguity. The same Task
+retains earlier answers and waits without starting work. An old reply cannot resolve the new
+question. A question that cannot be delivered or expires unanswered ends the Task in error
+without work or automatic retry. An explicit retry goes through routing again. When clarifying an already
+selected plan, the Planner may ask one series of questions and resume at expiry with
+explicit assumptions. Expiration never grants approval for a sensitive action.
+
+If a step reports that a document is outside its admitted scope, changing tools or retrying
+does not grant permission to modify it. To authorize the change, include the document's exact
+URI in an amendment to the root Task. The Agent receives a diagnostic distinct from invalid
+arguments; this refusal does not automatically create an approval request or a waiting state.
+
+<a id="action-approval"></a>
+## Review an action authorization
+
+In **Monitor → Permissions**, select the agent and open its pending request. Check what the agent wants to do and which resource it will affect. To decide just this request, allow or deny the action. The “Always” options also apply to future requests within the indicated scope.
+
+To create and then extend a document, the agent can request creation approval and hand the
+continuation to a background Task using the same document. If writing is set to **Ask**, a
+second approval covers the prepared update. You can close and reopen Chat while waiting.
+Denying creation creates no document; denying the update preserves the existing content.
+One-time approval does not change the policy for subsequent calls.
 
 In **MCP function authorizations**, **Global (all)** offers **Enabled**, **Ask**
 or **Disabled** as joined buttons: a green check, a yellow question mark, and a red cross.
@@ -282,25 +326,8 @@ globally or for one agent: new public sites then stop triggering per-site networ
 Existing instances keep their behaviour; **Per-site approval** remains available. Localhost and private networks remain blocked by
 default; filters and explicit denials stay active. See [Browser administration](../admin/service-administration.md).
 
-To create and then extend a document, the agent can request creation approval and hand the
-continuation to a background Task using the same document. If writing is set to **Ask**, a
-second approval covers the prepared update. You can close and reopen Chat while waiting.
-Denying creation creates no document; denying the update preserves the existing content.
-One-time approval does not change the policy for subsequent calls.
-
-If a Mail connection requires human approval, its designated approver receives a private Chat
-request for each prepared email. Review the recipients, subject, content preview, and attachment
-list, then allow or deny the action. The **Mail journal** shows the complete content and delivery
-result and also lets you answer the same authorization. A decision in either place applies to
-both. Approval covers only this email and lets the task resume its prepared call: a recorded
-approval does not yet mean the email was sent. Without a response it stays unsent; an expired
-authorization requires a new request. Historical pending Mail approvals remain accessible
-from the journal.
-
-After SMTP accepts the email, Galaris stores a copy in the Sent mailbox configured or
-advertised by your server. If archiving fails, the receipt reports it without undoing
-the actual send. A replay with the same key and content repairs the copy without
-sending a second email.
+<a id="mail-journal"></a>
+## Track an email in the Mail journal
 
 The **Mail journal** has **Sending** and **Reception** tabs. Reception keeps headers, sender,
 receiving agent, consent/read/Task admission timestamps, denials, blocks and errors. Bodies and
@@ -343,28 +370,21 @@ sets a cursor for new arrivals.
 Human IMAP browsing in [Files](files.md) is separate: users can read other folders without
 authorizing the agent to process their messages.
 
-Essential information may be missing: recipient, file, period, authorization, or an irreversible choice. The Agent must then ask a short question and wait rather than guess. A question is a valid result of the current turn; reply in the same conversation to continue.
+If a Mail connection requires human approval, its designated approver receives a private Chat
+request for each prepared email. Review the recipients, subject, content preview, and attachment
+list, then allow or deny the action. The **Mail journal** shows the complete content and delivery
+result and also lets you answer the same authorization. A decision in either place applies to
+both. Approval covers only this email and lets the task resume its prepared call: a recorded
+approval does not yet mean the email was sent. Without a response it stays unsent; an expired
+authorization requires a new request. Historical pending Mail approvals remain accessible
+from the journal.
 
-Use **Reply** on the question or its reminder, or include its `#…` reference.
-New Planner clarification requests prompt reminders in the same conversation after about
-4 hours and 24 hours. These requests expire after three days.
-When a Process Task asks a question during an activity, the reminders are spaced further apart,
-after about one day and three days. Reminders carry the original question reference and stop
-once the answer is recorded.
+After SMTP accepts the email, Galaris stores a copy in the Sent mailbox configured or
+advertised by your server. If archiving fails, the receipt reports it without undoing
+the actual send. A replay with the same key and content repairs the copy without
+sending a second email.
 
-Two waits have different outcomes. When choosing the organization of an ambiguous mission,
-the agent may ask another question if your answer leaves an essential ambiguity. The same Task
-retains earlier answers and waits without starting work. An old reply cannot resolve the new
-question. A question that cannot be delivered or expires unanswered ends the Task in error
-without work or automatic retry. An explicit retry goes through routing again. When clarifying an already
-selected plan, the Planner may ask one series of questions and resume at expiry with
-explicit assumptions. Expiration never grants approval for a sensitive action.
-
-If a step reports that a document is outside its admitted scope, changing tools or retrying
-does not grant permission to modify it. To authorize the change, include the document's exact
-URI in an amendment to the root Task. The Agent receives a diagnostic distinct from invalid
-arguments; this refusal does not automatically create an approval request or a waiting state.
-
+<a id="task-status"></a>
 ## Reading a Task’s Status
 
 Chat text continues to appear during generation. LLM call supervision refreshes at most
@@ -376,7 +396,8 @@ persisted costs remain complete.
 | Creation / dispatch | the request is being routed |
 | Execution | the Agent is working or calling Services |
 | Plan | Galaris is creating or advancing through the steps |
-| Paused | the Task is waiting for a response, a child step, or a resume |
+| Waiting | the Task needs an answer, an authorization, a colleague or a step to finish. Open its details to see which. |
+| Paused | the Task has been paused. Resume it when you want work to continue. |
 | Completed | execution ended and no required blocker was reported |
 | Completed · objective unmet | execution ended and a required milestone remains blocked |
 | Error | the attempt failed or was interrupted after the authorized retries |

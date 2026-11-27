@@ -8,32 +8,16 @@ les objectifs, les documents, la mémoire, les modèles IA et les intégrations 
 Un même agent peut discuter avec une personne, consulter ses informations autorisées, produire un
 livrable, solliciter un collègue, déclencher un workflow externe et conserver les connaissances utiles.
 
-Ce catalogue décrit les fonctionnalités présentes dans le dépôt, y compris
-les fonctions destinées aux agents, les écrans d’administration et les mécanismes de fond. Il est
-organisé par usages, puis complété par un inventaire des fonctions MCP et une correspondance avec
-**tous les modules déclarés**. Les sources de chaque domaine sont indiquées pour rendre la couverture
-vérifiable et faciliter les mises à jour. Il constitue la référence exhaustive pour préparer le site web
-du produit ; les guides plus courts ne remplacent pas cet inventaire.
+Chaque chapitre décrit un usage, les droits nécessaires et les limites à connaître. Le catalogue couvre le code de la révision consultée, qui peut inclure des fonctions postérieures à votre version installée. L’accès dépend du rôle, des Services connectés et des modèles configurés.
 
-« Disponible » signifie implémenté : l’accès effectif dépend des droits, de l’activation du module,
-des connexions, du modèle et, pour un service externe, du compte configuré. Ce catalogue se fonde
-sur l’implémentation actuelle et ses usages accessibles. Il décrit le logiciel, sans attester la
-configuration ou la qualification de tous les fournisseurs d’une installation particulière.
+| Vous cherchez… | Ouvrez… |
+|---|---|
+| Un exemple de travail de bout en bout | [Parcours complets](#parcours) |
+| La raison pour laquelle une fonction est indisponible | [Conditions d’accès et limites](#limites) |
+| Le nom et le rôle d’un outil qu’un agent peut appeler | [Inventaire des fonctions MCP](#mcp) |
+| Le module qui porte une fonction et ses sources | [Index des modules](#couverture) · [Cartographie générée](../architecture/generated/project-map.md) |
 
-Il présente les capacités actuelles, leurs concepts, leurs conditions d’accès et leurs limites,
-sans constituer un journal des changements. La couverture comprend les fonctions métier,
-l’architecture, les API, le stockage, la sécurité, l’exploitation et les moyens de vérification.
-Les dix mécanismes IA du Lab, ses campagnes de processus et les mécanismes de fond Dream
-constituent des fonctions distinctes. Les sources et tests décrivent les garanties du logiciel ;
-ce catalogue ne constitue pas une qualification de chaque installation ou fournisseur.
-
-Les inventaires couvrent **302 fonctions MCP natives, 80 modules backend et 41 modules frontend**.
-Cette revue inclut le code de développement et les changements locaux présents ; elle ne décrit
-pas uniquement la dernière publication. Le client desktop constitue une application de support
-distincte des modules web dénombrés.
-Les fonctionnalités réalisées restent distinctes des intentions du
-[registre des plans](../../../project/plans/README.md) ; les contrôles de
-qualité figurent dans [l’exploitation](#exploitation).
+Les contrôles de livraison figurent dans le chapitre [Exploitation](#exploitation). Les évolutions proposées et leur statut sont consignés dans le [registre des plans](../../../project/plans/README.md).
 
 ## Sommaire
 
@@ -107,7 +91,7 @@ qualité figurent dans [l’exploitation](#exploitation).
 | **Topic / dossier thématique** | Un sujet commun à plusieurs activités | Relie conversations, tâches, documents, souvenirs et participants au-delà d’un seul canal. |
 | **Contact** | Une personne observée par un agent | Relie ses identités de messagerie et les connaissances associées dans le périmètre de cet agent. |
 | **URI de ressource** | L’adresse canonique d’un objet ou fichier | Permet aux outils de lire et transmettre la même ressource sans inventer de chemin local. |
-| **Dream** | Le travail de fond de la plateforme | Classe les sujets, extrait des connaissances, entretient la mémoire et, si activé, apprend des procédures. |
+| **Dream** | Le travail de fond de la plateforme | Classe les sujets, extrait des connaissances et entretient la mémoire. |
 | **Lab IA** | L’espace d’expérimentation | Capture des cas, compare des modèles et mesure les mécanismes avec des jugements et des preuves conservés. |
 | **Connaissance de Galaris** | La documentation de la version installée, recherchable par les agents autorisés | Réunit guides, navigation, architecture, décisions et plans avec leur provenance ; les plans restent identifiés comme prospectifs. |
 | **Incident** | Une défaillance enregistrée | Relie l’erreur à son contexte, regroupe les occurrences et conserve le diagnostic et le correctif. |
@@ -154,7 +138,7 @@ son résultat et, lorsqu’il existe, le reçu de livraison.
 - **Parcours de bienvenue.** Sept étapes sélectionnables présentent la configuration initiale,
   dont la langue par défaut. La timeline s’adapte à la largeur, avec précédent/suivant et accès
   aux écrans de configuration selon les droits ; le choix de langue s’enregistre automatiquement.
-  Ce parcours reste la page d’accueil du compte jusqu’à sa confirmation explicite, même sur une
+  Pour le rôle Administrateur, ce parcours reste la page d’accueil du compte jusqu’à sa confirmation explicite, même sur une
   instance préconfigurée. Le logo Galaris y ramène tant qu’il n’est pas terminé ; un échec
   d’enregistrement conserve le parcours visible et permet de réessayer.
 - **Accueil guidé.** Les blocs de découverte contrôlent la présence d’un modèle de chat réellement
@@ -256,6 +240,10 @@ Sources : [installation et usages desktop](../user/desktop.md),
 [architecture desktop](../../../project/decisions/0292-desktop-client.md),
 [politiques et tests desktop](../dev/desktop.md).
 
+### Partager un outil ou montrer une fenêtre depuis le poste
+
+Le menu **Galaris → MCP locaux** du client Windows/Linux permet de découvrir ou d’importer une configuration et de choisir le serveur MCP à partager. Avec le droit de modifier les Services, activez son relais puis configurez la connexion et les outils de l’agent. Le poste doit rester éveillé et le client ouvert. Dans le Chat texte, l’agent peut aussi demander une capture. Sur le poste à l’origine du message, choisissez l’écran ou la fenêtre, vérifiez l’aperçu et décidez de l’envoi à chaque demande. [Guide du client desktop](../user/desktop.md)
+
 ### Chargement, session et actualisation
 
 Les vues lourdes, éditeurs et onglets se chargent à leur ouverture. Un échec propose **Réessayer**
@@ -316,6 +304,12 @@ Sources : [guide utilisateur](../user/README.md), [PWA](../user/pwa.md),
   une erreur reste affichée et une réponse tardive d’une ancienne session ne remplace pas le compte courant.
 - Gestion de tokens personnels : création avec libellé, activation, désactivation et suppression.
   Les tokens d’intégration sont distincts des tokens MCP par agent.
+
+### Inviter une personne et préparer son accueil
+
+Dans **Administrer → Utilisateurs & Droits**, ouvrez la fiche du compte pour attribuer ses rôles et ses équipes. Avec le SMTP de la plateforme configuré, choisissez l’invitation par e-mail. Le destinataire dispose de 24 heures pour définir son mot de passe en suivant le lien. Si l’envoi échoue, le compte reste en attente et un nouvel envoi remplace le lien précédent. [Inviter un collègue et reprendre un envoi en échec](../admin/README.md#invite-colleague)
+
+À la connexion, un membre retrouve ses équipes et les agents qu’il peut contacter. Il peut ouvrir la fiche d’un coéquipier. Dans **Connexions**, il peut consulter le Service et l’état de la connexion d’un agent de son équipe. L’accès aux paramètres et leur modification demandent des droits de gestion. [Parcours par rôle](../user/navigation.md)
 
 ### Droits et rôles
 
@@ -942,7 +936,7 @@ droits, tâches, mémoire et résultat durable restent sous le contrôle de la p
 |---|---|
 | **Interne Pydantic AI** | Boucle d’exécution native, outils chargés à la demande, modèles résolus par Galaris, streaming, annulation, historique et checkpoints d’effets. Aucun conteneur de harnais à provisionner. |
 | **Hermès** | Runtime autonome isolé par agent, modèles servis par la passerelle Galaris dans le mode géré actuel, configuration et fichiers dédiés, compétences projetées, mémoire commune et console. |
-| **Claude Agent** | Instance du SDK Claude Agent par agent, reliée à la passerelle Anthropic et au MCP Galaris ; progression des outils, réponse finale et usage corrélés. |
+| **Claude Agent** | SDK embarqué dans le backend. Le choix dans la fiche Agent s’applique aux nouveaux rounds Chat et voix, aux tâches et aux envois `@deep`. |
 | **Codex** | Runtime Codex géré par son bridge, relié aux contrats de modèles et d’outils Galaris ; exécution et télémétrie normalisées. |
 | **DeepSeek Harness** | Instance DSH par agent avec adaptation de son protocole vers l’exécution commune ; streaming des messages/outils et résultat terminal. |
 | **Serveur distant compatible Chat Completions** | Entrée configurable du catalogue : URL, modèle, authentification et test de découverte. Les capacités restent celles exposées par ce serveur. |
@@ -995,7 +989,7 @@ acquitté attend réconciliation avant une nouvelle décision du modèle.
 ### Multitâche avec un harnais managé
 
 Un même agent peut exécuter plusieurs tâches simultanément avec une instance qualifiée de
-**Codex**, **Claude Agent** ou **DeepSeek Harness**. Le scheduler attribue ses créneaux disponibles.
+**Codex** ou **DeepSeek Harness**. Le scheduler attribue ses créneaux disponibles.
 Dans **Administrer → Préférences → Harnais**, le réglage **Nombre maximal de tâches simultanées**
 permet de plafonner le nombre par agent pour ce harnais. Un champ vide utilise la capacité
 disponible du scheduler. Hermès, les serveurs distants génériques et les anciennes instances
@@ -1024,15 +1018,14 @@ pas une capacité absente du runtime.
 | Interne | Oui | Oui | Oui |
 | Hermès géré | Oui | Oui | Non |
 | Codex géré | Oui | Oui | Non |
-| Claude Agent géré | Oui | Oui | Non |
+| Claude Agent embarqué | Oui | Oui | Oui |
 | DeepSeek Harness géré | Oui | Oui | Non |
 | Serveur compatible générique, dont un runtime externe avec sa propre API | Oui | Non | Non |
 
 Le mode high exige que l’exécution utilise la sélection de modèle et le journal d’appels LLM de
-Galaris. Les quatre runtimes gérés imposent actuellement cette passerelle ; ils n’annoncent pas
+Galaris. Les runtimes gérés imposent actuellement cette passerelle ; ils n’annoncent pas
 un mode utilisant leur propre abonnement indépendant. La capacité native d’un SDK à choisir son
-raisonnement ne suffit pas à déclarer high dans Galaris. La conversation courte conserve son
-contrôleur propre, indépendant du harnais affecté aux tâches.
+raisonnement ne suffit pas à déclarer high dans Galaris. Un round Chat ou vocal admis conserve son moteur jusqu’à son terme. [Routage par harnais](../components/claude-agent.md)
 
 ### Lecture documentaire commune et analyse reprenable
 
@@ -1765,10 +1758,7 @@ livrable cohérent en tâches artificielles ; les sorties indépendantes restent
 Planner, qui transmet l’organisation aux feuilles.
 
 `task_get` restitue le suivi et sa révision ; `task_update` enregistre les jalons de la tâche
-courante, uniquement pour son exécuteur et pendant une phase active non suspendue. Les écritures
-contrôlent la révision et préservent les checkpoints. `expected_revision` utilise
-`work_plan_revision` de `task_get` (0 initialement),
-indépendamment de la révision globale de la tâche. Modifier un jalon déjà terminé exige une
+courante, uniquement pour son exécuteur et pendant une phase active non suspendue. Une mise à jour ordinaire identifie le jalon et les champs à changer. La réponse confirme le plan enregistré et signale les changements omis. Pour une correction ou un remplacement avec contrôle de version, `expected_revision` correspond à `work_plan_revision` dans `task_get` (0 initialement). Modifier un jalon déjà terminé exige une
 raison explicite. Le progrès déclaré ne remplace ni la vérification des ressources ni le résultat
 terminal de la tâche.
 
@@ -1860,14 +1850,14 @@ approbation ne se déduit pas d’une réponse ambiguë.
 
 Les accords portent sur la fonction d'une connexion ou le type exact d'action d'un harnais,
 avec contrôle unitaire avant effet ; il n'existe plus de mode global d'auto-approbation.
-Déléguer ne transfère pas les consentements d'un autre agent. Les adaptateurs externes,
-dont Claude Agent, consultent l'autorisation Galaris et refusent l'opération lorsqu'un
+Déléguer ne transfère pas les consentements d'un autre agent. Les harnais, dont Claude Agent embarqué, consultent l'autorisation Galaris et refusent l'opération lorsqu'un
 accord valide manque ; ils ne fabriquent pas d'approbation humaine.
+
+Une demande d’autorisation d’action reste ouverte jusqu’à sa résolution. Dans le Chat, ouvrez la carte pour vérifier l’action, ses arguments et le compte concerné. Un document reconnu s’ouvre sous réserve de vos droits de lecture. Vous pouvez répondre dans le Chat ou depuis **Superviser → Permissions**. Le compteur des réponses attendues tient compte des autorisations et des questions ouvertes, en excluant les discussions archivées. [Répondre dans le Chat](../user/README.md)
 
 ### Suivre et commander l’exécution
 
-Un jalon explicitement bloqué à la clôture conduit à une tâche en erreur avec bilan partiel,
-sans réessai automatique ; les attentes durables restent prioritaires. Une tâche terminée ne
+Si l’exécution se termine normalement avec un jalon obligatoire bloqué, la tâche affiche **Terminée · objectif non atteint**. Consultez le bilan partiel puis choisissez **Réessayer** pour reprendre le travail bloqué en conservant les étapes réussies. Un ajout facultatif indisponible peut être omis. Une attente ouverte garde la tâche en attente. Une tâche terminée ne
 peut plus être amendée : une extension du périmètre exige une nouvelle demande explicite.
 Les exports de snapshots conservent l’ensemble des preuves, y compris les longues sorties d’outils.
 
@@ -2120,6 +2110,8 @@ Sources : [schémas Goal](../../../back/app/goal/schemas.py), [API](../../../bac
 
 <a id="memoire"></a>
 ## 12. Mémoire et recherche de connaissances
+
+Quand une conversation change de sujet, le rappel recherche des preuves pertinentes pour la nouvelle question. Une date de validité, un nom ou le titre précis d’un document peut départager des sources proches. Une recherche peut ne proposer aucune référence. Les résultats provenant des documents et fichiers partagés restent soumis aux droits courants sur la source. [Sélection et contrôle des sources](../architecture/flows/memory.md)
 
 ### Ce qui est conservé
 
@@ -2534,12 +2526,17 @@ sans transmettre les droits du document hôte aux ressources citées.
 
 Les anciens codes `html` et `form` convergent vers `text` ; les identités, contenus, versions,
 droits et URI restent conservés. Les anciens champs `document_type` et la route
-`/documents/types` sont retirés. Le registre prépare les contributions ; il ne fournit ni
-installation de plugins à chaud ni conversion automatique entre versions de formats.
+`/documents/types` sont retirés. Le registre prépare les contributions. Les versions des formats suivent leur contrat de compatibilité.
 
 Sources : [contrat des formats et qualification](../dev/document-formats.md),
 [cycle de vie et permissions](../../../back/app/document/tests/test_formats.py),
 [migration des formats](../../../back/app/document/tests/test_format_migration.py).
+
+### Insérer des données et les présenter en graphique
+
+Dans un document Texte ou le contenu riche d’un nœud de carte mentale, choisissez **Insertion → Insérer un graphique**. Saisissez les libellés et les valeurs, puis choisissez des barres, une courbe ou des secteurs. À la réouverture, sélectionnez le graphique pour modifier ses données. Un agent peut préparer le même graphique éditable avec `document_chart` puis l’insérer avec ses droits d’écriture. [Guide Documents](../user/documents.md)
+
+Pour conserver les résultats tabulaires d’un service MCP, ouvrez le document Texte en écriture à côté du Chat sur ordinateur. Filtrez le tableau si le Service le permet, puis insérez les lignes affichées. Elles entrent dans l’historique du document. [Tableaux MCP](../user/documents.md#mcp-tables)
 
 ### Cartes mentales
 
@@ -3347,7 +3344,7 @@ ses délais, leases et tentatives.
 Sans modèle vectoriel configuré, la supervision reste consultable ; l’indexation JSON des
 Données ne déclare aucun nouveau travail éligible.
 
-Les vingt mécanismes enregistrés couvrent :
+Les mécanismes enregistrés couvrent :
 
 - le classement thématique des messages, tâches, documents Texte/Données et tours concernés ;
 - l’extraction de connaissances depuis les tâches, rounds conversationnels et tours vocaux ;
@@ -3359,8 +3356,7 @@ Les vingt mécanismes enregistrés couvrent :
 - l’indexation, les empreintes et l’enrichissement du catalogue de fichiers ;
 - la préparation de miniatures persistantes sans appel IA ;
 - quatre analyses optionnelles des pièces jointes : texte, documents non convertibles en texte,
-  images et audio des vidéos ;
-- l’apprentissage procédural à partir d’issues de tâches, lorsqu’il est activé.
+  images et audio des vidéos.
 
 Les extracteurs attendent le sujet requis et une identité de contact prouvée pour les connaissances
 conversationnelles. Ils produisent une décision structurée : **CREATE** pour un fait nouveau,
@@ -3447,23 +3443,9 @@ et ne garantit pas une échéance de réparation.
 
 ### Apprentissage des procédures
 
-L’apprentissage possède trois modes : **off**, **observe** et **learn**. Il est **désactivé par défaut**.
-En observation, la proposition est conservée ; en apprentissage, elle peut être appliquée.
+Dans **Objectifs → Auto-apprentissage**, chaque agent dispose d’un objectif de rétrospective. Sa cadence est hebdomadaire par défaut et se règle en jours, semaines, mois ou années. **Tout mettre en pause** suspend les nouveaux cycles de l’onglet sélectionné. Les cycles en cours peuvent se terminer.
 
-Il examine des preuves identifiables : résultat terminal, outils, tentatives, sous-tâches, verdicts,
-corrections humaines et usages mémoire. Il peut créer une candidate, renforcer, réviser ou affaiblir
-une procédure. Les preuves, leur polarité, leur poids, la confiance et la justification sont stockés
-séparément de la mémoire ordinaire.
-
-Une première réussite ne suffit pas à injecter une nouvelle compétence. La procédure doit atteindre
-un seuil de score et être confirmée par plusieurs tâches distinctes — trois par défaut — dans la
-limite du nombre de compétences actives. Les tâches historiques sont parcourues progressivement.
-Dream crée directement des **packages personnels** avec `SKILL.md`, preuves et score, dans
-**Compétences personnelles**. Une candidate devient utilisable après trois tâches distinctes et
-un score de 0,75 par défaut. Les mêmes actions permettent édition, transfert, désactivation et
-suppression ; un renforcement ne réactive pas une compétence désactivée et une révision tardive
-n’écrase pas une édition manuelle. La migration conserve historique et suspensions ; l’ancien
-lien Auto-apprentissage ouvre les compétences personnelles.
+La rétrospective examine les résultats des tâches de la période, relève les accès manquants et peut créer ou réviser une procédure personnelle. Consultez ses preuves et son score dans **Compétences personnelles**. Par défaut, trois tâches distinctes et un score de 0,75 rendent une candidate utilisable, dans la limite des compétences apprises actives. Une révision respecte les modifications manuelles et la désactivation explicite. [Gérer les compétences personnelles](../user/skills.md)
 
 Sources : [flux Dream](../architecture/flows/dream.md), [registre actif](../../../back/app/dream/registry.py),
 [mécanismes](../../../back/app/dream/),
@@ -3491,7 +3473,7 @@ Les agents équipés de **Compétences** peuvent découvrir/lire la bibliothèqu
 `file_*`. La création d’un paquet commence par un `SKILL.md` valide. Les révisions, fichiers système
 et opérations sur le fichier principal restent protégés selon le contrat.
 
-Les compétences apprises par Dream sont des packages personnels, avec score et preuves.
+Les compétences issues des rétrospectives sont des packages personnels, avec score et preuves.
 Elles deviennent utilisables lorsque leur état et leurs seuils le permettent.
 
 Le skill système `galaris-plugin-development` guide l’agent dans la création et la qualification
@@ -3507,7 +3489,7 @@ ou une règle masquée par une dérogation ; elle ne signifie pas une désactiva
 ### Compétences personnelles et propriété
 
 L'onglet **Compétences personnelles** rassemble les packages privés par agent, manuels ou appris
-par Dream, séparément du catalogue générique. Il propose recherche, filtre propriétaire, édition des
+lors des rétrospectives, séparément du catalogue générique. Il propose recherche, filtre propriétaire, édition des
 fichiers texte et du libellé, activation et suppression avec contrôle de révision. Un humain
 autorisé peut transférer un package à un autre agent géré. La gestion globale permet aussi
 de rendre un générique personnel ou de retirer la propriété d'un personnel : ces opérations
@@ -3574,6 +3556,8 @@ Sources : [API des compétences](../../../back/app/skill/router.py), [schémas](
 ## 17. Outils, connexions et serveur MCP
 
 ### Construire le catalogue
+
+En développement, **Développeurs → Inventaire des outils** (`/tool-inventory`) permet de chercher par nom d’outil ou de Service. Chaque ligne décrit l’opération et son accès en conversation. Consultez ses paramètres de connexion, ses valeurs par défaut et ses portées avant de vérifier les autorisations effectives de l’agent. [Navigation](../user/navigation.md)
 
 Un Service peut exposer un ensemble de fonctions MCP, un service de fichiers, une messagerie et un
 listener, ainsi qu’une API REST, Mail ou Calendrier. Un même fournisseur cumule plusieurs
@@ -3644,8 +3628,7 @@ un humain. Les anciennes restrictions système ignorées sont archivées pendant
 l’activation obligatoire ne lève ni les ACL métier ni les restrictions de harnais ou de contexte.
 
 Les commandes `task_*` appartiennent à **Tâches**, `process_*`
-à **Processus** et `document_show` à **Documents**. Elles restent réservées au contexte
-conversationnel. **Chat** porte `chat_round_get` et `voice_turn_get`.
+à **Processus** et `document_show` à **Documents**. Les outils disponibles dépendent du contexte. Par exemple, `task_run` sert aussi à déléguer une sous-tâche pendant l’exécution. **Chat** porte `chat_round_get` et `voice_turn_get`.
 Galaris porte `llm_call` et `llm_calls`. Chaque inspection revérifie sa permission et la portée
 de Services au moment de l’appel,
 même si le catalogue a été construit avant sa révocation.
@@ -3700,12 +3683,11 @@ Un Service configurable peut exposer **MCP et REST** simultanément. L’onglet 
 authentification aucune/Bearer/en-tête/Basic/paramètre de requête, en-têtes supplémentaires, délai
 et taille maximale de réponse. Les secrets sont référencés par noms de paramètres de connexion,
 avec héritage global, surcharges, chiffrement et masquage, sans catalogue OpenAPI obligatoire.
-La façade REST sert notamment aux activités natives Process ; elle n’ajoute pas de proxy public
-ni de fonction MCP HTTP universelle. Les droits distants sont ceux du token tiers ; la matrice des
-fonctions MCP ne filtre pas les endpoints REST. Les redirections et retries automatiques sont exclus,
-et les erreurs conservent leur statut HTTP.
+L’agent appelle `rest_request` avec le `service_code` exact et un chemin relatif à la racine configurée. Si plusieurs boîtes partagent le Service, `account_email` sélectionne le compte. La fonction est **Sur demande** par défaut et son usage en Chat exige aussi son activation en conversation. Les droits du compte distant s’appliquent à chaque requête. Une erreur HTTP conserve son statut. Après une coupure pendant une écriture, vérifiez le résultat auprès du tiers avant de réessayer.
 
-Les connexions MCP **HTTP/SSE** proposent **Connecter le compte** avec découverte OAuth : retour
+Dans l’onglet **REST** d’un Service enregistré, **Générer une compétence** confie à l’agent Galaris une tâche de recherche et de rédaction d’exemples. Suivez cette tâche, relisez la compétence générique dans la bibliothèque et affectez-la aux agents concernés. [Utiliser un Service REST](../user/services.md)
+
+Après sélection de **OAuth 2.0** comme méthode d’authentification du Service, les connexions MCP **HTTP/SSE** proposent **Connecter le compte** avec découverte OAuth : retour
 direct vers Galaris, client connu, métadonnées publiques CIMD ou enregistrement dynamique DCR.
 Le code d’appareil est essayé si la préparation directe est refusée et si le fournisseur le permet ;
 le relais local est un dernier recours. Une application pré-enregistrée peut être renseignée
@@ -4487,7 +4469,7 @@ messages longs, ouvre les pièces jointes et télécharge l’original `.eml`. L
 sans images distantes ni exécution. Cette lecture ne marque pas le mail comme lu, ne crée pas
 de tâche et n’autorise aucun traitement par l’agent ; recherche et mutations IMAP ne sont pas proposées.
 
-Une connexion active relève l’INBOX selon son intervalle, 60 secondes par défaut. La première
+Une connexion active relève l’INBOX selon son intervalle, 10 minutes par défaut. La première
 activation établit une référence de départ sans transformer tout l’historique en tâches. Les
 nouveaux messages sont journalisés puis, après autorisation de traitement, admis comme
 **tâches dédiées**, avec déduplication et curseur
@@ -4509,6 +4491,8 @@ ou se retire dans Permissions, indépendamment des autorisations d’envoi.
 L’agent lit le mail par son outil. La fin de la tâche **n’envoie pas automatiquement sa réponse** à
 l’expéditeur : un envoi SMTP est une action explicite. Les expéditeurs et destinataires observés
 alimentent le répertoire de contacts selon les preuves de réception/envoi.
+
+Dans le **Journal des mails → Réception**, ouvrez le message puis **Suivre la tâche** pour consulter son résultat, ses attentes ou son erreur avec le droit de lecture des tâches. Si la tâche automatique de réception devait utiliser un abonnement ChatGPT personnel, Galaris cherche un modèle admissible pour le même usage dans le profil de secours. La fiche de tâche indique la bascule ou le réglage manquant. Pour modifier la fréquence de relève d’une boîte, réglez son intervalle en minutes dans la connexion. [Suivi du courrier entrant](../user/tasks.md)
 
 ### Préparer, approuver et envoyer
 
@@ -5097,6 +5081,14 @@ Sources : [guide du Lab](../user/lab-ai.md), [contrats](../../../back/app/lab/co
 <a id="supervision"></a>
 ## 26. Activité, coûts et incidents
 
+### Suivre ses limites d’inférence et demander du crédit
+
+Dans **Superviser → Consommation**, les jauges indiquent la valeur d’inférence imputée au compte et le prochain renouvellement. Les plafonds sont indépendants sur cinq heures, une semaine et un mois civil. Un montant vide donne un usage illimité. Zéro suspend les nouveaux appels.
+
+Lorsqu’un plafond est atteint, consultez sa jauge puis demandez du crédit pour cette période. Un chef de l’une de vos équipes peut traiter votre demande. L’auto-octroi est interdit. Le crédit expire au renouvellement de la période choisie. [Demander un crédit](../user/usage.md#request-credit) · [Traiter une demande](../user/usage.md#review-credit)
+
+La consommation compte chaque appel physique une fois, y compris les appels archivés et les tentatives en échec ayant consommé une valeur connue. Sous abonnement, la valeur d’inférence peut différer du montant facturé. [Périodes, droits et attribution des coûts](../dev/inference-budgets.md)
+
 ### Tableau de bord
 
 Le tableau de bord mensuel expose, dans le périmètre autorisé :
@@ -5222,7 +5214,7 @@ Sources : [dashboard](../../../back/app/dashboard/schemas.py), [appels LLM](../.
 | Architecture modulaire | Activation explicite backend/frontend ; `core` fournit l’infrastructure, `app` les domaines métier et `bridge` les systèmes externes. Façades/contrats publics et ports de composition encadrent les dépendances ; contrôles statiques de frontières, cycles et dette. |
 | API | FastAPI, validation Pydantic, contrats HTTP/WebSocket, documentation OpenAPI et API compatibles de modèles/agents ; authentification, RBAC et ACL appliqués côté serveur. |
 | Persistance | PostgreSQL/pgvector, SQLAlchemy async, transactions, historique et verrouillage optimiste ; leases et claims pour répartir les exécutions durables. DbAdmin dérive le schéma et applique les contributions idempotentes. |
-| Orchestration | Agent fournit façade, registre, résolution, dispatcher, planner et résultat ; Harness exécute Pydantic AI ; tâche possède états, tentatives et scheduler. Les drivers rendent un unique résultat terminal après leurs événements. |
+| Orchestration | Agent fournit façade, registre, résolution, dispatcher, planner et résultat ; Harness exécute Pydantic AI ou Claude Agent embarqué ; tâche possède états, tentatives et scheduler. Les drivers rendent un unique résultat terminal après leurs événements. |
 | Messages | Messenger possède conversations, capacités, journal entrant et déduplication ; les bridges traduisent les protocoles. Les fichiers conservent leur URI et provenance dans la chronologie. |
 | Ressources | Document possède les documents typés, Memory les souvenirs personnels, Process le BPMN et ses runs, Storage les octets. File Sharing unifie leurs URI sans déplacer leur autorité ni leurs droits. |
 | Interface | Vue/Quasar, Pinia, routes dérivées des fichiers, navigation déclarée, catalogue i18n par domaine et composants partagés chargés à la demande ; contrôles de parité FR/EN, thème et frontière mobile communs. |
@@ -5260,7 +5252,7 @@ sur mobile. Les rubriques couvrent :
 | Langue et localisation | Langue de repli et localisation facultatives ; priorité à la langue du profil utilisateur. |
 | Messagerie | Canaux actifs, configuration de bridges, limites des fichiers entrants, durée des notes vocales, contact et délai des notifications du Chat. |
 | Mémoire | Fenêtre de session, activation et taille du contexte mémoire, anticipation temporelle, candidats et pondérations du rappel, acquisition, doublons, contradictions et vieillissement. |
-| Dream | Activation, création des sujets, consignes des mécanismes, quatre analyses indépendantes de pièces jointes, apprentissage, seuils de preuves/score, nombre de compétences actives, délais et réconciliation des liens. |
+| Dream | Activation, création des sujets, consignes des mécanismes, quatre analyses indépendantes de pièces jointes, délais et réconciliation des liens. |
 | Voix | Activation, auto-réponse, paramètres audio et découverte des appels. |
 | Tâches et exécution | Ordonnancement, concurrence, leases, reprises, budgets, création des objectifs, collaboration, durée maximale par appel LLM, limites d’appels modèle/outils, profondeur et feuilles du Planner selon les capacités des harnais. |
 | Processus | Moteur, références de fichiers, soumission, actualisation, attente, idempotence, reprises et rétention. |
@@ -5285,6 +5277,10 @@ Les tailles affichées et saisies utilisent des **Mo décimaux** : 1 Mo représe
 Les conversions préservent les unités des API. Les limites par défaut comprennent 4 Mo pour
 les pièces jointes incorporées aux entrées et 20 Mo pour les fichiers binaires du harnais interne.
 Ces plafonds sont administrables dans les préférences concernées.
+
+### Installer un plugin et utiliser sa contribution
+
+Dans **Administrer → Plugins**, choisissez une version au catalogue ou inspectez une archive signée. Vérifiez son éditeur, la plage de versions Galaris et les capacités annoncées. L’installation prépare une version inactive. Activez-la pour rendre ses contributions disponibles. Pour une fiche de Service, ouvrez **Configurer → Services & connexions → Nouveau service**, configurez une copie puis enregistrez-la. Vous pouvez ensuite désactiver le plugin et le désinstaller. Le Service déjà enregistré conserve sa configuration. [Éditeurs de confiance, formats et cycle d’installation](../dev/plugin-bundles.md)
 
 ### Hébergement et données
 
@@ -5525,6 +5521,8 @@ pas de cet outil d’affichage. L’humain peut ensuite l’exporter ou l’agen
 La conversation retrouve la tâche, le document et sa livraison ;
 les coûts et erreurs éventuelles restent inspectables.
 
+Pour reprendre ce travail après avoir fermé le Chat, [retrouvez le livrable dans Documents](../user/documents.md#find-deliverable). Si un collègue reçoit le lien mais ne peut pas l’ouvrir, [vérifiez le partage du document](../user/rich-content.md#share-document).
+
 ### Corriger et ranger un document avec son agent
 
 L’humain ouvre un document depuis un aperçu ou la recherche du chat, le lit ou le modifie selon
@@ -5610,6 +5608,7 @@ lit les passages de la version installée, puis indique le parcours **section �
 action** avec sa source. Il distingue une fonction implémentée d’un plan et vérifie séparément
 les droits ou réglages du compte. L’assistant Galaris proposé à l’installation peut remplir cette
 mission ; un agent métier existant peut aussi recevoir cette capacité sans changer de personnalité.
+[Voir un exemple de question et vérifier la réponse](../user/README.md#ask-about-galaris).
 
 ### Organiser une comparaison autonome dans le Lab
 
@@ -5648,12 +5647,12 @@ nom du jeton utilisé et conserve le fournisseur et le modèle réellement solli
 | API de profils | Code stable, usages disponibles de tous les profils, jeton utilisateur autorisé ; un usage manquant n’emprunte pas un autre profil. |
 | Décisions spécialisées | Facultatives, via l’adaptateur OpenRouter disponible ; repli gouverné dans le même profil, sans probabilités inventées ni gain systématique promis. |
 | Quotas ChatGPT | Fenêtres fournies pour l’ensemble du compte, consultées à un instant donné ; ni quota par agent ni budget de facture API. |
-| Harnais gérés | Standard/high via la passerelle Galaris. Multitâche pour Codex, Claude Agent et DeepSeek Harness qualifiés, selon la capacité du scheduler et le plafond du harnais. Hermès a un créneau par agent. Le transport générique dispose d’un créneau et de l’exécution standard. |
+| Harnais gérés | Standard/high via la passerelle Galaris. Multitâche pour Codex et DeepSeek Harness qualifiés, selon la capacité du scheduler et le plafond du harnais. Hermès a un créneau par agent. Le transport générique dispose d’un créneau et de l’exécution standard. |
 | Synchronisation des compétences | Appliquée avant une nouvelle exécution, sans interrompre une tâche ; une continuation distante conserve son contexte antérieur et un échec de projection bloque le démarrage. |
 | Routage | Seuls les couples EXEC/PLAN et effort déclarés par le harnais sont disponibles. |
 | Inférence durable | Préparation sans appel fournisseur, démarrage, commandes avec révision et échéance globale optionnelle ; reconnexion au flux sans génération, reprise explicite potentiellement facturée. |
 | Chat natif | Humain–agent ; les salons de groupe de transports externes ne constituent pas une messagerie native universelle entre humains. |
-| Apprentissage de compétences | Off par défaut ; observation et apprentissage explicites avec preuves et seuils. |
+| Apprentissage de compétences | Objectif périodique par agent, preuves issues de tâches distinctes et seuil de fiabilité. |
 | Collaboration documentaire | Sauvegarde, révisions, conflits et partage ; pas une promesse de coédition simultanée caractère par caractère. |
 | Formats documentaires | `app.document` réunit Texte (HTML, `document://`), Données (JSON, `data://`) et Carte mentale (arborescence JSON, `document://`). Chaque document conserve ses droits et ses versions. |
 | Applications documentaires | Affichage automatique de HTML/CSS/JavaScript isolés et texte éditable, sans vue Source ; les ressources externes ordinaires sont bloquées. Le CPU et la mémoire du navigateur ne sont pas plafonnés par ce mécanisme. |
@@ -5706,7 +5705,7 @@ d’aperçu, les bridges, les harnais, les mécanismes Dream et les contribution
 <a id="mcp"></a>
 ## 30. Inventaire des fonctions accessibles aux agents
 
-Cet inventaire reprend les **302 fonctions natives déclarées par `@mcp_tool` dans le code inspecté**.
+Cet inventaire reprend les fonctions natives par usage.
 Il couvre aussi les fonctions réservées aux contrôleurs conversationnels ou à l’administration.
 Toutes ne sont donc pas visibles simultanément par chaque agent. Les schémas d’arguments complets
 sont exposés par MCP ; leurs sources sont reliées aux sections métier ci-dessus.
@@ -5717,7 +5716,7 @@ avec leur description et leur état dans le catalogue effectif de l’agent. Les
 runtimes externes et les mécanismes de chargement d’outils ne sont pas comptés comme nouvelles
 fonctions natives dans cette table.
 
-Les appels vocaux, l’inspection des tours et les choix en attente appartiennent à **Conversation**.
+Les appels vocaux, l’inspection des tours et les choix en attente appartiennent au Service **Chat**.
 **Galaris** porte la documentation, l’inspection des appels LLM et les incidents.
 Le pilotage des expériences appartient au Service optionnel **Lab**. Les commandes système restent soumises à
 leur contexte : un service obligatoire n’expose pas ses fonctions de conversation aux tâches.
@@ -5743,6 +5742,7 @@ fonctions explicitement. Pour Messenger, la connexion de transport détermine le
 | `process_start_conversation` | `process` | Lancer un processus affecté et le rattacher à la conversation sans attendre sa fin. |
 | `process_prepare` | `process` | Préparer les entrées vérifiées d’un Process affecté dans un dossier durable propre au participant ; recueillir les informations manquantes sans démarrer ses activités. |
 | `document_show` | `document` | Demander l’ouverture d’un document lisible dans le salon texte interne courant de l’agent, après contrôle des droits et de la fraîcheur ; ne partage rien et ne s’exécute pas dans une tâche. |
+| `chat_screenshot` | `chat` | Demander une capture au client desktop à l’origine du tour texte et recevoir son URI privée après confirmation. |
 | `chat_round_get` | `chat` | Inspection administrative complète d’un round : messages, tentatives, tâches créées/amendées, processus, résultat et appels. |
 
 ### Conversation : code et activités humaines
@@ -5871,6 +5871,7 @@ ordinaires restent dans le périmètre de l’agent.
 | `memory_summarize` | `memory` | Synthétiser avec le modèle de l’agent faits attribués, décisions, engagements et questions ouvertes, au maximum 200 messages et 32 000 caractères, sans remplacement des souvenirs existants ni stockage après erreur modèle. |
 | `document_sharing` | `document` | Lire partages, destinataires possibles et version de verrouillage ; recherche/filtre/pagination des destinataires. |
 | `document_share` | `document` | Partage ciblé pour un document de travail propriétaire. |
+| `document_chart` | `document` | Préparer le HTML éditable d’un graphique à partir de 1 à 20 couples libellé/valeur. L’insertion est une écriture distincte. |
 | `document_revision_list` | `document` | Paginer les révisions de contenu enregistrées d’un document accessible, de la plus récente à la plus ancienne. |
 | `document_revision_compare` | `document` | Comparer deux révisions enregistrées et, pour un format de dessin compatible, les changements de pixels dans une région facultative. |
 | `skills_list` | `skills` | Découvrir les compétences dans le périmètre administrable/autorisé. |
@@ -5924,6 +5925,7 @@ l’interface humaine et ne sont pas exposés comme fonctions MCP.
 | Fonction | Famille | Action et résultat |
 |---|---|---|
 | `search_web` | `browser` | Interroger SearXNG, restituer les sources et signaler résultats partiels, dégradation ou échec de recherche. |
+| `rest_request` | `rest` | Appeler un endpoint relatif au Service et au compte autorisés. Retourner le statut, les en-têtes et le corps. |
 | `services_list` | `service` | Consulter les fonctions MCP autorisées et distinguer celles présentes dans l’exécution de celles exigeant un nouveau contexte. |
 | `browser_open` | `browser` | Ouvrir une page dans une nouvelle session isolée, avec viewport optionnel. |
 | `browser_navigate` | `browser` | Changer d’URL dans la session. |
@@ -6237,7 +6239,7 @@ d’activation et de configuration restent celles du runtime.
 | `app.multimedia` | [Analyse audio/vidéo et générations durables propres au domaine](#medias) |
 | `app.mcp` | [Serveur unifié et tokens par agent](#outils) |
 | `bridge.harness` | [Accès au manager, diagnostics et infrastructure des harnais](#harnais) |
-| `bridge.claude_agent` | [Runtime Claude Agent](#harnais) |
+| `bridge.claude_agent` | [Transition des anciennes instances Claude](../components/claude-agent.md) |
 | `bridge.codex` | [Runtime Codex et credentials gérés](#harnais) |
 | `bridge.deepseek_harness` | [Runtime DSH](#harnais) |
 | `bridge.n8n` | [Workflows externes](#processus) |

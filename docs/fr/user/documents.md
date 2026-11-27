@@ -8,6 +8,47 @@ conservent leur bibliothèque métier. Le classement est personnel et ne change 
 l'organisation des autres lecteurs. Un répertoire peut accorder automatiquement des droits
 supplémentaires sur vos documents et exposer sa collection aux destinataires autorisés.
 
+<a id="find-deliverable"></a>
+## Retrouver un document produit par un agent
+
+Vous cherchez le document annoncé dans une discussion ou dans le bilan d’une tâche ?
+
+1. Ouvrez d’abord son lien dans la réponse de l’agent ou dans le résultat de la tâche. Le document s’ouvre avec les droits de votre compte.
+2. Si vous n’avez que son titre, ouvrez **Connaissances → Documents**. Recherchez-le dans la liste. Vérifiez le filtre **Propriétaire** : un document créé par l’agent peut lui appartenir. Un document sans classement apparaît dans la liste des non classés.
+3. Si l’agent a créé un document privé, demandez-lui de vous le partager en lecture, ou en modification pour le corriger ensemble. Une fois le partage confirmé, reprenez le même lien. [Choisir les droits de partage](rich-content.md#share-document)
+
+Pour contrôler une modification ultérieure, ouvrez l’historique du document. Restaurer une ancienne version crée une nouvelle révision. [Enregistrement et historique](rich-content.md#document-history)
+
+## Créer et retrouver
+
+Dans la bibliothèque **Documents**, chaque dossier propose une icône **Nouveau document**
+parmi ses actions. Renseignez le titre et le propriétaire : le document est automatiquement
+classé dans ce dossier, qui se déplie, puis s’ouvre dans l’éditeur. Le bouton de création
+général conserve les nouveaux documents parmi les non classés, hors de l'arborescence.
+La racine contient uniquement les documents que vous y placez explicitement. Utilisez
+**Créer un document à la racine** au pied de l'arborescence ou déposez-y un document depuis
+la liste ou un dossier. Pour retirer ce classement, déposez le document dans la zone de
+la liste des non classés. Le choix est personnel, conservé après rechargement et indépendant
+des filtres de la liste ; les autres documents sans dossier restent non classés.
+
+Dans les filtres de la bibliothèque, le champ unique **Propriétaire** remplace le choix
+séparé du type et du nom. Il affiche **Moi**, les utilisateurs, puis les agents ; la recherche
+et la pagination par type permettent d’atteindre les grandes listes. Effacer ce champ
+rétablit tous les propriétaires ; les autres filtres restent applicables.
+
+Pour changer le titre avec un agent, demandez-lui de renommer le document. Il utilise
+`file_info`, puis `file_rename` avec la version des métadonnées. Le titre de bibliothèque
+change sans modifier l'URI `document://`, le corps, son historique, les pièces jointes
+ni le partage. Modifier un titre dans le texte ou le libellé d'un lien est une autre action.
+La description d'un objectif est un champ HTML du Goal. Son suivi reste un document, créé
+non classé : il figure dans la liste et pas dans l'arborescence, même à la racine.
+Chaque utilisateur peut ensuite le classer librement. Aucun dossier Objectifs n'est imposé.
+Avec le droit de modification, vous pouvez aussi joindre les justificatifs à ce suivi,
+ou demander à l'agent de les y archiver. Le titre, le propriétaire et le rattachement à
+l'objectif restent pilotés par celui-ci ; ajouter une pièce ne modifie pas le corps du suivi.
+
+### Contenu et droits du document
+
 Les documents et leurs résumés partagés sont indépendants des souvenirs personnels
 des agents. Partager un document ne partage aucun souvenir ; supprimer une référence
 dans le graphe mémoire ne supprime pas le document. Les souvenirs concernant un
@@ -529,34 +570,6 @@ Une modification met à jour uniquement les entrées concernées : les autres li
 branches ouvertes et documents chargés restent en place. Changer d’onglet conserve chaque
 arbre. Une reconnexion ou un changement de droits réconcilie les données sans vider l’arbre ;
 un changement de compte retire les données du compte précédent.
-
-## Créer et retrouver
-
-Pour changer le titre avec un agent, demandez-lui de renommer le document. Il utilise
-`file_info`, puis `file_rename` avec la version des métadonnées. Le titre de bibliothèque
-change sans modifier l'URI `document://`, le corps, son historique, les pièces jointes
-ni le partage. Modifier un titre dans le texte ou le libellé d'un lien est une autre action.
-La description d'un objectif est un champ HTML du Goal. Son suivi reste un document, créé
-non classé : il figure dans la liste et pas dans l'arborescence, même à la racine.
-Chaque utilisateur peut ensuite le classer librement. Aucun dossier Objectifs n'est imposé.
-Avec le droit de modification, vous pouvez aussi joindre les justificatifs à ce suivi,
-ou demander à l'agent de les y archiver. Le titre, le propriétaire et le rattachement à
-l'objectif restent pilotés par celui-ci ; ajouter une pièce ne modifie pas le corps du suivi.
-
-Dans la bibliothèque **Documents**, chaque dossier propose une icône **Nouveau document**
-parmi ses actions. Renseignez le titre et le propriétaire : le document est automatiquement
-classé dans ce dossier, qui se déplie, puis s’ouvre dans l’éditeur. Le bouton de création
-général conserve les nouveaux documents parmi les non classés, hors de l'arborescence.
-La racine contient uniquement les documents que vous y placez explicitement. Utilisez
-**Créer un document à la racine** au pied de l'arborescence ou déposez-y un document depuis
-la liste ou un dossier. Pour retirer ce classement, déposez le document dans la zone de
-la liste des non classés. Le choix est personnel, conservé après rechargement et indépendant
-des filtres de la liste ; les autres documents sans dossier restent non classés.
-
-Dans les filtres de la bibliothèque, le champ unique **Propriétaire** remplace le choix
-séparé du type et du nom. Il affiche **Moi**, les utilisateurs, puis les agents ; la recherche
-et la pagination par type permettent d’atteindre les grandes listes. Effacer ce champ
-rétablit tous les propriétaires ; les autres filtres restent applicables.
 
 ## Classer dans les dossiers et sous-documents
 

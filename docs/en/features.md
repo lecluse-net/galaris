@@ -71,6 +71,8 @@ Documents also form a **knowledge base**: authorised searches can retrieve their
 and attachments. Sharing with a human, agent or team makes joint work accessible without copying it
 everywhere.
 
+An agent can query a Service, display the rows in Chat and let you insert the filtered table into a document. To present the results, insert a bar, line or pie chart. You can edit its values later in the document or in a mind map node. [Editable tables and charts](user/documents.md)
+
 ## Organise a project with a mind map
 
 A **mind map** is a document in **Knowledge → Documents**, with its own sharing rights and
@@ -122,13 +124,11 @@ documents.
 Dream uses available time to classify and consolidate knowledge. It can reuse transcripts and
 analyses already acquired in a conversation, extract durable information
 from completed work, identify duplicates/conflicts and, when enabled, describe attachments lacking
-text. Procedural learning can also derive methods from several evidence-supported experiences.
+text. Each agent also has a self-learning Goal. At the chosen cadence, it reviews its Tasks, compares outcomes and can update its personal skills. [Inspect learning evidence](user/skills.md)
 
 Users can inspect, correct, review history, explore the graph and explicitly forget memory.
 Standalone memories remain private to their agent; documents own sharing rights and their current
 summary, independently of Memory.
-Learning and optional analyses are not all enabled by default, and recall does not guarantee every
-piece of information will surface in every exchange.
 
 ## Entrust an objective that lasts
 
@@ -198,6 +198,10 @@ Incoming mail initially records headers only: unknown senders need consent befor
 reading and Task admission, according to `mail_process` policy. Recognized Contacts belong
 to that agent; processing consent does not authorize sending.
 
+To connect a REST API, save its address and settings in a Service. The agent calls it by code using its authorized account. From the Service record you can also have a generic skill prepared with examples specific to that API. [Connect and use a Service](user/services.md)
+
+The Windows/Linux client can share an MCP server installed on your computer. During a text conversation, you can also choose a window, preview a screenshot and send it to the agent. [Use tools on your computer](user/desktop.md)
+
 ## Work with multimedia
 
 Office documents and spreadsheets can display a first-page thumbnail while retaining the original
@@ -215,8 +219,7 @@ files remain linked to the originating work. Each provider retains its own capab
 ## Choose models and harnesses for the work
 
 Profiles group conversational, execution and specialised resources, allowing several providers or
-local models to coexist. Harnesses run the agent: Galaris supplies its internal harness and
-integrations such as Hermes, Claude Agent, Codex and DeepSeek Harness, each with its own capabilities.
+local models to coexist. Select the harness in the Agent record. Pydantic AI and Claude Agent run in the backend. Hermes, Codex and DeepSeek Harness have dedicated runtimes. In Chat, `@deep` opens a session with the agent’s assigned harness. [Use Claude Agent](components/claude-agent.md)
 
 Bounded choices—routing a Task, selecting a Topic or recognising already-covered knowledge—can use
 a **Decision model**, such as JEV through OpenRouter. Drafting remains with a text model. Traces and
@@ -248,6 +251,10 @@ repeating external effects. Unknown outcomes can require a human decision.
 Effective capabilities depend on configured permissions, connections and models. A local model does
 not automatically make other services local. The interface provides usage settings and activity
 monitoring; backups, updates and operating checks belong to the administrator.
+
+To onboard a colleague, send an invitation from their account record and add them to a team. Their home page shows which agents they can contact. The team lead can review members’ inference limits and grant temporary credit for the relevant period. [Teams](user/teams.md) · [Usage and credits](user/usage.md#review-credit)
+
+To extend the shared catalogue, an administrator can verify and activate a signed plugin. People with the appropriate permissions can then configure their own copy of a published Service preset. [Install and manage plugins](dev/plugin-bundles.md)
 
 ## Start using it
 

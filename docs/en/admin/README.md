@@ -14,6 +14,9 @@ The following sections detail administration options.
 
 | Operation | Guide |
 |---|---|
+| Invite a colleague or retry a failed delivery | [Invite from the account record](#invite-colleague) · [Test platform SMTP](#platform-invitations) |
+| Assign a team lead and delegate credit decisions | [Teams](../user/teams.md), [inference limits](../user/usage.md#review-credit) |
+| Check the publisher and activate a plugin | [Plugin installation](../dev/plugin-bundles.md) |
 | Install and update | [Installation](installation.md) |
 | Delegate access and settings by function | [Privileges and roles](privileges.md) |
 | Configure model concurrency | [Provider admission](provider-admission.md) |
@@ -396,7 +399,7 @@ Vector usage empty preserves lexical operation without sending any embeddings.
 - enabling and budgeting the durable brief injected before an execution;
 - the acquisition worker's frequency and number of attempts.
 
-**Preferences → Dream** controls the opportunistic scanner, its leases, retries, and learning mode.
+**Preferences → Dream** controls the opportunistic scanner, its leases, retries and background analysis.
 The `ai.memory-extraction-system-prompt` setting controls the extractor's complete prompt.
 It applies to Tasks, text rounds, and transcribed audio turns that already have a Topic;
 the Lab copies the value when creating a dataset, then allows that copy to evolve independently.
@@ -449,9 +452,9 @@ ordinary Markdown memories can be edited with the visual editor.
 To permanently bound the volume, only the last 100 cycles of each Goal have a
 memory projection; older business cycles remain unchanged in their canonical table.
 
-The [weekly retrospective](../user/skills.md) improves
+The [agent retrospective](../user/skills.md) improves
 personal skills. Every agent receives this Goal by default. Its detail view lets authorized
-users move the weekly slot, pause future passages and resume them. The upgrade removes the former
+users choose the cadence (weekly by default), pause future passages and resume them. The upgrade removes the former
 Dream learning settings and preserves stored thresholds, personal packages and evidence.
 
 Current and historical memory, document and synthesis text resides in PostgreSQL.
@@ -599,7 +602,7 @@ See [decision 0180](../../../project/decisions/0180-agent-secondary-llm-profile.
 | Planner | plan creation and final synthesis |
 | Goal | judgment and tracking of Goal cycles |
 | Lab | Task analysis, reference proposal, judgment, and analysis of AI Lab benchmarks |
-| Dream | Dream classification, extraction, and learning |
+| Dream | Dream classification and extraction |
 | Vector | Memory embeddings |
 | Vision | image analysis |
 | Document | document analysis |
@@ -1065,6 +1068,7 @@ and current connection assistant remain oriented toward n8n.
 
 ## 8. Accounts, Roles, and Privileges
 
+<a id="platform-invitations"></a>
 ### Sending invitations
 
 Under **Administer → Preferences → System → Platform SMTP**, enter the server, port,
@@ -1084,6 +1088,15 @@ own Service connections.
 
 After saving the settings, enter a **Recipient email** and select **Send test email**.
 The interface reports whether the relay accepted the message.
+
+<a id="invite-colleague"></a>
+#### Invite a colleague
+
+1. Open **Administer → Users & Permissions → Users** and select **New User**. Enter the colleague’s address and enable **Send an invitation by email**.
+2. Assign the role and team they need for their work, then create the account. For a colleague who will start conversations, check that the role grants Chat access and permission to create conversations and send messages, and that the team can contact the agent.
+3. The colleague has 24 hours to set a password. After signing in, they can check their team and available agents on Home. [First-login instructions to share](../user/README.md#first-login)
+
+If Galaris reports that the account was created but email delivery failed, reopen the pending account. Check the email address, save any correction, then select **Resend invitation**. The new link replaces the previous one. If delivery fails again, test the relay using the settings above.
 
 ### Roles and privileges
 

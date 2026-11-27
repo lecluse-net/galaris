@@ -472,6 +472,10 @@ name search without case or accent sensitivity while preserving the current choi
 `e2e/specs/rbac-domains.spec.mjs` signs a Contacts-only role into the assembled application,
 creates a contact, finds it after reloading and checks denial of Memory, the Agent catalogue
 and a foreign agent on desktop/mobile. All fixture data is synthetic.
+`e2e/specs/agent-admin.spec.mjs` opens the Agents page with read privileges, shows profiles
+from two teams and selects a team agent in the Connections filter.
+`app/agent/tests/test_selection.py` verifies profile visibility,
+denied changes and loss of access when the shared membership is removed.
 The same journey rejects unauthorized domain requests from the application shell.
 Connection selectors expose inherited global parameters only to readers of the Services domain,
 without secret values or private transport configuration. Connection-only roles retain
@@ -967,10 +971,6 @@ navigation, without opening a nested search modal.
 and agent portraits. Images and cards have no active links while ordinary text links remain
 usable. The scenario generates a real synthetic PDF for visual and link-annotation checks.
 
-`e2e/specs/agent-admin.spec.mjs` opens the Agents page with read privileges, shows profiles
-from two teams and selects a team agent in the Connections filter.
-`app/agent/tests/test_selection.py` verifies profile visibility,
-denied changes and loss of access when the shared membership is removed.
 `equations.spec.mjs` exercises inline/block equations with real MathLive: input, editing,
 cancellation, contextual actions, typing before/after, undoable deletion, reopening,
 read-only and mobile views, draft isolation on content changes

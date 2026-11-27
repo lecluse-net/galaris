@@ -182,7 +182,7 @@ behavior applies to both model keys and OpenRouter’s optional management key.
 **Monitor → Usage** shows **My usage limits** in its own section. Select **Change my limits**
 there if your role allows it. The table lists other accounts with three limit columns. A blank
 cell means usage is unlimited. The menu's progress bars open this page.
-[Inference usage limits](../dev/inference-budgets.md)
+[Inference usage limits](usage.md)
 
 For supported providers, **Usage and credits** in provider settings displays service-reported
 limits: ChatGPT windows and additional credits, ElevenLabs credits, Mammouth AI and OpenRouter key spending,
@@ -479,7 +479,7 @@ connection, then follow the [product knowledge guide](../admin/product-knowledge
 A skill provides instructions; actual function access also depends on authorized Services and connections.
 
 **Configure → Skills** (`/skill`) contains **Skills** (`?tab=skills`), **Personal skills**
-(`?tab=personal`), including packages learned by Dream, and **Authorizations** (`?tab=authorizations`)
+(`?tab=personal`), including packages learned during retrospectives, and **Authorizations** (`?tab=authorizations`)
 with `SKILL_ASSIGN`. Skill assignments do not replace Service permissions or human account roles.
 
 The personal tab supports reading/editing managed agents' packages, activation, deletion,
@@ -913,6 +913,7 @@ Useful distinctions:
   to manage [teams, their members and leads](teams.md). The account dialog also offers a
   **Team lead** checkbox for each selected team.
 
+<a id="missing-action"></a>
 ## A menu or button is missing
 
 First check the active role in the account menu. The generated map lists visibility

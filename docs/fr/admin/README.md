@@ -15,6 +15,9 @@ Les sections suivantes détaillent les options d’administration.
 
 | Opération | Guide |
 |---|---|
+| Inviter un collègue ou reprendre un envoi en échec | [Inviter depuis la fiche du compte](#invite-colleague) · [Tester le SMTP de la plateforme](#platform-invitations) |
+| Désigner un chef d’équipe et déléguer les crédits | [Équipes](../user/teams.md), [limites d’inférence](../user/usage.md#review-credit) |
+| Vérifier le signataire et activer un plugin | [Installation des plugins](../dev/plugin-bundles.md) |
 | Installer et mettre à jour | [Installation](installation.md) |
 | Déléguer les accès et les réglages par fonction | [Privilèges et rôles](privileges.md) |
 | Régler la concurrence des modèles | [Admission des fournisseurs](provider-admission.md) |
@@ -405,8 +408,7 @@ Un usage Vectoriel vide conserve le fonctionnement lexical sans aucun envoi d'em
 - l'activation et le budget du brief durable injecté avant une exécution ;
 - la cadence et les tentatives du worker d'acquisition.
 
-**Préférences → Dream** contrôle le scanner opportuniste, ses leases, ses reprises et le mode
-d'apprentissage.
+**Préférences → Dream** contrôle le scanner opportuniste, ses leases, ses reprises et les analyses de fond.
 Le paramètre `ai.memory-extraction-system-prompt` règle le prompt complet de l’extracteur de
 souvenirs. Il s’applique aux tâches, rounds texte et tours audio transcrits possédant déjà un Topic ;
 le Lab en copie la valeur à la création d’un dataset, puis laisse cette copie évoluer indépendamment.
@@ -463,9 +465,9 @@ souvenirs Markdown ordinaires se modifient avec l'éditeur visuel.
 Pour borner durablement le volume, seuls les 100 derniers cycles de chaque Goal possèdent une
 projection mémoire ; les cycles métier plus anciens restent inchangés dans leur table canonique.
 
-La [rétrospective hebdomadaire](../user/skills.md)
+La [rétrospective de l’agent](../user/skills.md)
 fait évoluer les compétences personnelles. Chaque agent reçoit cet objectif par défaut. Sa fiche
-permet de déplacer le créneau hebdomadaire, de mettre les prochains passages en pause et de reprendre.
+permet de choisir la cadence (hebdomadaire par défaut), de mettre les prochains passages en pause et de reprendre.
 La mise à jour retire les réglages de l'ancien apprentissage Dream et conserve les seuils déjà
 enregistrés, les packages personnels et leurs preuves.
 
@@ -619,7 +621,7 @@ déjà publié ne peut pas changer de fournisseur. Voir la [décision 0180](../.
 | Planner | création de plans et synthèse finale |
 | Goal | jugement et suivi des cycles de Goals |
 | Lab | analyse de tâches, proposition de références, jugement et analyse des benchmarks du Lab IA |
-| Dream | classement, extraction et apprentissage Dream |
+| Dream | classement et extraction Dream |
 | Vectoriel | embeddings de mémoire |
 | Vision | analyse d’images |
 | Document | analyse de documents |
@@ -1098,6 +1100,7 @@ du moteur par défaut et l'assistant de connexion actuel restent orientés n8n.
 
 ## 8. Comptes, rôles et privilèges
 
+<a id="platform-invitations"></a>
 ### Envoi des invitations
 
 Dans **Administrer → Préférences → Système → SMTP de la plateforme**, renseignez le
@@ -1117,6 +1120,15 @@ et cliquez sur **Envoyer le test**. L’interface indique si le relais a accept�
 Les liens utilisent l’URL publique `APP_HOST`, qui doit être en HTTPS en production.
 Ce SMTP sert aux invitations. Les agents envoient leurs e-mails via leurs propres
 connexions de Service.
+
+<a id="invite-colleague"></a>
+#### Inviter un collègue
+
+1. Ouvrez **Administrer → Utilisateurs & Droits → Utilisateurs**, puis **Nouvel Utilisateur**. Saisissez l’adresse du collègue et activez **Envoyer une invitation par e-mail**.
+2. Attribuez le rôle et l’équipe correspondant au travail prévu, puis créez le compte. Pour qu’il puisse démarrer une conversation, vérifiez que le rôle autorise la Discussion, la création de conversations et l’envoi de messages, et que l’agent est joignable par cette équipe.
+3. Le collègue dispose de 24 heures pour définir son mot de passe. Une fois connecté, il peut vérifier son équipe et ses interlocuteurs sur l’accueil. [Étapes à transmettre au collègue](../user/README.md#first-login)
+
+Si Galaris indique que le compte a été créé mais que l’envoi a échoué, reprenez la fiche en attente. Vérifiez l’adresse, enregistrez toute correction, puis sélectionnez **Renvoyer l’invitation**. Le nouveau lien remplace le précédent. Si l’envoi échoue encore, testez le relais avec les réglages ci-dessus.
 
 ### Rôles et privilèges
 

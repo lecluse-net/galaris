@@ -98,7 +98,7 @@ locators and an attested or unknown version. Late evidence opens a new idempoten
 Application revalidates the checkpoint; reads and recall exclude new derived facts when none of
 their supporting evidence remains available. See [0169](../../../../project/decisions/0169-conversation-memory-acquired-evidence.md).
 
-The [weekly retrospective](../../../../project/decisions/0302-weekly-agent-retrospective.md)
+The [self-learning Goal](../../../../project/decisions/0302-weekly-agent-retrospective.md)
 owns procedural learning. Historical Dream learning receipts remain available.
 
 ## Deterministic effects

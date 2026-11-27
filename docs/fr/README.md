@@ -2,19 +2,15 @@
 
 # Documentation de Galaris
 
-La documentation est organisée selon la responsabilité de la personne qui la lit. Il
-n’est pas nécessaire de comprendre l’architecture pour utiliser Galaris, ni de connaître
-le code pour l’administrer.
+## Par où commencer ?
 
-## Découvrir la plateforme
-
-[Découvrir les usages de Galaris](features.md)
-
-Ce tour montre comment les capacités se combinent dans le travail quotidien. Les guides ci-dessous
-expliquent les actions à réaliser ; ils conservent chacun leurs procédures.
-
-Le [catalogue fonctionnel exhaustif](reference/functional-catalogue.md) reste une référence à part,
-notamment pour préparer le site web : capacités détaillées, conditions, limites et inventaires.
+| Votre situation | Point de départ |
+|---|---|
+| J’ai reçu une invitation | [Activer mon compte et trouver les agents de mon équipe](user/README.md#first-login) |
+| J’ai accès à un agent et je veux l’essayer | [Transformer des notes en document avec la première mission guidée](user/README.md#first-mission) |
+| Je cherche comment utiliser un écran de Galaris | [Interroger un agent sur la documentation installée](user/README.md#ask-about-galaris) |
+| J’installe Galaris pour mon équipe | [Installer la plateforme et configurer le premier fournisseur](admin/installation.md) |
+| Je découvre les possibilités ou je cherche une fonction précise | [Découvrir les usages](features.md) · [Consulter le catalogue fonctionnel](reference/functional-catalogue.md) |
 
 ## 1. Utilisateur et néophyte
 
@@ -26,10 +22,16 @@ notamment pour préparer le site web : capacités détaillées, conditions, limi
 
 | Parcours | Guide |
 |---|---|
-| Classer les documents et agir sur une sélection | [Bibliothèque documentaire](user/documents.md) |
+| Accepter une invitation, trouver son équipe et ouvrir un profil | [Accueil et comptes](user/navigation.md), [équipes](user/teams.md) |
+| Comprendre un plafond atteint et demander du crédit | [Consommation et renouvellements](user/usage.md#request-credit) |
+| Choisir le harnais du Chat et des tâches | [Claude Agent embarqué](components/claude-agent.md) |
+| Partager un MCP local ou une capture depuis son poste | [Client Windows/Linux](user/desktop.md) |
+| Retrouver un document annoncé dans le Chat et obtenir l’accès | [Résultats documentaires](user/documents.md#find-deliverable) |
+| Répondre à un agent ou comprendre une tâche en attente | [Questions et reprises](user/tasks.md#reply-to-task) |
+| Retrouver un fichier ou une pièce jointe dans une boîte mail | [Fichiers de l’agent](user/files.md#browse-files), [boîtes mail](user/files.md#browse-mail) |
+| Donner accès à une API ou comprendre pourquoi un outil manque | [Connecter le Service](user/services.md#connect-service), [vérifier l’accès](user/services.md#service-access) |
 | Écrire, citer un objet, partager ou exporter | [Contenus riches](user/rich-content.md) |
 | Créer et réutiliser du JSON | [Documents Données](user/datasets.md) |
-| Parcourir les ressources d'un agent | [Fichiers](user/files.md) |
 | Gérer les méthodes génériques et personnelles des agents | [Compétences](user/skills.md) |
 | Travailler sur un checkout Git avec l'agent | [Éditeur de code](user/code-editor.md) |
 | Concevoir et suivre un workflow BPMN | [Processus internes](user/internal-processes.md) |
@@ -84,9 +86,7 @@ Ce parcours décrit le contrat du code :
 - SQLAlchemy, Atlas, RBAC, API, toolsets MCP, Vue, Pinia et i18n ;
 - tests isolés, typage strict et règles de contribution.
 
-Pour publier une version, suivre le [contrôle avant publication](dev/security-validation.md) :
-le commit exact doit passer les CI Quality et Security et un nouveau scan des sources
-avant la création du tag et de la Release.
+Avant de publier le tag, exécutez `make release-check RELEASE_REF=<commit>`. Ce contrôle exige la réussite du workflow Security pour le commit exact et une nouvelle analyse des sources. Le résultat de Quality est présenté séparément. [Contrôle avant publication](dev/security-validation.md)
 
 Pour une navigation orientée maintenance, consulter aussi
 [`docs/fr/architecture`](architecture/README.md) : invariants, flux, machines d’état et

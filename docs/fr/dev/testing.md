@@ -207,8 +207,7 @@ configuration de test issue de `.env.example`, jamais le `.env` de déploiement.
 restart applicatif, accès à un compte de messagerie ou appel IA payant n'est effectué.
 
 Elle exécute les contrôles statiques et le build, les tests backend avec couverture, les vrais
-composants, les mutations et preuves d'incidents, les executors et les parcours E2E répétés trois
-fois sur chaque navigateur. Les étapes indépendantes continuent après un échec pour donner un
+composants, les mutations et preuves d'incidents, les executors et les parcours E2E une fois sur chaque navigateur. `make validate-stability` porte ce nombre à trois. Les étapes indépendantes continuent après un échec pour donner un
 bilan complet. Le résultat et les journaux se trouvent dans `artifacts/validation/<run>/` ;
 les rapports détaillés et traces sont sous `source/artifacts/`. La copie de code et son archive
 sont conservées pour le diagnostic. Prévoir l'espace disque correspondant et supprimer les

@@ -203,7 +203,7 @@ fournisseur ; supprimer une clé facultative conserve son état. Ce fonctionneme
 Cliquez sur **Modifier mes plafonds** dans ce bloc si votre rôle le permet. Les autres comptes
 figurent dans un tableau à trois colonnes de plafonds. Une cellule vide indique une utilisation
 illimitée. Les jauges du menu ouvrent cette page.
-[Limites d’utilisation de l’inférence](../dev/inference-budgets.md)
+[Limites d’utilisation de l’inférence](usage.md)
 
 Dans la configuration d’un fournisseur compatible, **Consommation et crédits** affiche les
 limites remontées par le service : fenêtres et crédits supplémentaires ChatGPT, crédits ElevenLabs, consommation de clé
@@ -523,7 +523,7 @@ Une compétence fournit des instructions ; l’accès effectif aux fonctions dé
 des Services et connexions autorisés.
 
 **Configurer → Compétences** (`/skill`) contient **Compétences** (`?tab=skills`),
-**Compétences personnelles** (`?tab=personal`), y compris les packages appris par Dream, et
+**Compétences personnelles** (`?tab=personal`), y compris les packages appris lors des rétrospectives, et
 **Autorisations** (`?tab=authorizations`) avec le privilège `SKILL_ASSIGN`.
 Cette dernière page gère l’affectation des compétences ; elle ne remplace pas les autorisations
 des Services ni les rôles du compte humain.
@@ -991,6 +991,7 @@ Quelques distinctions utiles :
   L’onglet **Équipes** (`/users?tab=teams`) gère les [équipes, leurs membres et leurs chefs](teams.md).
   Dans la fiche d’un compte, la case **Chef d’équipe** figure à côté de chaque équipe sélectionnée.
 
+<a id="missing-action"></a>
 ## Un menu ou un bouton manque
 
 Vérifiez d’abord le rôle actif dans le menu du compte. La carte générée indique les

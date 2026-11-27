@@ -50,7 +50,7 @@ Dans une fiche existante, le changement de chef est enregistré dès la validati
 Pour un nouveau compte, les appartenances et les désignations sont enregistrées lors de sa création.
 
 Dans **Superviser → Consommation**, le chef d’équipe voit les autres membres humains de ses
-équipes. Il peut modifier leurs [limites d’utilisation](../dev/inference-budgets.md) et traiter
+équipes. Il peut modifier leurs [limites d’utilisation](usage.md#review-credit) et traiter
 leurs demandes de crédit. Un compte invité acquiert ces droits dès son activation.
 
 Le manager conserve son accès à ses agents, et l’administrateur peut contacter tous les agents.

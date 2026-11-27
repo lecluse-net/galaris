@@ -7,6 +7,44 @@ Open **Knowledge → Documents** (`/documents`) to create and organize **Text** 
 retain their business library. Classification is personal and does not change other readers' organization.
 A folder can automatically grant additional access to your documents and expose its collection to authorized recipients.
 
+<a id="find-deliverable"></a>
+## Find a document produced by an agent
+
+Looking for a document mentioned in a conversation or Task report?
+
+1. Open the link in the agent’s reply or in the Task result. The document opens with your account’s permissions.
+2. If you only have the title, open **Knowledge → Documents** and search the list. Check the **Owner** filter. A document created by an agent may belong to that agent. Documents without a folder appear in the unclassified list.
+3. If the agent created a private document, ask it to share the document with you for reading, or for writing if you plan to edit it together. Once sharing is confirmed, open the same link again. [Choose sharing rights](rich-content.md#share-document)
+
+To inspect a later edit, open the document’s history. Restoring a previous version creates a new revision. [Saving and history](rich-content.md#document-history)
+
+## Create and find Documents
+
+In the **Documents** library, every folder offers a **New document** icon among its
+actions. Enter the title and owner: the document is automatically placed in that folder,
+which expands, and opens in the editor. The general creation button keeps new documents
+in the unclassified list, outside the tree. The root contains only documents you explicitly
+place there. Use **Create a document at the root** below the tree, or drop a document there
+from the list or a folder. Drop it back into the unclassified list area to remove that
+placement. This personal choice survives reloads and is independent of list filters;
+other documents without a folder remain unclassified.
+
+Library filters use a single **Owner** field to choose a person or agent. It lists **Me**,
+then users and agents, with search and independent pagination for each large list.
+Clearing the field restores all owners while retaining the other filters.
+
+To change a title through an agent, ask it to rename the document. It uses `file_info`,
+then `file_rename` with the metadata version. The library title changes while the
+`document://` URI, body, content history, attachments and sharing remain unchanged.
+Editing a heading in the body or a link label is a separate action. A Goal description is an HTML field on the Goal. Tracking remains a Document created unclassified:
+it appears in the list, outside the tree including its root. Each user can freely classify it.
+No Goal folder is imposed.
+With write access, you can also attach supporting files to this tracking Document or ask
+the agent to archive them there. Its title, owner and Goal association remain Goal-owned;
+adding an attachment does not change the tracking body.
+
+### Document content and access
+
 Documents and their shared summaries are independent of agents' personal memories.
 Sharing a document does not share any memory; deleting a reference in the memory
 graph does not delete the document. Memories about a document remain private to
@@ -479,32 +517,6 @@ A change updates only the affected entries: other rows, expanded branches and lo
 documents stay in place. Switching tabs preserves each tree. Reconnection and access
 changes reconcile data without emptying the tree; changing accounts removes the previous
 account’s data.
-
-## Create and find Documents
-
-To change a title through an agent, ask it to rename the document. It uses `file_info`,
-then `file_rename` with the metadata version. The library title changes while the
-`document://` URI, body, content history, attachments and sharing remain unchanged.
-Editing a heading in the body or a link label is a separate action. Titles of
-Goal descriptions are Goal-owned HTML fields. Tracking remains a Document created unclassified:
-it appears in the list, outside the tree including its root. Each user can freely classify it.
-No Goal folder is imposed.
-With write access, you can also attach supporting files to this tracking Document or ask
-the agent to archive them there. Its title, owner and Goal association remain Goal-owned;
-adding an attachment does not change the tracking body.
-
-In the **Documents** library, every folder offers a **New document** icon among its
-actions. Enter the title and owner: the document is automatically placed in that folder,
-which expands, and opens in the editor. The general creation button keeps new documents
-in the unclassified list, outside the tree. The root contains only documents you explicitly
-place there. Use **Create a document at the root** below the tree, or drop a document there
-from the list or a folder. Drop it back into the unclassified list area to remove that
-placement. This personal choice survives reloads and is independent of list filters;
-other documents without a folder remain unclassified.
-
-Library filters use a single **Owner** field to choose a person or agent. It lists **Me**,
-then users and agents, with search and independent pagination for each large list.
-Clearing the field restores all owners while retaining the other filters.
 
 ## Organize folders and sub-documents
 

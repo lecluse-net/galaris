@@ -20,6 +20,11 @@ The five-hour and weekly reset rules follow the timing documented by
 [Anthropic](https://support.claude.com/en/articles/11647753-how-do-usage-and-length-limits-work).
 Galaris measures dollars using its own prices and call traces.
 
+<a id="request-credit"></a>
+## Request credits
+
+To submit a request, track its decision or review a team member’s request, see [Check usage and request credits](../user/usage.md#request-credit).
+
 ## Configure limits and grant credits
 
 All three budgets are unlimited by default. Every signed-in user can see their usage.

@@ -4,15 +4,14 @@
 
 ## Runtime versions
 
-Codex and Claude Agent builds install the Python SDK versions pinned in their respective
-`requirements.txt` files. The image's `requirements-resolved.txt` records the versions actually
+The Codex build installs the Python SDK version pinned in its `requirements.txt`. The image's `requirements-resolved.txt` records the versions actually
 installed. Each new version is qualified before changing these references.
 Updates occur during explicit builds/rebuilds, never in the middle of a Task.
 Changing the code alone does not update existing containers.
 
 Hermes targets the `v0.23.2` image pinned by digest. DeepSeek Harness targets the
 `dsh-v0.2.2-rc.5` prerelease at commit `9c2670d3bce5275e0d1610272958121af87787bb`.
-Codex uses `openai-codex==0.170.0` and Claude Agent uses `claude-agent-sdk==0.2.185`.
+Codex uses `openai-codex==0.170.0`. [Embedded Claude Agent](claude-agent.md) uses the SDK in the backend image.
 
 <a id="enable-multitasking"></a>
 ## Enable multitasking

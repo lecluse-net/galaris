@@ -111,6 +111,8 @@ globale sur Services à sa création. Le service **Agent** applique sa propre d�
 <a id="built-in-service-scopes"></a>
 ## Services intégrés et portées
 
+Dans les permissions d’une connexion, consultez la portée affichée au-dessus des fonctions. Sa provenance indique si la valeur vient du défaut logiciel, de la politique globale du Service ou de la connexion. Filtrer les fonctions laisse cette information visible. Elle explique, par exemple, pourquoi une fonction autorisée reste limitée aux ressources de l’équipe.
+
 Les connexions système sont créées ou réactivées pour chaque agent. Les fonctions gardent
 leurs propres modes **Actif**, **Bloqué** et **Sur demande**. La portée ci-dessous concerne
 l'accès délégué des agents. Les privilèges de l'interface humaine et les ACL des ressources
@@ -603,7 +605,7 @@ pour le Service sélectionné, avec le périmètre et l’activation en tête.
 Le sélecteur `services.management_scope` reprend les choix du Service et la valeur locale effective ;
 sa modification exige une session humaine, la gestion globale et le droit de modifier les connexions.
 Ouvrir **Examiner la demande** pour vérifier les arguments,
-l’agent, le responsable et l’échéance. **Autoriser cette action** couvre cette seule opération ;
+l’agent et le responsable. Une nouvelle demande d’autorisation d’action reste ouverte jusqu’à sa résolution. **Autoriser cette action** couvre cette seule opération ;
 **Refuser cette action** empêche sa reprise. **Toujours autoriser cette fonction**, lorsqu’il est
 proposé, change explicitement le mode de cette fonction sur cette connexion en Actif, pour ses
 futurs paramètres également. **Toujours interdire** mémorise un refus sur la même portée.

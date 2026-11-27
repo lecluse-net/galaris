@@ -11,7 +11,7 @@ action approvals and resource permissions remain necessary.
 | Tab | Contents |
 |---|---|
 | Skills | Generic catalogue, categories and protected system packages |
-| Personal skills | Private packages, each owned by one agent, manually authored or learned by Dream |
+| Personal skills | Private packages, each owned by one agent, manually authored or learned during retrospectives |
 | Authorizations | Generic assignments, requiring `SKILL_ASSIGN` |
 
 Personal skills are separate from memories and Documents. Generic packages can be assigned
@@ -123,7 +123,7 @@ personal package uses an explicit view and never grants usage. Only a human web 
 Connection editing and global agent management can change this delegation. Activating a
 connection alone grants no global scope.
 
-In conversation and managed Claude Agent tasks, agents use `skills_list` and `skill_read` to
+In conversation and embedded Claude Agent tasks, agents use `skills_list` and `skill_read` to
 discover their authorized skills and read their `SKILL.md`. The modes configured on the Skills
 Service determine when approval is required. Files use `file_*`
 on `galaris://skill/`; personal packages use `galaris://skill/personnal/<agent>/<code>/`

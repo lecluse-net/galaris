@@ -102,6 +102,8 @@ The **Agent** Service applies its own delegation.
 <a id="built-in-service-scopes"></a>
 ## Built-in Services and scopes
 
+In connection permissions, inspect the scope displayed above the functions. Its source shows whether the value comes from the software default, the global Service policy or the connection. The scope stays visible when you filter functions. It explains, for example, why an allowed function can still be limited to team resources.
+
 System connections are created or reactivated for every agent. Functions retain their own
 **Active**, **Blocked** and **On request** modes. The scopes below govern delegated agent access.
 Human interface privileges and resource ACLs apply separately.
@@ -566,7 +568,7 @@ The Service list is on the left; the selected Service's functions and permission
 with scope and activation controls at the top.
 The `services.management_scope` selector uses the Service’s choices and effective local value;
 editing requires a human session, global management and connection editing privileges.
-Open **Review request** to inspect arguments, agent, approver and expiry.
+Open **Review request** to inspect arguments, agent and approver. A new action authorization request stays open until resolved.
 **Allow this action** covers one operation; **Deny this action** prevents its continuation.
 Where offered, **Always allow this function** explicitly changes this connection's function
 mode to Enabled, including future arguments. **Always deny** remembers a refusal with the same scope.

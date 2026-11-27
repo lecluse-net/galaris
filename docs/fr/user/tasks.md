@@ -2,6 +2,21 @@
 
 # Confier et suivre une tâche
 
+Une tâche conserve un travail durable, son état et son résultat. Ce guide explique le choix
+de méthode, les jalons, les plans, les questions et la reprise. Pour créer votre première
+demande, suivre le [guide utilisateur](README.md) ; pour trouver les commandes, consulter
+les [menus et parcours](navigation.md).
+
+Pour retrouver un travail lancé depuis le Chat, ouvrez la tâche depuis la discussion ou dans **Superviser → Activité → Tâches**. Comparez la demande initiale au résultat. Pour un envoi, consultez le reçu de livraison lorsqu’il est disponible. Pour un document, ouvrez le lien et vérifiez le contenu avec votre compte.
+
+| Ce que vous voyez | Action |
+|---|---|
+| L’agent attend une précision | Utilisez **Répondre** sur la [question de la tâche](#reply-to-task). |
+| Une opération attend votre accord | [Examinez l’action](#action-approval) et ses arguments avant de décider. |
+| Un e-mail a déclenché le travail | Dans le [journal des mails](#mail-journal), ouvrez le message reçu puis **Suivre la tâche**. |
+| La tâche est terminée et vous ne trouvez pas le document | Consultez le bilan puis [recherchez le document et vérifiez son partage](documents.md#find-deliverable). |
+| Un jalon reste bloqué ou une tentative a échoué | [Lisez l’état et le bilan de la tâche](#task-status) avant de choisir une reprise. |
+
 Les onglets d’**Activités** sont indépendants : les tâches utilisent `TASK_ACCESS`/`TASK_EDIT`,
 les conversations texte `CONVERSATION_ACCESS`/`CONVERSATION_CONTROL`, la voix
 `VOICE_HISTORY_ACCESS`/`VOICE_HISTORY_CONTROL`, les appels LLM `LLM_CALL_ACCESS`/`LLM_CALL_CONTROL`
@@ -14,11 +29,6 @@ d’**Activité → Appels LLM** et dans le bilan de la tâche.
 
 Un lien vers l'onglet Tâches ou une tâche conserve sa cible pendant la vérification de vos
 droits. Le contenu s'ouvre lorsque l'accès est confirmé ; les onglets non autorisés restent absents.
-
-Une tâche conserve un travail durable, son état et son résultat. Ce guide explique le choix
-de méthode, les jalons, les plans, les questions et la reprise. Pour créer votre première
-demande, suivre le [guide utilisateur](README.md) ; pour trouver les commandes, consulter
-les [menus et parcours](navigation.md).
 
 En conversation texte ou vocale, l'agent peut lancer une tâche lorsque les outils du dialogue
 ne suffisent pas. La tâche peut explorer la méthode et les moyens disponibles : cette incertitude
@@ -293,7 +303,53 @@ Ces aides sont activées par driver. Dans la configuration actuelle :
 
 Hermès conserve ainsi ses capacités propres sans être enfermé dans un second harnais.
 
+<a id="reply-to-task"></a>
 ## Quand Galaris pose une question
+
+Une information essentielle peut manquer : destinataire, fichier, période, autorisation ou
+choix irréversible. L’agent doit alors poser une question courte et attendre au lieu de
+deviner. Une question est un résultat valide du tour en cours ; répondez dans la même
+conversation pour continuer.
+
+Utilisez **Répondre** sur la question ou sa relance, ou indiquez sa référence `#…`.
+Les nouvelles demandes de clarification du Planner sont relancées dans la même conversation
+après environ 4 heures puis 24 heures et expirent au bout de trois jours.
+Lorsqu’une tâche de Process pose une question en cours d’activité, les deux relances sont
+espacées davantage, après environ un jour puis trois jours. Les relances portent la référence
+de la question initiale et cessent dès que la réponse est enregistrée.
+
+Deux attentes doivent être distinguées. Pour choisir l’organisation d’une mission ambiguë,
+l’agent peut poser une nouvelle question si votre réponse laisse une ambiguïté essentielle.
+La même tâche conserve vos précisions précédentes et attend sans démarrer le travail.
+Une ancienne réponse ne résout pas la nouvelle question. Une question impossible à transmettre
+ou expirée sans réponse termine la tâche en erreur, sans travail ni réessai automatique.
+Un réessai explicite repasse par le routage. Pour le cadrage d’un
+plan déjà choisi, le Planner peut demander une unique série de précisions et reprendre à
+l’expiration avec des hypothèses explicites. Aucune expiration ne donne une autorisation
+d’action sensible.
+
+Si une étape signale qu'un document est hors du périmètre autorisé, changer d'outil ou
+réessayer ne donne pas le droit de le modifier. Pour autoriser cette modification, précisez
+l'URI exacte du document dans un amendement de la tâche racine. L'agent reçoit un diagnostic
+distinct d'une erreur d'arguments ; ce refus ne crée pas automatiquement une demande
+d'autorisation ni une mise en attente.
+
+Quand la suite dépend de la réponse d'un collègue, l'agent peut demander une attente immédiate :
+il termine les appels d'outils déjà engagés puis reprend avec la réponse, sans renvoyer la demande.
+Par défaut, il peut continuer son travail indépendant et solliciter d'autres collègues avant
+la fin du tour. Les délégations conservent ce fonctionnement.
+Un effet dont le résultat reste incertain doit d'abord être réconcilié.
+
+<a id="action-approval"></a>
+## Examiner une demande d’autorisation
+
+Dans **Superviser → Permissions**, sélectionnez l’agent et ouvrez sa demande en attente. Vérifiez l’action demandée et la ressource concernée. Pour décider uniquement de cette exécution, autorisez ou refusez l’action. Les options « Toujours » s’appliquent aussi aux demandes futures dans le périmètre indiqué.
+
+Pour créer puis compléter un document, l’agent peut demander un accord de création et
+confier la suite à une tâche de fond sur le même document. Si l’écriture est **Sur demande**,
+un second accord porte sur la modification préparée. Vous pouvez fermer puis rouvrir le Chat
+pendant l’attente. Refuser la création ne crée aucun document ; refuser la modification
+conserve le contenu déjà créé. Un accord ponctuel ne change pas la règle des appels suivants.
 
 Dans les **Autorisations des fonctions MCP**, **Global (tous)** propose **Activé**,
 **Sur demande** ou **Désactivé** sous forme de boutons accolés : coche verte, point
@@ -315,26 +371,8 @@ comportement ; **Autorisation par site** reste disponible.
 Localhost et les réseaux privés restent bloqués par défaut ; les filtres et refus explicites
 restent actifs. Voir [l’administration du Navigateur](../admin/service-administration.md).
 
-Pour créer puis compléter un document, l’agent peut demander un accord de création et
-confier la suite à une tâche de fond sur le même document. Si l’écriture est **Sur demande**,
-un second accord porte sur la modification préparée. Vous pouvez fermer puis rouvrir le Chat
-pendant l’attente. Refuser la création ne crée aucun document ; refuser la modification
-conserve le contenu déjà créé. Un accord ponctuel ne change pas la règle des appels suivants.
-
-Si une connexion Mail exige une validation humaine, son responsable désigné reçoit une demande
-privée dans le Chat pour chaque mail préparé. Vérifiez les destinataires, l’objet, l’aperçu du
-contenu et la liste des pièces jointes, puis autorisez ou refusez l'action.
-Le **Journal des mails** présente le contenu complet et le résultat de l’envoi ; il permet aussi
-de répondre à la même autorisation. La décision prise à un endroit s'applique aux deux.
-L’accord concerne uniquement ce mail et permet à la tâche de reprendre l'appel préparé :
-« accord enregistré » ne signifie pas encore « envoyé ». Sans réponse, le mail reste non envoyé ;
-une autorisation expirée exige une nouvelle demande. Les anciennes validations Mail encore
-en attente restent accessibles dans le journal.
-
-Après acceptation du mail par SMTP, Galaris en conserve une copie dans le dossier « Envoyés »
-configuré ou annoncé par votre serveur. Si cette copie échoue, le reçu le précise sans
-annuler l'envoi réel. Une reprise avec la même clé et le même contenu répare la copie
-sans envoyer un second mail.
+<a id="mail-journal"></a>
+## Suivre un courrier dans le journal des mails
 
 Le **Journal des mails** possède les onglets **Envoi** et **Réception**. Réception conserve
 les en-têtes, l’expéditeur, l’agent destinataire, les dates d’accord, de lecture et d’admission
@@ -381,40 +419,22 @@ curseur pour les nouvelles arrivées.
 La consultation humaine des dossiers IMAP depuis [Fichiers](files.md) reste indépendante :
 elle permet de lire les autres dossiers sans donner d’autorisation à l’agent.
 
-Une information essentielle peut manquer : destinataire, fichier, période, autorisation ou
-choix irréversible. L’agent doit alors poser une question courte et attendre au lieu de
-deviner. Une question est un résultat valide du tour en cours ; répondez dans la même
-conversation pour continuer.
+Si une connexion Mail exige une validation humaine, son responsable désigné reçoit une demande
+privée dans le Chat pour chaque mail préparé. Vérifiez les destinataires, l’objet, l’aperçu du
+contenu et la liste des pièces jointes, puis autorisez ou refusez l'action.
+Le **Journal des mails** présente le contenu complet et le résultat de l’envoi ; il permet aussi
+de répondre à la même autorisation. La décision prise à un endroit s'applique aux deux.
+L’accord concerne uniquement ce mail et permet à la tâche de reprendre l'appel préparé :
+« accord enregistré » ne signifie pas encore « envoyé ». Sans réponse, le mail reste non envoyé ;
+une autorisation expirée exige une nouvelle demande. Les anciennes validations Mail encore
+en attente restent accessibles dans le journal.
 
-Utilisez **Répondre** sur la question ou sa relance, ou indiquez sa référence `#…`.
-Les nouvelles demandes de clarification du Planner sont relancées dans la même conversation
-après environ 4 heures puis 24 heures et expirent au bout de trois jours.
-Lorsqu’une tâche de Process pose une question en cours d’activité, les deux relances sont
-espacées davantage, après environ un jour puis trois jours. Les relances portent la référence
-de la question initiale et cessent dès que la réponse est enregistrée.
+Après acceptation du mail par SMTP, Galaris en conserve une copie dans le dossier « Envoyés »
+configuré ou annoncé par votre serveur. Si cette copie échoue, le reçu le précise sans
+annuler l'envoi réel. Une reprise avec la même clé et le même contenu répare la copie
+sans envoyer un second mail.
 
-Deux attentes doivent être distinguées. Pour choisir l’organisation d’une mission ambiguë,
-l’agent peut poser une nouvelle question si votre réponse laisse une ambiguïté essentielle.
-La même tâche conserve vos précisions précédentes et attend sans démarrer le travail.
-Une ancienne réponse ne résout pas la nouvelle question. Une question impossible à transmettre
-ou expirée sans réponse termine la tâche en erreur, sans travail ni réessai automatique.
-Un réessai explicite repasse par le routage. Pour le cadrage d’un
-plan déjà choisi, le Planner peut demander une unique série de précisions et reprendre à
-l’expiration avec des hypothèses explicites. Aucune expiration ne donne une autorisation
-d’action sensible.
-
-Si une étape signale qu'un document est hors du périmètre autorisé, changer d'outil ou
-réessayer ne donne pas le droit de le modifier. Pour autoriser cette modification, précisez
-l'URI exacte du document dans un amendement de la tâche racine. L'agent reçoit un diagnostic
-distinct d'une erreur d'arguments ; ce refus ne crée pas automatiquement une demande
-d'autorisation ni une mise en attente.
-
-Quand la suite dépend de la réponse d'un collègue, l'agent peut demander une attente immédiate :
-il termine les appels d'outils déjà engagés puis reprend avec la réponse, sans renvoyer la demande.
-Par défaut, il peut continuer son travail indépendant et solliciter d'autres collègues avant
-la fin du tour. Les délégations conservent ce fonctionnement.
-Un effet dont le résultat reste incertain doit d'abord être réconcilié.
-
+<a id="task-status"></a>
 ## Lire l’état d’une tâche
 
 Le texte du Chat continue d'apparaître pendant la génération. La supervision des appels
@@ -426,7 +446,8 @@ automatiquement. La réponse finale et les coûts conservés restent complets.
 | Création / dispatch | la demande est en cours de routage |
 | Exécution | l’agent travaille ou appelle des outils |
 | Plan | Galaris crée ou avance dans les étapes |
-| En pause | la tâche attend une réponse, une étape fille ou une reprise |
+| En attente | la tâche attend une réponse, une autorisation, un collègue ou une étape ; ouvrez le détail pour identifier ce qui la retient |
+| En pause | la tâche a été mise en pause ; utilisez la reprise lorsque vous souhaitez poursuivre |
 | Terminée | l’exécution s’est terminée et aucun blocage obligatoire n’est signalé |
 | Terminée · objectif non atteint | l’exécution s’est terminée et un jalon obligatoire reste bloqué |
 | Erreur | la tentative a échoué ou a été interrompue après les reprises autorisées |

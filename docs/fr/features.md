@@ -83,6 +83,8 @@ Ces documents sont aussi une **base de connaissance** : leur contenu, leurs réf
 pièces jointes peuvent être retrouvés dans les recherches autorisées. Partager avec une personne,
 un agent ou une équipe rend le travail commun accessible sans le recopier partout.
 
+Un agent peut interroger un Service, afficher les lignes dans le Chat et vous laisser insérer le tableau filtré dans un document. Pour présenter les résultats, insérez un graphique à barres, une courbe ou des secteurs. Vous pouvez modifier ses valeurs dans le document ou dans un nœud de carte mentale. [Tableaux et graphiques éditables](user/documents.md)
+
 ## Organiser un projet en carte mentale
 
 Une **carte mentale** est un document à part entière dans **Connaissances → Documents**,
@@ -134,14 +136,11 @@ des actions explicites permettent de relancer une description, une miniature ou 
 Dream utilise les périodes disponibles pour classer et consolider les connaissances. Il peut
 extraire les éléments durables d’un travail terminé, réutiliser les transcriptions et analyses
 déjà acquises dans une conversation, repérer doublons ou contradictions et,
-si on l’active, décrire des pièces jointes encore sans texte. L’apprentissage procédural peut
-également faire émerger des méthodes à partir de plusieurs expériences étayées.
+si on l’active, décrire des pièces jointes encore sans texte. Chaque agent dispose aussi d’un objectif d’auto-apprentissage. À la cadence choisie, il revoit ses tâches, compare leurs résultats et peut enrichir ses compétences personnelles. [Consulter les preuves d’apprentissage](user/skills.md)
 
 L’utilisateur conserve un regard sur cette mémoire : consultation, correction, historique,
 graphe et oubli explicite. Les souvenirs autonomes restent privés à leur agent ; les documents
 portent leurs droits de partage et leur résumé courant, indépendamment de la mémoire.
-L’apprentissage et les analyses facultatives ne sont pas tous activés
-par défaut, et le rappel ne garantit pas de retrouver chaque information à chaque échange.
 
 ## Confier un objectif qui dure
 
@@ -212,6 +211,10 @@ Les Contacts reconnus appartiennent à cet agent ; un accord de traitement ne pe
 Pour une fonction d’outil, un accord permanent peut éviter les demandes suivantes sur cette
 connexion ; les droits des ressources et leurs versions restent vérifiés.
 
+Pour connecter une API REST, enregistrez son adresse et ses paramètres dans un Service. L’agent l’appelle par son code avec le compte autorisé. Depuis la fiche du Service, vous pouvez aussi faire préparer une compétence générique avec des exemples propres à cette API. [Connecter et utiliser un Service](user/services.md)
+
+Le client Windows/Linux permet de partager un serveur MCP installé sur son poste. Lors d’une discussion texte, vous pouvez également choisir une fenêtre et envoyer sa capture à l’agent après vérification de l’aperçu. [Utiliser les outils du poste](user/desktop.md)
+
 ## Travailler avec des contenus multimédias
 
 Un enregistrement de réunion peut devenir un verbatim et une synthèse, puis un compte rendu que
@@ -232,8 +235,7 @@ au travail d’origine. Chaque fournisseur conserve ses capacités et ses limite
 
 Les profils regroupent les ressources de conversation, d’exécution et les usages spécialisés.
 Ils permettent de faire cohabiter plusieurs fournisseurs ou des modèles locaux. Les harnais
-assurent l’exécution : Galaris propose son harnais interne et des intégrations comme Hermès,
-Claude Agent, Codex ou DeepSeek Harness, avec leurs capacités propres.
+sont sélectionnables dans la fiche Agent. Pydantic AI et Claude Agent s’exécutent dans le backend. Hermès, Codex et DeepSeek Harness disposent de runtimes dédiés. Dans le Chat, `@deep` ouvre une session avec le harnais affecté à l’agent. [Utiliser Claude Agent](components/claude-agent.md)
 
 Certaines décisions bornées — orienter une tâche, choisir un sujet, reconnaître une connaissance
 déjà couverte — peuvent utiliser un **modèle décisionnel**, comme JEV via OpenRouter. La rédaction
@@ -273,6 +275,10 @@ d’exploitation relèvent de l’administrateur.
 Les [privilèges par fonction](admin/privileges.md) séparent consultation, contrôle et réglages :
 on peut déléguer Contacts, Fichiers, Permissions, modèles, historiques ou une rubrique de
 Préférences sans ouvrir toute l'administration. Les droits des ressources restent applicables.
+
+Pour accueillir un collègue, envoyez-lui une invitation depuis sa fiche et ajoutez-le à une équipe. Son accueil lui indique les agents qu’il peut contacter. Le chef d’équipe peut suivre les limites d’inférence des membres et accorder un crédit temporaire pour la période concernée. [Équipes](user/teams.md) · [Consommation et crédits](user/usage.md#review-credit)
+
+Pour enrichir le catalogue commun, l’administrateur peut vérifier et activer un plugin signé. Chacun peut ensuite configurer une copie des fiches de Service publiées, selon ses droits. [Installer et gérer les plugins](dev/plugin-bundles.md)
 
 ## Passer à l’usage
 

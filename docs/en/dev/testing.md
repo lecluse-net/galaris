@@ -190,7 +190,7 @@ in an isolated local clone. Test configuration comes from `.env.example`, never 
 `.env`. It does not commit, restart the application, contact messaging accounts or make paid AI calls.
 
 It runs static checks and builds, backend coverage, real component tests, mutations and incident
-evidence, executors and E2E workflows repeated three times per browser. Independent stages continue
+evidence, executors and E2E workflows once per browser. `make validate-stability` runs each journey three times per browser. Independent stages continue
 after failures. Results and logs live in `artifacts/validation/<run>/`; detailed reports and traces
 are under `source/artifacts/`. Source copies and archives remain available for diagnosis; allow
 disk space for them and remove old validation directories when no longer needed.

@@ -11,7 +11,7 @@ Ouvrez **Configurer → Compétences** (`/skill`). Une compétence est un packag
 | Onglet | Contenu |
 |---|---|
 | Compétences | Catalogue générique, catégories et packages système protégés |
-| Compétences personnelles | Packages privés appartenant chacun à un agent, créés manuellement ou appris par Dream |
+| Compétences personnelles | Packages privés appartenant chacun à un agent, créés manuellement ou appris lors des rétrospectives |
 | Autorisations | Affectations génériques, avec `SKILL_ASSIGN` |
 
 Les personnels ne sont ni des souvenirs ni des Documents. Un package générique peut être
@@ -131,7 +131,7 @@ Sa portée locale `services.management_scope` n'a ni valeur globale ni héritage
 avec édition des connexions et gestion globale des agents, peut modifier cette délégation.
 Activer une connexion seule ne donne aucune portée globale.
 
-En conversation et dans les tâches Claude Agent managé, l’agent utilise `skills_list` et
+En conversation et dans les tâches Claude Agent embarqué, l’agent utilise `skills_list` et
 `skill_read` pour découvrir ses compétences autorisées et lire leur `SKILL.md`. Les modes
 configurés sur le Service Skills déterminent les demandes d’accord.
 Les fichiers passent par `file_*` sur `galaris://skill/` ; l'espace personnel est

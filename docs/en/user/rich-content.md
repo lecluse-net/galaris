@@ -361,6 +361,7 @@ Removing an image from the text preserves its attachment. Explicit deletion hide
 from the list but keeps historical versions restorable under current access rights. Forgetting
 the document permanently removes these resources, subject to business protections.
 
+<a id="document-history"></a>
 ## Saving and history
 
 Edit the title in the outlined field in the document header, next to its icon. Long titles wrap
@@ -440,6 +441,7 @@ Its separate arrow opens the **Pause** / **Stop reading** menu without starting 
 **Resume** continues from the paused position. Replacing the content or closing the editor
 also cancels recording or playback. Audio uses the providers configured in Galaris.
 
+<a id="share-document"></a>
 ## Sharing a document
 
 New documents are **Private**. Their optional Memory synthesis inherits current document rights.

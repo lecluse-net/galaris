@@ -947,7 +947,7 @@ un test `if driver == ...` dans la façade.
 `EXEC high` exige la capacité `uses_llm_calls=true` : les appels d’exécution traversent
 le routage de modèles Galaris et son journal `LLMCall`. Un runtime utilisant directement
 sa propre API ou son abonnement conserve l’exécution standard ; sans planner, son routage
-ne nécessite aucun appel LLM. Les providers managés, dont Claude Agent, imposent actuellement
+ne nécessite aucun appel LLM. Les providers managés imposent actuellement
 la passerelle Galaris et conservent les deux niveaux d’effort.
 
 Chaque agent référence un profil LLM personnel ou conserve `profile_id = NULL` pour suivre le
@@ -1460,6 +1460,8 @@ et refacturées à chaque tour d'outil.
 
 ### Façade REST des Services
 
+Le point d’entrée MCP `rest_request` applique les autorisations de fonction et le contexte de conversation avant d’appeler la façade avec le `service_code` exact. La réponse conserve le statut distant, y compris pour une erreur HTTP. [Schéma des arguments et exemples](../admin/service-administration.md#rest-request)
+
 Une capacité `rest_config` facultative utilise les paramètres globaux et les connexions
 existantes. Son contrat public est exporté par `app.services` et `app.services.facade` :
 
@@ -1575,6 +1577,10 @@ utiliser `galaris-dialog-body--layout` pour un corps contenant des panneaux flex
 ou `galaris-dialog-body--contained` lorsque le composant gère lui-même son défilement.
 Ne pas remettre de défilement sur la carte entière. Vérifier les longs contenus sur mobile,
 la fermeture toujours accessible et la soumission après défilement.
+
+Le menu du compte occupe le coin supérieur droit du titre. Placez les actions de page dans le slot `actions` de `PageHeader`, sur la ligne sous le titre, ou près du contenu concerné. Pour une action standard, utilisez le `QBtn` rempli par défaut. Les actions de ligne utilisent des boutons d’icône `flat` avec libellé accessible.
+
+Regroupez les boutons du bas dans un seul `<q-card-actions align="right" class="galaris-dialog-actions">`, après le corps défilant. Placez Annuler avant l’action principale. Vérifiez l’espacement avec la modale **Nouvel événement** dans **Développeurs → Référence graphique**.
 
 Les actions des modales utilisent les dimensions et les formes natives de Quasar : boutons
 avec texte standards, boutons d’icône ronds, fermeture d’en-tête `flat round dense`.

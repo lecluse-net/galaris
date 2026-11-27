@@ -143,6 +143,8 @@ et [le partage des ressources](../dev/sharing.md).
 
 ## Organiser les catégories et mettre à jour les rôles
 
+Dans **Utilisateurs & Droits → Rôles**, choisissez le rôle puis cliquez sur la ligne ou l’interrupteur du privilège. La modification prend effet immédiatement. Lors de la première initialisation de la catégorie **Plugins**, Galaris y regroupe `PLUGIN_ACCESS` et `PLUGIN_EDIT`. Les déplacements ultérieurs effectués par un administrateur sont conservés.
+
 Les catégories initiales sont traduites tant que leur libellé reste celui fourni par le
 logiciel. Un renommage devient du texte libre. Avec `MANAGE_PRIVILEGE`, déplacer un privilège
 ou supprimer une catégorie modifie son classement, sans retirer les droits des rôles.

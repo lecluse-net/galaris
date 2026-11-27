@@ -8,6 +8,12 @@ par le [tour des fonctionnalités](../features.md).
 
 | Votre besoin | Guide |
 |---|---|
+| Activer mon compte et trouver un agent | [Première connexion](#first-login) |
+| Poser une question sur un écran ou un droit | [Demander de l’aide dans la Discussion](#ask-about-galaris) |
+| Essayer Galaris sur mes propres notes | [Lancer une première mission et ouvrir le document obtenu](#first-mission) |
+| Suivre mes plafonds et demander un crédit temporaire | [Consommation et crédits](usage.md#request-credit) |
+| Revoir les résultats d’un agent et ses compétences apprises | [Auto-apprentissage](skills.md) |
+| Montrer une fenêtre à un agent depuis mon poste | [Client desktop](desktop.md) |
 | Ajouter un service depuis le catalogue | [Services](services.md) |
 | Trouver un menu ou un écran | [Navigation et parcours](navigation.md), [carte générée](../architecture/generated/navigation.md) |
 | Confier et suivre un travail | [tâches, jalons et reprise](tasks.md) |
@@ -21,19 +27,6 @@ par le [tour des fonctionnalités](../features.md).
 
 Dans les fenêtres de détail, de formulaire ou de benchmark du Lab, le contenu défile
 en conservant le titre et la fermeture accessibles.
-
-## Connaissance opérationnelle des agents
-
-Avec les droits de configuration des instructions, ouvrez **Administrer → Préférences →
-Instructions** et le champ **Connaissance opérationnelle de Galaris**. Ce prompt commun explique
-les outils, la gestion des Goals natifs, les tâches, processus, documents, données, mémoire,
-fichiers et collaborations. Il est fourni aux tâches, conversations textuelles et sessions
-vocales, y compris realtime. Les instructions spécifiques de chaque exécuteur sont ajoutées
-ensuite. Modifier ce guide n'accorde aucun droit supplémentaire.
-
-Modifiez le texte puis enregistrez. Enregistrer une valeur vide désactive le guide commun ;
-**Réinitialiser** restaure le défaut fourni avec le logiciel. Les jeux de benchmark du Lab
-conservent leur prompt figé et ne changent pas après cette modification.
 
 ## Galaris, simplement
 
@@ -50,23 +43,41 @@ conserve la tâche, supervise son exécution et restitue le résultat. Un modèl
 tromper : l’interface montre donc les étapes, les outils utilisés et les échecs au lieu de
 faire croire que toute réponse est forcément une action réussie.
 
+<a id="first-login"></a>
 ## Première connexion et repères
 
-Ouvrez l’adresse communiquée par votre administrateur, puis connectez-vous avec votre adresse
-électronique et votre mot de passe. Si l’inscription libre est affichée, vous pouvez créer un
-compte ; cela ne vous accorde pas automatiquement l’accès aux agents ou aux outils.
+1. Ouvrez l’invitation la plus récente dans les 24 heures. Sur **Activer votre compte**, choisissez un mot de passe, confirmez-le et sélectionnez **Activer mon compte**.
+
+   ![Formulaire d’activation avec les deux champs pour choisir et confirmer son mot de passe.](screenshots/activate-account.png)
+
+2. Une fois l’activation confirmée, l’écran de connexion s’ouvre. Utilisez l’adresse e-mail invitée et le mot de passe que vous venez de choisir.
+
+   ![Écran de connexion demandant l’adresse e-mail invitée et le mot de passe choisi.](screenshots/sign-in.png)
+
+3. Sur l’accueil, regardez **Vos équipes**, puis ouvrez une fiche dans **Vos interlocuteurs** pour lire la mission de l’agent et voir ses outils externes. Pour lui écrire, ouvrez **Discussion** depuis **Ce que vous pouvez faire**, créez une conversation et sélectionnez l’agent. [Essayer une première mission](#first-mission)
+
+   ![Accueil d’un membre avec son équipe, sa liste d’agents et les boutons pour ouvrir la discussion ou les documents.](screenshots/member-home.png)
+
+   Dans cet exemple, **Alice Example** ouvre la fiche de l’agent. **Open Chat** ouvre la messagerie.
+
+La fiche présente aussi la photo et la personnalité de l’agent. Si votre rôle donne accès aux Documents, la carte **Documents** de l’accueil ouvre la bibliothèque où retrouver les résultats partagés.
+
+| Si vous êtes bloqué | Que faire |
+|---|---|
+| Le lien a expiré ou est invalide | Demandez à la personne qui vous a invité de renvoyer l’invitation depuis votre fiche. Ouvrez le dernier e-mail reçu. |
+| L’activation affiche une erreur temporaire | Gardez la page ouverte et réessayez. Le formulaire conserve votre saisie. |
+| L’accueil indique que vous ne faites partie d’aucune équipe | Demandez à la personne qui gère les équipes de vérifier votre appartenance à celle de l’agent. [Équipes et autorisations de dialogue](teams.md) |
+| L’équipe est visible, mais la discussion est inaccessible | Vérifiez le rôle actif dans le menu du compte. La personne qui administre Galaris peut vérifier l’accès à la Discussion, les droits de création et d’envoi et la disponibilité du canal. [Retrouver un menu ou un bouton](navigation.md#missing-action) |
+
+Si votre compte existe déjà, connectez-vous directement avec votre adresse e-mail et votre mot de passe. Si l’inscription libre est ouverte, vous pouvez créer un compte depuis l’écran de connexion. La personne qui administre Galaris attribue ensuite les rôles et les équipes.
+
+### Configurer une nouvelle instance en tant qu’administrateur
 
 Sur une instance sans compte, la première inscription crée l’administrateur. Ensuite,
 les inscriptions sont fermées par défaut. Le réglage **Préférences → Système → Permettre
 aux utilisateurs de créer leur compte** les ouvre immédiatement ; les nouveaux comptes
 restent sans droits jusqu’à l’attribution d’un rôle. Sa désactivation ferme le formulaire
 et l’API d’inscription, sans empêcher les comptes existants de se connecter.
-
-À la connexion, l’accueil utilisateur présente **Vos équipes**, les agents que vous pouvez
-contacter et les usages ouverts par votre rôle. Ouvrez la fiche d’un agent pour consulter sa
-photo, sa fiche de poste, sa personnalité et ses outils externes connectés. Avec l’accès aux
-Documents, par exemple, une carte explique comment retrouver les résultats partagés et ouvre
-la bibliothèque.
 
 Avec le rôle Administrateur, l’accueil affiche Welcome jusqu’à votre confirmation, même si
 l’instance est déjà préconfigurée. Configurez la langue par défaut, un LLM utilisable et un agent,
@@ -89,6 +100,8 @@ renseignée, un sélecteur permet de la choisir avec les droits de gestion des p
 la langue enregistrée est affichée. Le choix est enregistré automatiquement ; la langue du profil
 reste prioritaire. Dans les autres étapes, le bouton de configuration ouvre l’écran correspondant
 selon vos droits.
+
+### Se repérer dans les écrans
 
 La barre latérale ne montre que les écrans autorisés par votre rôle :
 
@@ -209,7 +222,6 @@ et se met à niveau manuellement. Le serveur et la connexion réseau restent né
 
 ## Installer Galaris sur Android ou iPhone
 
-
 Galaris est une Progressive Web App (PWA) : il peut être ajouté à l’écran d’accueil et lancé
 depuis sa propre icône, comme une application installée depuis un store. Après une première
 connexion depuis cette icône, la session est restaurée automatiquement pendant 30 jours
@@ -225,24 +237,28 @@ application métier hors connexion.
 Le [guide PWA détaillé](pwa.md) décrit l’installation pas à pas, les mises à jour, la sécurité
 de la session et les solutions aux problèmes courants.
 
+<a id="ask-about-galaris"></a>
+## Demander de l’aide sur Galaris dans la Discussion
+
+Ouvrez **Discussion** et choisissez l’assistant **Galaris** s’il figure parmi vos interlocuteurs, ou un agent auquel votre équipe a donné accès à la documentation. Indiquez ce que vous voulez faire et le nom de l’écran où vous vous trouvez. Vous pouvez par exemple demander :
+
+> Je suis dans Documents. Comment donner à une collègue la lecture d’un document privé ? Indique-moi où cliquer et cite la rubrique du guide de la version installée.
+
+Pour cet exemple, la réponse doit vous mener au champ **Partage** de l’éditeur, puis à la recherche du destinataire et à l’icône en forme d’œil pour la lecture. Vous pouvez comparer ces étapes au [guide de partage](rich-content.md#share-document).
+
+Si le menu annoncé est absent, indiquez à l’agent votre rôle actif et les commandes que vous voyez. Le [guide de navigation](navigation.md#missing-action) détaille les conditions de visibilité. Si l’agent dit qu’il ne peut pas consulter les guides, la personne qui le configure peut [vérifier son accès documentaire](../admin/product-knowledge.md#enable-documentation).
+
+<a id="first-mission"></a>
 ## Obtenir un premier document accompagné
 
-Sur la page Welcome (`/welcome`), **Réaliser votre première mission** est proposé après la configuration
-indispensable. Choisissez un agent actif auquel vous avez accès en Discussion, puis une synthèse
-de notes, une présentation de projet ou un plan de travail. Les exemples sont fictifs et modifiables.
-Le parcours vérifie les droits de création et d’envoi en Discussion, de suivi des tâches et de
-lecture des Documents avant de proposer le lancement.
-Vérifiez la demande puis cliquez sur **Lancer la mission** ; l’appel utilise vos modèles et leurs coûts.
-Galaris prépare une conversation et envoie une demande de tâche durable avec une identité stable.
-Un réessai d’envoi réutilise cette identité. Un échec de création de conversation peut nécessiter
-de vérifier Discussion avant de recommencer.
+Pour essayer le travail avec un agent, utilisez quelques notes que vous aimeriez retrouver sous forme de document. Sur la page de bienvenue (`/welcome`), la rubrique **Réaliser votre première mission** apparaît après la configuration initiale. Il vous faut un agent actif accessible en Discussion, les droits de créer une discussion et d’y envoyer des messages, ainsi que l’accès au suivi des tâches et à la lecture des documents.
 
-Le suivi reste disponible après un retour sur cette page dans le même onglet navigateur. Les
-questions, autorisations, pauses et erreurs se traitent dans la discussion ou le suivi habituel.
-Le parcours distingue une exécution terminée d’un document associé disponible. Ouvrez le document
-pour vérifier son contenu ; un succès technique ne vaut pas validation humaine. Si le document
-manque, vérifiez les outils, les accès et le résultat dans la discussion, puis actualisez le suivi.
-Ce parcours ne donne aucun droit supplémentaire et n’active aucun outil bloqué.
+1. Choisissez l’agent puis **Synthétiser des notes**. Remplacez les notes fictives par les vôtres. Vous pouvez aussi choisir **Préparer un document** ou **Organiser un projet**.
+2. Relisez la demande et cliquez sur **Lancer la mission**. Galaris ouvre une discussion et confie le travail à l’agent. La mission utilise les modèles configurés et peut entraîner un coût.
+3. Si l’agent attend une précision ou une autorisation, cliquez sur **Ouvrir la discussion**. Revenez sur la page de bienvenue dans le même onglet et choisissez **Actualiser le suivi**.
+4. Quand le lien du document apparaît, ouvrez-le et vérifiez la synthèse. Si la tâche est terminée et que le lien manque, consultez le résultat dans la discussion, vérifiez que l’agent a pu enregistrer le document et que vous pouvez le lire, puis actualisez le suivi.
+
+Après un échec de création de la discussion, vérifiez d’abord si elle apparaît déjà dans **Discussion**. Si seul l’envoi reste à confirmer, **Réessayer** reprend le même message pour éviter de lancer deux missions.
 
 ## Créer sa première tâche dans l’interface
 
@@ -584,6 +600,8 @@ et **Suivant** retrouvent les conversations visitées ; un retour avant la premi
 retrouve l’accueil du Chat. Sélectionner à nouveau la conversation courante n’ajoute pas de
 visite. Le document ouvert est sauvegardé avant le changement ; si la sauvegarde échoue,
 la conversation et le brouillon restent affichés.
+
+Si la réponse HTTP se perd après l’envoi, le Chat recherche le message dans l’historique récent ou le reconnaît à la réception de son événement en direct. Un message retrouvé confirme l’envoi. Le brouillon suivant est conservé.
 
 Le texte et les pièces jointes sélectionnées restent dans la saisie tant que l’envoi n’est
 pas confirmé. Après une erreur, vous pouvez réessayer sans les ressaisir ; un réessai
@@ -1312,6 +1330,19 @@ Le [guide complet du Lab IA](lab-ai.md) explique comment importer un cas réel, 
 référence, lancer un modèle candidat, lire la pertinence et étalonner le juge automatique. Un
 pourcentage du Lab n’est jamais une preuve suffisante à lui seul : il doit être interprété avec les
 dimensions, la couverture, les erreurs et le dataset.
+
+## Connaissance opérationnelle des agents
+
+Avec les droits de configuration des instructions, ouvrez **Administrer → Préférences →
+Instructions** et le champ **Connaissance opérationnelle de Galaris**. Ce prompt commun explique
+les outils, la gestion des Goals natifs, les tâches, processus, documents, données, mémoire,
+fichiers et collaborations. Il est fourni aux tâches, conversations textuelles et sessions
+vocales, y compris realtime. Les instructions spécifiques de chaque exécuteur sont ajoutées
+ensuite. Modifier ce guide n'accorde aucun droit supplémentaire.
+
+Modifiez le texte puis enregistrez. Enregistrer une valeur vide désactive le guide commun ;
+**Réinitialiser** restaure le défaut fourni avec le logiciel. Les jeux de benchmark du Lab
+conservent leur prompt figé et ne changent pas après cette modification.
 
 ## Connecter un client Codex ou Claude Code externe
 

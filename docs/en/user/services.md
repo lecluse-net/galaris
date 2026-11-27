@@ -7,6 +7,18 @@ facility. Its protocols provide files, messaging or API access. A **Connection**
 an agent to that service with its settings and credentials. MCP tools remain individual
 operations that an agent can call.
 
+<a id="connect-service"></a>
+## Connect an agent to a catalogue Service
+
+1. In **Configure → Services & connections**, open **Services** and select **New service**. Find the provider and choose **Configure a copy**.
+2. In the editor, check the name, the address for your installation and the protocols you need. Save the Service.
+3. In **Connections**, create or open the connection between the intended agent and this Service. Enter the account settings. When testing, select this connection to check that agent’s credentials.
+4. In **Authorizations**, check the function the agent needs. To call it directly from Chat with a custom Service, also enable it in **Conversation tools** on the Service card.
+
+For example, a team can configure one GitLab Service for its instance. Each agent then uses its own connection. To check the result, ask the agent to list its projects and compare the response with the projects its account can access.
+
+## Browse and refresh presets
+
 Open **Services & connections → Services** to see cards with the icon, a description excerpt,
 capabilities and the number of existing connections, including inactive connections.
 Card actions provide export, parameters, editing and deletion according to your privileges.
@@ -16,6 +28,32 @@ Click the name or description to open the full description.
 
 The same icon accompanies the service in connection lists, filters and selectors,
 including when creating a connection or setting permissions.
+
+The initial catalog includes Qonto, Nextcloud, GitLab, Matrix, n8n, Redmine and Telegram.
+Each preset explains the capabilities it provides. REST access does not promise every
+product feature; provider permissions and limitations still apply. For self-hosted APIs,
+the standard `url` parameter holds the full API root. For Nextcloud and Matrix, complete
+the protocol addresses before saving.
+
+**Refresh from GitHub** retrieves available presets from `main` in the official repository.
+The bundled catalog works offline. A failed refresh leaves the last usable catalog
+available. Presets requiring a newer application or an unavailable protocol cannot be
+used to create services.
+
+Catalog refreshes never replace installed services. A different preset version is
+indicated; **Configure a copy** lets you compare it under another name. Settings, secrets
+and permissions on the first copy remain intact.
+
+In the **New service** dialog, **Create a custom service** opens an empty configuration. Add an SVG, PNG or GIF icon
+in its form; YAML export includes the image without a separate file or remote link.
+Share that single YAML file and import it on another installation. Connection secrets
+are not exported. Icons are limited to 128 KiB; PNG/GIF to 1024 pixels per side and 100
+animation frames. Active SVG content and external resources are rejected.
+
+To contribute a preset, read the [catalog contract](../dev/service-catalog.md).
+To delegate configuration, read [service administration](../admin/service-administration.md).
+
+## Choose functions and their scope
 
 Every agent has **Contact** and **Tasks** connections. In **Authorizations**, select the Service
 that owns the tool you want to configure. **Multimedia** includes audio, image and video tools.
@@ -44,15 +82,14 @@ In **Authorizations**, `task_get` controls access to Task status and `task_cance
 controls cancellation, both in conversation and during Task execution.
 `task_run` covers submission in Chat and delegation to a colleague during execution.
 
-Click **New service** to open the catalog dialog, find a provider and choose
-**Configure a copy**. The standard editor opens: review the name, enter your instance
-addresses, select the useful protocols and save. Then create agent connections and set
-their permissions. Adding a preset neither grants access nor activates agent connections.
+## Authenticate an MCP connection
 
 For an HTTP or SSE MCP Service, choose the authentication type in its Service settings.
 Selecting **OAuth 2.0** adds **Connect account** to the agent’s connection.
 If you later change methods, the confirmation explains which credentials will be cleared.
 Follow the [OAuth authorization steps](../admin/service-administration.md#mcp-oauth).
+
+## Use a REST API from an agent
 
 When you add the REST protocol, the editor selects **No authentication**. If the API requires
 credentials, link them to declared connection parameters.
@@ -93,26 +130,12 @@ If the API expects the PDF itself as the body of a PUT, use
 This tool returns JSON or text. For repeated fields, limits and Axios equivalents, see
 the [`rest_request` reference](../admin/service-administration.md#rest-request).
 
-The initial catalog includes Qonto, Nextcloud, GitLab, Matrix, n8n, Redmine and Telegram.
-Each preset explains the capabilities it provides. REST access does not promise every
-product feature; provider permissions and limitations still apply. For self-hosted APIs,
-the standard `url` parameter holds the full API root. For Nextcloud and Matrix, complete
-the protocol addresses before saving.
+<a id="service-access"></a>
+## When an agent cannot use a tool
 
-**Refresh from GitHub** retrieves available presets from `main` in the official repository.
-The bundled catalog works offline. A failed refresh leaves the last usable catalog
-available. Presets requiring a newer application or an unavailable protocol cannot be
-used to create services.
-
-Catalog refreshes never replace installed services. A different preset version is
-indicated; **Configure a copy** lets you compare it under another name. Settings, secrets
-and permissions on the first copy remain intact.
-
-In the same dialog, **Create a custom service** opens an empty configuration. Add an SVG, PNG or GIF icon
-in its form; YAML export includes the image without a separate file or remote link.
-Share that single YAML file and import it on another installation. Connection secrets
-are not exported. Icons are limited to 128 KiB; PNG/GIF to 1024 pixels per side and 100
-animation frames. Active SVG content and external resources are rejected.
-
-To contribute a preset, read the [catalog contract](../dev/service-catalog.md).
-To delegate configuration, read [service administration](../admin/service-administration.md).
+| Symptom | Where to check |
+|---|---|
+| The preset exists but the agent cannot find the Service | Under **Connections**, select the agent and check that its connection is active. |
+| The tool works in a Task but is missing in Chat | Check **Conversation tools** on the Service card, then check the effective authorization on the connection. |
+| The request reaches the API but access is denied | Verify the selected account and its access to the resource at the provider. |
+| The agent is waiting for your approval | [Review the authorization request](tasks.md#action-approval) and check its target before answering. |

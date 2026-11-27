@@ -2,9 +2,7 @@
 
 # Chat and agent execution reliability
 
-Run `make quality` for the local quality gate, including `make tests-e2e`.
-The `Quality` workflow also runs the browser journeys and retains diagnostics
-for seven days. Automatic browser retries are disabled.
+The automatic `Quality` workflow runs the quick checks. To exercise browser journeys in CI, dispatch the workflow with `full` enabled. Locally, `make tests-e2e` runs those journeys and `make quality` runs the complete quality suite.
 
 ## Isolated browser stack
 
@@ -44,7 +42,7 @@ They also verify session restoration behind a proxy with a non-default port.
 WebSocket unit tests protect pending connections against concurrent consumers
 and cover disconnection, reconnection and session changes. Service workers are
 disabled in these journeys; PWA update behavior needs separate coverage.
-CI repeats every journey three times in the same isolated stack. Chromium, Firefox
+Full CI runs each journey once per browser. Chromium, Firefox
 and WebKit each have their own CI runner and `chat-e2e-<browser>` artifact, giving
 each stack its own CPU and memory budget. All three qualifications are required;
 one failure does not cancel the other browsers' diagnostics. Live/durable
