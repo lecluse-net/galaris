@@ -85,9 +85,7 @@ async def test_planner_materializes_standalone_conversation_task(
     from app.services.catalog import catalog_entry_from_definition, catalog_from_entries
     from app.task import task_service
     from core.database import get_db
-    from core.params import runtime_settings
 
-    monkeypatch.setattr(runtime_settings, "HARNESS_CLAUDE_EMBEDDED_ENABLED", True)
     title = Title(label="Synthetic planner", gender="X")
     provider = LLMProvider(name="Synthetic planner", base_url="https://example.test")
     db.add_all([title, provider])

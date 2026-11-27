@@ -51,7 +51,6 @@ async def test_claude_deep_parks_and_resumes_only_the_approved_submission(attach
     approved = decision in {"approved", "approved-tool-budget"}
     initial_limit = 4 if tool_budget else 1 if exhausted else 3
     current_limit = 6 if tool_budget else 4 if legacy else 2
-    monkeypatch.setattr(runtime_settings, "HARNESS_CLAUDE_EMBEDDED_ENABLED", True)
     monkeypatch.setattr(runtime_settings, "TASK_AGENT_MAX_REQUESTS", initial_limit)
     if tool_budget:
         monkeypatch.setattr(runtime_settings, "TASK_AGENT_MAX_TOOL_CALLS", 1)
@@ -209,7 +208,6 @@ async def test_embedded_claude_deep_continues_history_and_fences_each_submission
     assert agent is not None
     workspace = tmp_path / "claude"
     workspace.mkdir()
-    monkeypatch.setattr(runtime_settings, "HARNESS_CLAUDE_EMBEDDED_ENABLED", True)
     monkeypatch.setattr(claude_driver, "CLAUDE_WORKSPACE_ROOT", workspace)
     mode["concurrent"] = True
     mode["gate"] = asyncio.Event()

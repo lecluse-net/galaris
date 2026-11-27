@@ -19,14 +19,13 @@ from app.harnesses.schemas import (
     HarnessSelectionUpdate,
 )
 from app.task import Task, TaskStatus
-from core.params import Params, params_service, runtime_settings
+from core.params import Params, params_service
 from core.user.models import User
 from sqlalchemy import select
 
 
 @pytest.mark.asyncio
 async def test_retired_claude_is_absent_from_catalogue_and_existing_agent_can_switch(db, monkeypatch):
-    monkeypatch.setattr(runtime_settings, "HARNESS_CLAUDE_EMBEDDED_ENABLED", True)
     assert await params_service.set(Params.HARNESS_CLAUDE_AGENT_ENABLED, "true")
     retired = get_provider("claude_agent")
     cleanup_runtime = AsyncMock()
@@ -58,7 +57,7 @@ async def test_retired_claude_is_absent_from_catalogue_and_existing_agent_can_sw
 
 
 @pytest.mark.asyncio
-async def test_embedded_selection_survives_reconciliation_and_external_cleanup(db, monkeypatch):
+async def test_embedded_selection_survives_reconciliation_and_external_cleanup(db):
     owner = User(email=f"harness-owner-{uuid4()}@example.test", hashed_password="unused")
     db.add(owner)
     await db.flush()
@@ -74,9 +73,6 @@ async def test_embedded_selection_survives_reconciliation_and_external_cleanup(d
     await db.commit()
 
     assert (await service.get_for_agent(agent.id)).driver_code == "internal"
-    with pytest.raises(service.HarnessConflictError, match="disabled"):
-        await service.select_internal(agent.id, "claude_embedded")
-    monkeypatch.setattr(runtime_settings, "HARNESS_CLAUDE_EMBEDDED_ENABLED", True)
     selection, cleanup = await service.select_internal(agent.id, "claude_embedded")
     assert selection.internal and selection.lifecycle_status == "ready" and cleanup is None
     await _backfill_selected_harnesses(db)
@@ -104,9 +100,6 @@ async def test_embedded_selection_survives_reconciliation_and_external_cleanup(d
     assert await db.scalar(select(AgentHarness.id).where(AgentHarness.agent_id == agent.id)) is None
     assert (await service.get_for_agent(agent.id)).driver_code == "claude_embedded"
 
-    monkeypatch.setattr(runtime_settings, "HARNESS_CLAUDE_EMBEDDED_ENABLED", False)
-    unavailable = await service.get_for_agent(agent.id)
-    assert unavailable.driver_code == "claude_embedded" and unavailable.lifecycle_status == "error"
     selection, cleanup = await service.select_internal(agent.id)
     assert selection.driver_code == "internal" and cleanup is None
 

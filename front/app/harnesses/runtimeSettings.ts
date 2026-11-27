@@ -42,21 +42,6 @@ export const executionLimitFields: SettingField[] = [
   },
 ]
 
-export const claudeEmbeddedFields: SettingField[] = [
-  {
-    name: 'harness.claude-embedded.enabled',
-    labelKey: 'harnesses.claudeEmbedded.enabled',
-    descriptionKey: 'harnesses.claudeEmbedded.enabledHint',
-    input: 'boolean',
-  },
-  {
-    name: 'harness.claude-embedded.conversations.enabled',
-    labelKey: 'harnesses.claudeEmbedded.conversations',
-    descriptionKey: 'harnesses.claudeEmbedded.conversationsHint',
-    input: 'boolean',
-  },
-]
-
 export const inputFields: SettingField[] = [{
   name: 'PYDANTIC_AI_BINARY_INPUT_MAX_BYTES',
   labelKey: 'harnesses.inputFiles.maxBytes',

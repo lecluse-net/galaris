@@ -57,7 +57,6 @@ async def test_agent_openai_completion_keeps_the_selected_harness_and_exact_line
 
     db, model, requests, mode = runtime
     monkeypatch.setattr(middleware, "AsyncSessionLocal", committed_database)
-    monkeypatch.setattr(runtime_settings, "HARNESS_CLAUDE_EMBEDDED_ENABLED", True)
     monkeypatch.setattr(claude_driver, "CLAUDE_WORKSPACE_ROOT", tmp_path)
     receipts = []
     answer = "Synthetic completion confirmed."
@@ -187,7 +186,6 @@ async def test_claude_retry_cannot_exceed_the_physical_request_budget(
 ):
     db, model, requests, mode = runtime
     monkeypatch.setattr(middleware, "AsyncSessionLocal", committed_database)
-    monkeypatch.setattr(runtime_settings, "HARNESS_CLAUDE_EMBEDDED_ENABLED", True)
     monkeypatch.setattr(runtime_settings, "TASK_AGENT_MAX_REQUESTS", limit)
     monkeypatch.setattr(claude_driver, "CLAUDE_WORKSPACE_ROOT", tmp_path)
     mode.update(concurrent=True, first_error=first_error)
@@ -315,7 +313,6 @@ async def test_embedded_reconciles_a_lost_console_receipt_before_another_model_c
 
     db, model, requests, mode = runtime
     monkeypatch.setattr(middleware, "AsyncSessionLocal", committed_database)
-    monkeypatch.setattr(runtime_settings, "HARNESS_CLAUDE_EMBEDDED_ENABLED", True)
     workspace = tmp_path / "claude"
     workspace.mkdir()
     monkeypatch.setattr(claude_driver, "CLAUDE_WORKSPACE_ROOT", workspace)
@@ -540,7 +537,6 @@ async def test_embedded_task_recovers_worker_loss_without_a_tool_effect(
 
     db, model, requests, mode = runtime
     monkeypatch.setattr(middleware, "AsyncSessionLocal", committed_database)
-    monkeypatch.setattr(runtime_settings, "HARNESS_CLAUDE_EMBEDDED_ENABLED", True)
     monkeypatch.setattr(runtime_settings, "TASK_AGENT_MAX_REQUESTS", 2)
     monkeypatch.setattr(claude_driver, "CLAUDE_WORKSPACE_ROOT", tmp_path)
     monkeypatch.setattr(scheduler, "wake", lambda *_args, **_kwargs: None)
@@ -663,7 +659,6 @@ async def test_embedded_preserves_provider_lineage_when_the_task_attempt_is_repl
 
     db, model, requests, mode = runtime
     monkeypatch.setattr(middleware, "AsyncSessionLocal", committed_database)
-    monkeypatch.setattr(runtime_settings, "HARNESS_CLAUDE_EMBEDDED_ENABLED", True)
     monkeypatch.setattr(claude_driver, "CLAUDE_WORKSPACE_ROOT", tmp_path)
     receipts, closed = [], set()
     mode.update(concurrent=True, chat_response_ids=receipts, closed_streams=closed)
@@ -777,7 +772,6 @@ async def test_embedded_resumes_a_durable_document_creation_without_creating_it_
 
     db, model, requests, mode = runtime
     monkeypatch.setattr(middleware, "AsyncSessionLocal", committed_database)
-    monkeypatch.setattr(runtime_settings, "HARNESS_CLAUDE_EMBEDDED_ENABLED", True)
     monkeypatch.setattr(claude_driver, "CLAUDE_WORKSPACE_ROOT", tmp_path)
     approved = scenario == "approved-budget"
     capped = scenario in {"tool-budget", "approved-budget"}
@@ -949,7 +943,6 @@ async def test_embedded_claude_attributes_concurrent_rounds_and_their_task_to_ex
 ):
     db, model, requests, mode = runtime
     monkeypatch.setattr(middleware, "AsyncSessionLocal", committed_database)
-    monkeypatch.setattr(runtime_settings, "HARNESS_CLAUDE_EMBEDDED_ENABLED", True)
     monkeypatch.setattr(claude_driver, "CLAUDE_WORKSPACE_ROOT", tmp_path)
     mode["concurrent"] = True
     mode["gate"] = asyncio.Event()
@@ -1436,7 +1429,6 @@ async def test_planned_claude_task_executes_its_child_through_the_scheduler(
     monkeypatch.setattr(proxy_service, "httpx", SimpleNamespace(**vars(provider_http)))
     monkeypatch.setattr(provider_http, "AsyncClient", AsyncClient)
     monkeypatch.setattr(middleware, "AsyncSessionLocal", committed_database)
-    monkeypatch.setattr(runtime_settings, "HARNESS_CLAUDE_EMBEDDED_ENABLED", True)
     monkeypatch.setattr(claude_driver, "CLAUDE_WORKSPACE_ROOT", tmp_path)
 
     async def no_embedding_model():
@@ -1648,7 +1640,6 @@ async def test_embedded_peer_request_drains_the_batch_and_parent_resumes_once(
 
     db, model, requests, mode = runtime
     monkeypatch.setattr(middleware, "AsyncSessionLocal", committed_database)
-    monkeypatch.setattr(runtime_settings, "HARNESS_CLAUDE_EMBEDDED_ENABLED", True)
     monkeypatch.setattr(claude_driver, "CLAUDE_WORKSPACE_ROOT", tmp_path)
     monkeypatch.setattr(runner, "go_next", lambda *_args, **_kwargs: None)
     provider_receipts = []

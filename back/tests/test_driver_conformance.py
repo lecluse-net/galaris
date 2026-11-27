@@ -15,7 +15,6 @@ from app.agent import AIMessage, AgentEvent, ExecutionResult, ResolvedExecutionT
 from app.agent.driver_testkit import exercise_driver_stream
 from app.agent.registry import all_driver_specs, create_driver
 from app.agent.tests.test_driver_testkit import _request
-from core.params import runtime_settings
 
 
 _DRIVER_CODES = ("internal", "claude_embedded", "hermes", "openai_messages")
@@ -25,7 +24,6 @@ _DRIVER_CODES = ("internal", "claude_embedded", "hermes", "openai_messages")
 @pytest.mark.parametrize("code", _DRIVER_CODES)
 @pytest.mark.parametrize("failure", [False, True])
 async def test_registered_adapter_preserves_stream_identity_and_closes(monkeypatch, code, failure):
-    monkeypatch.setattr(runtime_settings, "HARNESS_CLAUDE_EMBEDDED_ENABLED", True)
     driver = create_driver(code)
     initial = _request()
     request = replace(

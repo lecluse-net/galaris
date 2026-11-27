@@ -188,12 +188,6 @@ export default {
       setup: managerSetupI18n.fr,
       release: releaseFr,
       preferences: preferencesFr,
-      claudeEmbedded: {
-        enabled: 'Activer Claude Agent',
-        enabledHint: 'Rend Claude Agent sélectionnable dans la fiche de chaque agent.',
-        conversations: 'Utiliser Claude Agent en conversation',
-        conversationsHint: 'Lorsque le harnais embarqué est activé, il prend en charge les nouveaux tours de Chat et de voix des agents qui utilisent Claude Agent, Codex ou DSH.',
-      },
       inputFiles: {
         title: 'Fichiers du harnais interne',
         maxBytes: 'Taille maximale des fichiers binaires envoyés au modèle (Mo)',
@@ -326,12 +320,6 @@ export default {
       setup: managerSetupI18n.en,
       release: releaseEn,
       preferences: preferencesEn,
-      claudeEmbedded: {
-        enabled: 'Enable Claude Agent',
-        enabledHint: 'Makes Claude Agent selectable in each agent record.',
-        conversations: 'Use Claude Agent for conversations',
-        conversationsHint: 'When the embedded harness is enabled, it handles new Chat and voice turns for agents using Claude Agent, Codex or DSH.',
-      },
       inputFiles: {
         title: 'Internal harness files',
         maxBytes: 'Maximum binary file size sent to the model (MB)',
@@ -447,12 +435,6 @@ export default {
       setup: managerSetupI18n.zh,
       release: releaseEn,
       preferences: preferencesZh,
-      claudeEmbedded: {
-        enabled: '启用 Claude Agent',
-        enabledHint: '启用后，可以在每个智能体的设置中选择 Claude Agent。',
-        conversations: '在对话中使用 Claude Agent',
-        conversationsHint: '启用内嵌运行框架后，使用 Claude Agent、Codex 或 DSH 的智能体的新聊天和语音轮次将由其处理。',
-      },
       inputFiles: {
         title: '内置运行框架文件',
         maxBytes: '发送给模型的二进制文件大小上限（MB）',

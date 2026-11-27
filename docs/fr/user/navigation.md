@@ -268,9 +268,9 @@ Les onglets de cette fiche ne sont pas les onglets de la page : ils regroupent n
 le général, les modèles et le MCP selon les droits. Le choix du moteur des tâches appartient
 à la fiche de l’agent. Elle s’affiche dès l’ouverture ; les sélecteurs se chargent ensuite.
 Dans **Général**, le choix du harnais suit les champs d’identité.
-À la création, **Pydantic AI** est présélectionné. **Claude Agent**
-est proposé après activation dans **Administrer → Préférences → Harnais → Harnais interne**.
-Ces deux choix utilisent le backend Galaris.
+À la création, **Pydantic AI** est présélectionné. **Claude Agent** est toujours disponible.
+Ces deux choix utilisent le backend Galaris. Une affectation à Claude Agent couvre Chat,
+la voix, les tâches et `@deep`.
 Sur une fiche existante, attendez la fin des tâches ouvertes pour changer de harnais.
 Pour créer ou remplacer le portrait, cliquez sur **Générer un avatar**, saisissez les
 consignes souhaitées dans la modale (apparence, style, cadrage), puis validez la génération.

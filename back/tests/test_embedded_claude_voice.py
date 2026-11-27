@@ -40,12 +40,11 @@ from tests.test_inference_lifecycle import runtime  # noqa: F401 - shared provid
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("assignment", ["claude_embedded", "codex", "deepseek_harness"])
-async def test_native_provider_cannot_take_over_a_claude_voice_call(
+async def test_native_voice_configuration_depends_on_the_agent_assignment(
     runtime, committed_database, monkeypatch, assignment,
 ):
     db, model, _, _ = runtime
     monkeypatch.setattr(middleware, "AsyncSessionLocal", committed_database)
-    monkeypatch.setattr(runtime_settings, "HARNESS_CLAUDE_EMBEDDED_ENABLED", True)
     managed = assignment != "claude_embedded"
     model.provider.catalog_code = "openai-api"
     model.provider.api_key = get_encryption_service().encrypt("synthetic-openai-key")
@@ -72,27 +71,33 @@ async def test_native_provider_cannot_take_over_a_claude_voice_call(
     monkeypatch.setattr(OpenAIRealtime, "create_realtime_session", native_session)
     monkeypatch.setattr(transcription_service, "transcription_available_for_agent", AsyncMock(return_value=False))
 
-    assert not await agent_voice_call_available(agent.id)
-    with pytest.raises(RuntimeError, match="require a configured transcription model"):
-        await RealtimeAgentVoiceEngine.create(
+    async def create_engine():
+        return await RealtimeAgentVoiceEngine.create(
             transport=_Transport(), handle=object(), agent_id=agent.id, session_id=uuid4(),
             room_id="synthetic-room", connection_id=None, language="fr",
             stop_requested=asyncio.Event(),
         )
+
+    if managed:
+        assert await agent_voice_call_available(agent.id)
+        assert isinstance(await create_engine(), RealtimeAgentVoiceEngine)
+    else:
+        assert not await agent_voice_call_available(agent.id)
+        with pytest.raises(RuntimeError, match="require a configured transcription model"):
+            await create_engine()
     native_session.assert_not_awaited()
 
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("assignment", [
     "internal", "claude_embedded", "codex", "deepseek_harness", "interrupted", "interrupted_effect", "native_openai",
-    "native_openai_codex", "native_openai_deepseek_harness", "native_openai_reconnect",
+    "native_openai_reconnect",
 ])
 async def test_cascaded_voice_uses_the_selected_harness_and_exact_round(
     runtime, committed_database, monkeypatch, tmp_path, assignment,
 ):
     db, model, requests, mode = runtime
     monkeypatch.setattr(middleware, "AsyncSessionLocal", committed_database)
-    monkeypatch.setattr(runtime_settings, "HARNESS_CLAUDE_EMBEDDED_ENABLED", True)
     monkeypatch.setattr(claude_driver, "CLAUDE_WORKSPACE_ROOT", tmp_path)
     mode["concurrent"] = True
     mode["gate"] = asyncio.Event()
@@ -122,16 +127,16 @@ async def test_cascaded_voice_uses_the_selected_harness_and_exact_round(
     if interrupted_effect:
         assert await profile_service.set_current_profile_id(profile.id)
         monkeypatch.setattr(runtime_settings, "TASK_AGENT_MAX_TOOL_CALLS", 1)
-    harness = assignment.removeprefix("native_openai_")
-    managed = harness in {"codex", "deepseek_harness"}
+    managed = assignment in {"codex", "deepseek_harness"}
     persisted_driver = "openai_messages" if managed else "internal" if assignment == "internal" else "claude_embedded"
+    conversation_driver = "internal" if managed else persisted_driver
     agent = Agent(user_id=user.id, title_id=await db.scalar(select(Title.id).limit(1)),
                   code=f"synthetic-voice-{uuid4().hex}", first_name="Synthetic", last_name="Voice",
                   profile_id=profile.id, agent_driver=persisted_driver, voice=voice_selection)
     db.add(agent)
     await db.flush()
     if managed:
-        db.add(AgentHarness(agent_id=agent.id, provider_code=harness, lifecycle_status="ready",
+        db.add(AgentHarness(agent_id=agent.id, provider_code=assignment, lifecycle_status="ready",
             runtime_base_url="https://unused-managed-runtime.invalid", runtime_model="synthetic",
             runtime_token_encrypted=get_encryption_service().encrypt("synthetic-credential")))
     services = {row.code: row for row in await db.scalars(select(ServiceModel).where(
@@ -162,7 +167,7 @@ async def test_cascaded_voice_uses_the_selected_harness_and_exact_round(
     predicate = "preferred_report_format"
 
     def choose_tools(body):
-        if assignment == "internal" or any(item["role"] == "tool" for item in body["messages"]):
+        if conversation_driver == "internal" or any(item["role"] == "tool" for item in body["messages"]):
             return []
         if interrupted_effect and successor not in json.dumps(body["messages"]):
             return [("synthetic-voice-memory", "mcp__galaris__memory_remember",
@@ -343,7 +348,7 @@ async def test_cascaded_voice_uses_the_selected_harness_and_exact_round(
         rounds = list(await db.scalars(select(ConversationRound).where(ConversationRound.voice_session_id == session.id)
                                       .order_by(ConversationRound.sequence).execution_options(populate_existing=True)))
         final = rounds[-1]
-        assert final.driver_code == ("internal" if assignment == "internal" else "claude_embedded")
+        assert final.driver_code == conversation_driver
         assert final.status == "COMPLETED" and final.lease_token is None, final.last_error
         assert final.execution_result["result"] == "Bonjour !"
         assert len(spoken) == (2 if native_openai else 1) and "Bonjour" in spoken[-1]
@@ -355,10 +360,10 @@ async def test_cascaded_voice_uses_the_selected_harness_and_exact_round(
         calls = list(await db.scalars(select(LLMCall).where(LLMCall.agent_id == agent.id).order_by(LLMCall.started_at)))
         assert len(calls) == len(requests)
         if not interrupted_effect:
-            assert len(calls) == (1 if assignment == "internal" else 3 if interrupted else 2)
+            assert len(calls) == (1 if conversation_driver == "internal" else 3 if interrupted else 2)
         assert all(call.purpose == "conversation.audio" and call.task_id is None and call.task_attempt_id is None
                    and call.agent_run_id == call.conversation_round_id for call in calls)
-        if assignment != "internal":
+        if conversation_driver == "claude_embedded":
             assert all(call.requester_user_id == user.id for call in calls)
             attempts = {item.round_id: item for item in await db.scalars(
                 select(ConversationRoundAttempt).where(ConversationRoundAttempt.round_id.in_([item.id for item in rounds]))

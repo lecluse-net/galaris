@@ -878,8 +878,7 @@ This selector feeds a single durable value on the Agent: `tts:<id>` or
 
 For an Agent whose conversations use embedded Claude Agent, configure the **Transcription** model
 in its profile. Claude supports a TTS resource or a native OpenAI voice that supports speech synthesis.
-With a native selection, the OpenAI Speech API renders Claude's reply in the selected voice. The
-same rule applies to Codex and DSH Agents whose conversations are routed to Claude.
+With a native selection, the OpenAI Speech API renders Claude's reply in the selected voice.
 
 Matrix and Nextcloud Talk carry real-time calls. Telegram and WhatsApp carry
 their voice notes as incoming media, without thereby becoming call transports. A

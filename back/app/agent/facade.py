@@ -513,23 +513,15 @@ async def resolve_conversation_model(agent: Any, language: str = "en") -> Resolv
 
 async def conversation_driver_for_agent(agent_id: int) -> str:
     """Resolve a new round against the persisted Harness assignment."""
-    from core.params import runtime_settings
     from .agent_service import get
-    from .harness_port import harness_selection_port
-    from .registry import CLAUDE_EMBEDDED_HARNESS, conversation_driver_code, driver_status
+    from .registry import CLAUDE_EMBEDDED_HARNESS, INTERNAL_HARNESS
 
     agent = await get(agent_id)
     if agent is None:
         raise LookupError(f"Agent {agent_id} not found.")
-    embedded = conversation_driver_code(agent.agent_driver, None)
-    if (
-        embedded == CLAUDE_EMBEDDED_HARNESS.code
-        or not runtime_settings.HARNESS_CLAUDE_EMBEDDED_CONVERSATIONS_ENABLED
-        or not driver_status(CLAUDE_EMBEDDED_HARNESS).enabled
-    ):
-        return embedded
-    selection = await harness_selection_port.resolve(agent)
-    return conversation_driver_code(agent.agent_driver, selection.provider_code if selection else None)
+    if agent.agent_driver == CLAUDE_EMBEDDED_HARNESS.code:
+        return CLAUDE_EMBEDDED_HARNESS.code
+    return INTERNAL_HARNESS.code
 
 
 def _serialize_message(message: object) -> dict[str, Any]:

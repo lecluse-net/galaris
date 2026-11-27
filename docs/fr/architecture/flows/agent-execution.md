@@ -967,9 +967,8 @@ Voir [ADR 0062](../../../../project/decisions/0062-identified-message-streams.md
 
 Un message humain Messenger est relié directement à un round de sa `Room` par `app.conversation`.
 Son scheduler réclame le round seul et utilise le niveau texte `low` du profil effectif de
-l’agent. L’admission fixe le moteur du round. `internal` sélectionne Pydantic AI.
-Lorsque le déploiement de Claude embarqué est activé, la sélection Claude et les affectations
-Codex et DSH utilisent le SDK Claude pour les nouveaux rounds texte. Le relais MCP contrôle
+l’agent. L’admission fixe le moteur du round. Les agents affectés à Claude Agent utilisent
+le SDK Claude. Les autres affectations utilisent Pydantic AI pour ces rounds. Le relais MCP contrôle
 l’identifiant de l’appel, la tentative active et les droits du Service avant de transmettre une
 lecture ou une action affichée dans le catalogue conversationnel. Un tour inventé dans la
 réponse du modèle invalide ses appels d’outils et est retiré de l’historique renvoyé au fournisseur.

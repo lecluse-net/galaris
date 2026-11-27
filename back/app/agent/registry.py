@@ -62,7 +62,6 @@ CLAUDE_EMBEDDED_HARNESS = AgentDriverSpec(
     pipeline_policy=DriverPipelinePolicy(
         use_planner=True, execution_efforts=frozenset({"standard", "high"}), uses_llm_calls=True,
     ),
-    enabled_setting="HARNESS_CLAUDE_EMBEDDED_ENABLED",
     transport="embedded",
     deep_model_source="galaris",
     scoped_inference=True,
@@ -72,20 +71,6 @@ CLAUDE_EMBEDDED_HARNESS = AgentDriverSpec(
         "streaming", "checkpoints", "semantic_events", "structured_tool_events", "normalized_usage", "taskless_runs",
     }),
 )
-
-_CLAUDE_CONVERSATION_PROVIDERS = frozenset({"codex", "deepseek_harness"})
-
-
-def conversation_driver_code(agent_driver: str | None, provider_code: str | None) -> str:
-    """Select the engine for a new round. Persisted rounds keep their admitted driver."""
-    if not runtime_settings.HARNESS_CLAUDE_EMBEDDED_CONVERSATIONS_ENABLED:
-        return INTERNAL_HARNESS.code
-    if agent_driver == CLAUDE_EMBEDDED_HARNESS.code or (
-        runtime_settings.HARNESS_CLAUDE_EMBEDDED_ENABLED and provider_code in _CLAUDE_CONVERSATION_PROVIDERS
-    ):
-        return CLAUDE_EMBEDDED_HARNESS.code
-    return INTERNAL_HARNESS.code
-
 
 _DRIVER_SPECS: dict[str, AgentDriverSpec] = {
     INTERNAL_HARNESS.code: INTERNAL_HARNESS,

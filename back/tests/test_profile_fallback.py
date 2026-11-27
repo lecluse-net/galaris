@@ -112,8 +112,6 @@ async def test_chat_preserves_call_origin_when_a_profile_can_fail_over(
     agent.profile_id = profiles[0].id
     agent.fallback_profile_id = profiles[1].id
     await db.commit()
-    monkeypatch.setattr(runtime_settings, "HARNESS_CLAUDE_EMBEDDED_ENABLED", True)
-    monkeypatch.setattr(runtime_settings, "HARNESS_CLAUDE_EMBEDDED_CONVERSATIONS_ENABLED", True)
     monkeypatch.setattr(runtime_settings, "TASK_AGENT_MAX_REQUESTS", 2)
     monkeypatch.setattr(claude_driver, "CLAUDE_WORKSPACE_ROOT", tmp_path)
     monkeypatch.setattr(round_controller, "_controller", HarnessConversationController())
@@ -190,7 +188,6 @@ async def test_task_keeps_the_secondary_after_failover_and_one_native_tool_effec
 ):
     db, primary, requests, mode = runtime
     monkeypatch.setattr(middleware, "AsyncSessionLocal", committed_database)
-    monkeypatch.setattr(runtime_settings, "HARNESS_CLAUDE_EMBEDDED_ENABLED", True)
     monkeypatch.setattr(runtime_settings, "TASK_AGENT_MAX_REQUESTS", 4)
     monkeypatch.setattr(claude_driver, "CLAUDE_WORKSPACE_ROOT", tmp_path)
     standard_secondary, high_secondary = [

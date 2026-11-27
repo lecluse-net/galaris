@@ -399,15 +399,14 @@ async def exercise(origin: str, agent: int, model: int, token: str, receipts: li
             assert call["conversation_round_id"] == round_id, (code, task_id, call["conversation_round_id"], round_id)
             return call
 
-        await request("PUT", f"/api/params/{Params.HARNESS_CLAUDE_EMBEDDED_ENABLED}", json={"value": "true"})
         old = await asyncio.gather(*(submit(marker) for marker in ACTIVE_INPUTS))
         try:
             async with asyncio.timeout(35):
                 while {item.prompt_marker for item in receipts} != set(ACTIVE_INPUTS):
                     await asyncio.sleep(0.05)
-            await request("PUT", f"/api/params/{Params.HARNESS_CLAUDE_EMBEDDED_CONVERSATIONS_ENABLED}",
-                          json={"value": "false"})
+            await request("PUT", f"/api/harnesses/agents/{agent}", json={"driver_code": "internal"})
             new = await submit(AFTER_ROLLBACK)
+            await request("PUT", f"/api/harnesses/agents/{agent}", json={"driver_code": "claude_embedded"})
         finally:
             release.set()
 
@@ -422,8 +421,9 @@ async def exercise(origin: str, agent: int, model: int, token: str, receipts: li
         task = await submit_task(TASK_INPUT, agent)
         expected = [*zip(ACTIVE_INPUTS, old, ("claude_embedded", "claude_embedded"), strict=True),
                     (AFTER_ROLLBACK, new, "internal"), (TASK_INPUT, task, "claude_embedded")]
-        # Finish the rollback cohort before running independent bursts. Each
-        # burst uses the same agent, model, provider and scheduler settings.
+        # Finish the reassignment cohort before running independent bursts.
+        internal_agent = comparison_agents["internal"]
+        owners = {INTERNAL_CHAT_INPUT: internal_agent, INTERNAL_TASK_INPUT: internal_agent}
         burst_results: dict[str, dict[str, Any]] = {}
         burst_metrics: dict[str, dict[str, float | int]] = {}
         if load:
@@ -432,27 +432,24 @@ async def exercise(origin: str, agent: int, model: int, token: str, receipts: li
                 terminal(f"/api/tasks/{task}", "SUCCESS"),
             )
         for driver, markers in load.items():
-            await request("PUT", f"/api/params/{Params.HARNESS_CLAUDE_EMBEDDED_CONVERSATIONS_ENABLED}",
-                          json={"value": "true" if driver == "claude_embedded" else "false"})
+            selected_agent = agent if driver == "claude_embedded" else internal_agent
             started = monotonic()
-            rounds = await asyncio.gather(*(submit(marker) for marker in markers))
+            rounds = await asyncio.gather(*(submit(marker, selected_agent) for marker in markers))
             rows = await asyncio.gather(*(terminal(f"/api/conversations/rounds/{identifier}", "SUCCEEDED")
                                           for identifier in rounds))
             burst_results.update(zip(rounds, rows, strict=True))
             burst_metrics[driver] = {"rounds": len(rounds), "wall_seconds": round(monotonic() - started, 3)}
             expected.extend((marker, identifier, driver) for marker, identifier in zip(markers, rounds, strict=True))
+            owners.update((marker, selected_agent) for marker in markers)
         managed_tasks: dict[str, str] = {}
         journal: list[dict[str, str]] = []
-        await request("PUT", f"/api/params/{Params.HARNESS_CLAUDE_EMBEDDED_CONVERSATIONS_ENABLED}", json={"value": "true"})
-        internal_agent = comparison_agents["internal"]
         expected.extend(((INTERNAL_CHAT_INPUT, await submit(INTERNAL_CHAT_INPUT, internal_agent), "internal"),
                          (INTERNAL_TASK_INPUT, await submit_task(INTERNAL_TASK_INPUT, internal_agent), "internal")))
-        owners = {INTERNAL_CHAT_INPUT: internal_agent, INTERNAL_TASK_INPUT: internal_agent}
         for provider, enable in (("codex", Params.HARNESS_CODEX_ENABLED), ("deepseek_harness", Params.HARNESS_DEEPSEEK_ENABLED)):
             await request("PUT", f"/api/params/{enable}", json={"value": "true"})
             agent_id = comparison_agents[provider]
             marker = MANAGED_CHATS[provider]
-            expected.append((marker, await submit(marker, agent_id), "claude_embedded"))
+            expected.append((marker, await submit(marker, agent_id), "internal"))
             owners[marker] = agent_id
             task_id = await submit_task(MANAGED_TASKS[provider], agent_id)
             row = await terminal(f"/api/tasks/{task_id}", "SUCCESS")
@@ -576,7 +573,7 @@ async def exercise(origin: str, agent: int, model: int, token: str, receipts: li
             round_id = await submit(marker, agent_id, text=question)
             authorization_id = await answer_task_request(round_id, marker, allow=launch == "approved") if reviewed else None
             round_row = await terminal(f"/api/conversations/rounds/{round_id}", "SUCCEEDED")
-            chat_driver = "internal" if driver == "internal" else "claude_embedded"
+            chat_driver = "claude_embedded" if driver == "claude_embedded" else "internal"
             round_metadata = round_row["execution_result"]["metadata"]
             assert round_metadata["driver_code"] == chat_driver
             round_calls = await request("GET", "/api/llm-calls", params={"conversation_round_id": round_id})

@@ -162,13 +162,12 @@ test('managed toggles persist, reveal Hermes configuration and confirm agent rea
   await hermes.click()
   await expect(config.locator('textarea').first()).toHaveValue('max_turns: 42')
   state.failSave = true
-  const claude = page.getByRole('switch', { name: 'Enable Claude Agent', exact: true })
-  await claude.click()
+  const deepseek = page.getByRole('switch', { name: /Enable DeepSeek/ })
+  await deepseek.click()
   await expect(page.getByRole('alert').filter({ hasText: /Unable to change Harness activation/ })).toBeVisible()
-  await expect(claude).not.toBeChecked()
+  await expect(deepseek).not.toBeChecked()
   await setPrivileges(page, ['HARNESS_CONFIG_ACCESS'])
   await expect(hermes).toBeDisabled()
-  await expect(claude).toBeDisabled()
 })
 
 test('tabs separate managed and external harnesses and preserve manager drafts', async ({ page }, testInfo) => {

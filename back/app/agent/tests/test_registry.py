@@ -11,7 +11,6 @@ from app.agent.contracts import (
     UnknownAgentDriverError,
 )
 from app.agent.registry import (
-    conversation_driver_code,
     driver_status,
     get_driver_spec,
     pipeline_policy_for,
@@ -19,28 +18,6 @@ from app.agent.registry import (
 )
 from app.agent.workflow import route_to_driver_pipeline
 from app.task.models import Task, TaskStatus
-from core.params import runtime_settings
-
-
-@pytest.mark.parametrize("conversations_enabled", [True, False])
-@pytest.mark.parametrize(("agent_driver", "provider", "enabled", "expected"), [
-    ("internal", None, True, "internal"),
-    ("claude_embedded", None, True, "claude_embedded"),
-    ("claude_embedded", None, False, "claude_embedded"),
-    ("openai_messages", "codex", True, "claude_embedded"),
-    ("openai_messages", "deepseek_harness", True, "claude_embedded"),
-    ("openai_messages", "codex", False, "internal"),
-    ("openai_messages", "deepseek_harness", False, "internal"),
-    ("openai_messages", "openai_messages", True, "internal"),
-    ("openai_messages", "claude_agent", True, "internal"),
-    ("hermes", "hermes", True, "internal"),
-])
-def test_conversation_route_depends_on_the_saved_provider_and_rollout(
-    monkeypatch, agent_driver, provider, enabled, expected, conversations_enabled,
-):
-    monkeypatch.setattr(runtime_settings, "HARNESS_CLAUDE_EMBEDDED_ENABLED", enabled)
-    monkeypatch.setattr(runtime_settings, "HARNESS_CLAUDE_EMBEDDED_CONVERSATIONS_ENABLED", conversations_enabled)
-    assert conversation_driver_code(agent_driver, provider) == (expected if conversations_enabled else "internal")
 
 
 @pytest.mark.parametrize("current_decision, expected", [
@@ -85,19 +62,14 @@ def test_unknown_driver_never_falls_back_to_internal() -> None:
         get_driver_spec("typo")
 
 
-def test_internal_and_hermes_drivers_are_available_without_a_global_switch() -> None:
-    internal_status = driver_status("internal")
-    assert internal_status.enabled is True
-    assert internal_status.configured is True
-    assert internal_status.available is True
-    assert internal_status.reason is None
-
-    status = driver_status("hermes")
+@pytest.mark.parametrize("driver_code", ["internal", "claude_embedded", "hermes"])
+def test_drivers_available_without_a_global_switch(driver_code: str) -> None:
+    status = driver_status(driver_code)
     assert status.enabled is True
     assert status.configured is True
     assert status.available is True
     assert status.reason is None
-    assert require_available_driver("hermes").code == "hermes"
+    assert require_available_driver(driver_code).code == driver_code
 
 
 def test_none_keeps_only_the_legacy_internal_default() -> None:

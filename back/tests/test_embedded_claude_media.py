@@ -50,7 +50,6 @@ async def test_current_and_historical_media_require_access(
     assert agent is not None
     workspace = tmp_path / "claude"
     workspace.mkdir()
-    monkeypatch.setattr(runtime_settings, "HARNESS_CLAUDE_EMBEDDED_ENABLED", True)
     monkeypatch.setattr(claude_driver, "CLAUDE_WORKSPACE_ROOT", workspace)
     if entry == "chat-budget":
         monkeypatch.setattr(runtime_settings, "PYDANTIC_AI_BINARY_INPUT_MAX_BYTES", 1024)

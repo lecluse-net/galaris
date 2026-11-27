@@ -1321,9 +1321,8 @@ utilisateur et les commandes de vérification :
 
 Les URL restent communes à tous les profils ; le champ `model` porte le sélecteur complet.
 
-Claude Agent peut aussi être choisi directement comme **Moteur des tâches** dans la fiche d'un
-agent. Galaris provisionne alors un conteneur Claude Agent SDK isolé, lui fournit le modèle interne
-résolu, les compétences et le MCP de cet agent, puis affiche en direct le texte, les appels d'outils,
-les appels LLM et le résultat terminal. Aucun compte ni token Anthropic direct n'est nécessaire.
+Le harnais **Claude Agent** est disponible dans la fiche de chaque agent. Il utilise le SDK
+embarqué avec les modèles, les compétences et les outils autorisés de l’agent dans Chat,
+en voix, dans les tâches et en mode `@deep`. Voir le [guide Claude Agent](../components/claude-agent.md).
 
 - [Écrire et relier des contenus riches](rich-content.md) : éditeur, liens, images documentaires et historique.

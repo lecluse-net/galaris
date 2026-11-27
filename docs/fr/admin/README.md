@@ -906,8 +906,7 @@ Ce sélecteur alimente une seule valeur durable sur l’agent : `tts:<id>` ou
 Pour un agent dont les conversations utilisent Claude Agent embarqué, configurez le modèle
 **Transcription** dans son profil. Claude accepte une ressource TTS ou une voix native OpenAI
 compatible avec la synthèse. Dans ce second cas, l’API Speech d’OpenAI prononce la réponse de
-Claude avec la voix choisie. La même règle s’applique aux agents Codex et DSH dont les
-conversations sont routées vers Claude.
+Claude avec la voix choisie.
 
 Matrix et Nextcloud Talk transportent les appels temps réel. Telegram et WhatsApp transportent
 leurs notes vocales comme médias entrants, sans devenir pour autant des transports d’appel. Une

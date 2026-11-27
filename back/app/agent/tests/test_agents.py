@@ -19,11 +19,10 @@ from sqlalchemy import select
 
 
 @pytest.mark.asyncio
-async def test_http_creation_can_select_an_available_embedded_harness(client, monkeypatch):
+async def test_http_creation_can_select_an_available_embedded_harness(client):
     from app.agent.models import Title
     from core.authorize.tests.test_guard_policy_parameters import actor
     from core.database import get_db_session
-    from core.params import runtime_settings
 
     headers, _ = await actor(["AGENT_EDIT"])
     read_only, _ = await actor(["AGENT_ACCESS"])
@@ -36,11 +35,9 @@ async def test_http_creation_can_select_an_available_embedded_harness(client, mo
     registered = {driver["name"]: driver for driver in drivers}
     assert registered["internal"]["transport"] == "embedded"
     assert registered["claude_embedded"]["transport"] == "embedded"
-    assert registered["claude_embedded"]["available"] is False
-    assert (await client.post("/api/agents", headers=headers, json=claude)).status_code == 400
+    assert registered["claude_embedded"]["available"] is True
     assert (await client.post("/api/agents", headers=headers, json={**payload, "agent_driver": "openai_messages"})).status_code == 400
 
-    monkeypatch.setattr(runtime_settings, "HARNESS_CLAUDE_EMBEDDED_ENABLED", True)
     assert (await client.post("/api/agents", headers=read_only, json=claude)).status_code == 403
     created = await client.post("/api/agents", headers=headers, json=claude)
     assert created.status_code == 201, created.text

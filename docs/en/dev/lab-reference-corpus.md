@@ -51,7 +51,7 @@ Resume missing evaluations with identical limits:
 ## Comparing embedded harnesses
 
 On an isolated instance started with `APP_ENV=qualification`, create two test agents with identical instructions,
-manager, teams, explicit profile and effective permissions. Enable embedded Claude and assign
+manager, teams, explicit profile and effective permissions. Assign
 `internal` to one agent and `claude_embedded` to the other. Use synthetic data and test Services.
 Set the agent IDs, shared model and candidate revision in a copy of
 `back/lab-embedded-harnesses.example.json`. Set that model and reasoning effort for the profile's

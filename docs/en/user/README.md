@@ -1130,6 +1130,8 @@ verification commands:
 
 All profiles share the URLs; the `model` field carries the complete selector.
 
-Claude Agent can also be selected directly as the **Task Engine** on an Agent’s profile. Galaris then provisions an isolated Claude Agent SDK container, provides it with the resolved internal model, the Agent’s Skills and MCP, and displays the text, Service calls, LLM calls, and terminal result live. No direct Anthropic account or token is required.
+The **Claude Agent** harness is available in every Agent record. It uses the embedded SDK
+with the agent’s models, Skills and authorized tools across Chat, voice, Tasks and `@deep`.
+See the [Claude Agent guide](../components/claude-agent.md).
 
 - [Writing and linking rich content](rich-content.md): editor, links, document images and history.

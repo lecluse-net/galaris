@@ -55,7 +55,7 @@ Pour reprendre les seules évaluations manquantes avec les mêmes limites :
 
 Dans une instance isolée démarrée avec `APP_ENV=qualification`, créez deux agents de test avec les mêmes instructions,
 le même gestionnaire, les mêmes équipes, le même profil explicite et les mêmes droits effectifs.
-Activez Claude embarqué et attribuez `internal` à l’un et `claude_embedded` à l’autre. Utilisez
+Attribuez `internal` à l’un et `claude_embedded` à l’autre. Utilisez
 uniquement des données synthétiques et des Services de test. Renseignez les identifiants, le
 modèle commun et la révision candidate dans une copie de `back/lab-embedded-harnesses.example.json`.
 Renseignez le modèle et l’effort du manifeste dans les usages **Texte faible** et **Texte standard** du profil.

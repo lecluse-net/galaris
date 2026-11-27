@@ -18,7 +18,6 @@ from app.llm.profile_models import LlmProfile
 from app.skill import skill_service, storage
 from app.skill.models import AgentSkill, Skill
 from app.skill.schemas import SkillCreate
-from core.params import runtime_settings
 from core.util import get_encryption_service
 from tests.test_embedded_claude_chat_effects import _gateway
 from tests.test_inference_lifecycle import runtime  # noqa: F401 - shared provider fixture
@@ -34,7 +33,6 @@ async def test_claude_skills_load_progressively_and_cannot_be_replayed_after_rev
     assert agent is not None
     workspace = tmp_path / "claude"
     workspace.mkdir()
-    monkeypatch.setattr(runtime_settings, "HARNESS_CLAUDE_EMBEDDED_ENABLED", True)
     monkeypatch.setattr(claude_driver, "CLAUDE_WORKSPACE_ROOT", workspace)
     monkeypatch.setattr(type(storage.settings), "GALARIS_SKILLS_ROOT", str(tmp_path / "skills"))
     mode["concurrent"] = True

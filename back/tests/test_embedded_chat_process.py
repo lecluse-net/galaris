@@ -62,8 +62,6 @@ async def test_model_proposals_cannot_expand_the_human_process_request(
     await db.flush()
     agent.profile_id, agent.agent_driver = profile.id, driver
     await db.commit()
-    monkeypatch.setattr(runtime_settings, "HARNESS_CLAUDE_EMBEDDED_ENABLED", True)
-    monkeypatch.setattr(runtime_settings, "HARNESS_CLAUDE_EMBEDDED_CONVERSATIONS_ENABLED", True)
     monkeypatch.setattr(runtime_settings, "TASK_AGENT_MAX_REQUESTS", 5)
     monkeypatch.setattr(claude_driver, "CLAUDE_WORKSPACE_ROOT", tmp_path)
     monkeypatch.setattr(round_controller, "_controller", HarnessConversationController())

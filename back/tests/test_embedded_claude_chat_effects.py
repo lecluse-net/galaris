@@ -86,8 +86,6 @@ async def test_interrupted_provider_stream_does_not_complete_the_round(
     agent.profile_id = profile.id
     agent.agent_driver = driver
     await db.commit()
-    monkeypatch.setattr(runtime_settings, "HARNESS_CLAUDE_EMBEDDED_ENABLED", True)
-    monkeypatch.setattr(runtime_settings, "HARNESS_CLAUDE_EMBEDDED_CONVERSATIONS_ENABLED", True)
     monkeypatch.setattr(runtime_settings, "TASK_AGENT_MAX_REQUESTS", 1)
     monkeypatch.setattr(claude_driver, "CLAUDE_WORKSPACE_ROOT", tmp_path)
     monkeypatch.setattr(round_controller, "_controller", HarnessConversationController())
@@ -171,8 +169,6 @@ async def test_reply_now_preserves_the_round_but_disables_tools(
     await db.flush()
     agent.agent_driver, agent.profile_id = driver, profile.id
     await db.commit()
-    monkeypatch.setattr(runtime_settings, "HARNESS_CLAUDE_EMBEDDED_ENABLED", True)
-    monkeypatch.setattr(runtime_settings, "HARNESS_CLAUDE_EMBEDDED_CONVERSATIONS_ENABLED", True)
     monkeypatch.setattr(claude_driver, "CLAUDE_WORKSPACE_ROOT", tmp_path)
     monkeypatch.setattr(round_controller, "_controller", HarnessConversationController())
     gate, receipts, closed = asyncio.Event(), [], set()
@@ -274,7 +270,6 @@ async def test_embedded_claude_chat_keeps_effects_bound_to_the_live_round(
 ):
     db, model, requests, mode = runtime
     monkeypatch.setattr(middleware, "AsyncSessionLocal", committed_database)
-    monkeypatch.setattr(runtime_settings, "HARNESS_CLAUDE_EMBEDDED_ENABLED", True)
     monkeypatch.setattr(claude_driver, "CLAUDE_WORKSPACE_ROOT", tmp_path)
     mode["concurrent"] = True
     user = User(email=f"claude-chat-{uuid4()}@example.test", hashed_password="unused")
@@ -472,10 +467,10 @@ async def test_embedded_claude_chat_keeps_effects_bound_to_the_live_round(
             else:
                 if scenario == "rollback-approval":
                     from app.agent import conversation_driver_for_agent
-                    from core.params import Params, params_service
+                    from app.harnesses.service import select_internal
 
-                    monkeypatch.setattr(runtime_settings, "HARNESS_CLAUDE_EMBEDDED_CONVERSATIONS_ENABLED", True)
-                    assert await params_service.set(Params.HARNESS_CLAUDE_EMBEDDED_CONVERSATIONS_ENABLED, "false")
+                    selection, cleanup = await select_internal(agent.id)
+                    assert selection.driver_code == "internal" and cleanup is None
                     assert await conversation_driver_for_agent(agent.id) == "internal"
                 if resumes_after_expiry:
                     assert len(requests) == 2

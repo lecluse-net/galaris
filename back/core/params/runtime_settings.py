@@ -351,8 +351,6 @@ class RuntimeSettings(BaseModel):
 
     # Agent Harness availability.
     HARNESS_CLAUDE_AGENT_ENABLED: bool = True
-    HARNESS_CLAUDE_EMBEDDED_ENABLED: bool = False
-    HARNESS_CLAUDE_EMBEDDED_CONVERSATIONS_ENABLED: bool = True
     HARNESS_CODEX_ENABLED: bool = True
     HARNESS_DEEPSEEK_ENABLED: bool = True
     HARNESS_HERMES_ENABLED: bool = False

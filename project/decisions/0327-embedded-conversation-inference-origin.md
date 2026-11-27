@@ -67,22 +67,15 @@ invocation-local environment. The qualification uses the installed SDK and gatew
 PostgreSQL and a synthetic provider. Two simultaneous rounds for one agent and a Task from the
 first round retain distinct request messages and physical calls. The Task uses the normal
 agent facade. Missing, conflicting and stale contexts are refused. The driver is registered
-as `claude_embedded` and disabled by default during qualification.
+as `claude_embedded`. Its availability and routing are specified in [decision 0328](0328-retire-containerized-claude-harness.md).
 
 [Qualification test](../../back/tests/test_embedded_claude_lineage.py)
 
 Embedded selections use `Agent.agent_driver` and the existing authorized Harness selection
 endpoint. An embedded selection has no remote runtime assignment. When replacing a remote
 runtime, the previous assignment remains the cleanup receipt until deprovisioning succeeds.
-DbAdmin preserves the chosen embedded driver in either state, even when qualification is
-disabled. The selection exposes the driver's availability so a disabled driver is visible
-without changing the saved preference. During the text rollout, new Codex and DeepSeek Harness
-rounds select Claude when the flag is on. Their Tasks keep their configured execution driver.
-
-`harness.claude-embedded.conversations.enabled` controls admission of new Chat and turn-based
-voice rounds. Turning it off restores the Pydantic conversation driver while existing rounds
-retain their admitted driver and can finish or recover. Task assignments and direct Deep
-sessions retain their own policy. Keep SDK availability enabled until Claude work is drained.
+DbAdmin preserves the chosen embedded driver in either state. When the assignment changes,
+existing rounds retain their admitted driver so they can finish or recover.
 
 The embedded MCP relay uses the native Galaris catalog for Tasks and text rounds. It pairs
 the SDK's `PreToolUse` event with the MCP request's `claudecode/toolUseId` metadata. Each call

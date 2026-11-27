@@ -59,6 +59,24 @@ async def test_legacy_similarity_settings_are_retired_without_changing_the_share
 
 
 @pytest.mark.asyncio
+async def test_claude_rollout_settings_are_removed_on_upgrade(db):
+    from sqlalchemy import select
+    from core.dbadmin import reconcile_dataset
+    from core.params.models import Param
+
+    retired = ("harness.claude-embedded.enabled", "harness.claude-embedded.conversations.enabled")
+    db.add_all(Param(name=name, value="false") for name in retired)
+    await db.flush()
+
+    await reconcile_dataset(db, datasets()[0])
+
+    assert not (await db.scalars(select(Param.name).where(Param.name.in_(retired)))).all()
+    for name in retired:
+        assert not await params_service.has(name)
+    assert (await reconcile_dataset(db, datasets()[0])).removed == 0
+
+
+@pytest.mark.asyncio
 @pytest.mark.parametrize('legacy', [False, True])
 async def test_vapid_identity_is_generated_once_ignoring_old_environment(db, monkeypatch, legacy):
     from sqlalchemy import delete, select

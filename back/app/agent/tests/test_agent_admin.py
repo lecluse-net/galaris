@@ -650,7 +650,6 @@ async def test_harness_mcp_selection_blockers_supervision_and_cleanup(db, admin_
     from app.harnesses.models import Harness
     from app.harnesses.registry import get_provider
     from app.task.models import Task, TaskStatus
-    from core.params import runtime_settings
     from core.util import get_encryption_service
 
     caller, owner, _, _, title, _, _ = admin_fixture
@@ -670,7 +669,6 @@ async def test_harness_mcp_selection_blockers_supervision_and_cleanup(db, admin_
     assert blockers["active_tasks"] == [{"uri": f"galaris://task/{task.id}", "label": task.label}]
     with pytest.raises(harness_service.HarnessConflictError):
         await harness_mcp.agent_harness_set(ctx, target.id, harness.id)
-    monkeypatch.setattr(runtime_settings, "HARNESS_CLAUDE_EMBEDDED_ENABLED", True)
     with pytest.raises(harness_service.HarnessConflictError, match="non-terminal Tasks"):
         await harness_mcp.agent_harness_reset(ctx, target.id, driver_code="claude_embedded")
     assert (await harness_mcp.agent_harness_get(ctx, target.id))["internal"]
@@ -695,7 +693,6 @@ async def test_harness_mcp_selection_blockers_supervision_and_cleanup(db, admin_
     if not cleanup_fails:
         embedded = await harness_mcp.agent_harness_reset(ctx, target.id, driver_code="claude_embedded")
         assert embedded["operation_status"] == "completed" and embedded["driver_code"] == "claude_embedded"
-        monkeypatch.setattr(runtime_settings, "HARNESS_CLAUDE_EMBEDDED_ENABLED", False)
         assert (await harness_mcp.agent_harness_get(ctx, target.id))["driver_code"] == "claude_embedded"
         status = await harness_mcp.agent_harness_status(ctx, target.id)
-        assert status["status"] == "disabled" and status["available_actions"] == []
+        assert status["status"] == "internal" and status["available_actions"] == []

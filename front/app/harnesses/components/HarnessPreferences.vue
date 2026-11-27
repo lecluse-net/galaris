@@ -17,7 +17,6 @@
     <q-tab-panels v-show="!catalogTab || (!loading && !failed)" :model-value="tab" keep-alive animated>
       <q-tab-panel name="internal" :aria-label="t('harnesses.preferences.internal')">
         <p>{{ t('harnesses.preferences.internalHint') }}</p>
-        <SettingsFields :fields="claudeEmbeddedFields" class="q-mb-lg" />
         <h2 class="text-h6 q-mt-none">{{ t('harnesses.inputFiles.title') }}</h2>
         <SettingsFields :fields="inputFields" class="q-mb-lg" />
         <HarnessExecutionSettings provider-code="internal" />
@@ -47,7 +46,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { SettingsFields } from '@/core/params'
 import { harnessService, type HarnessCatalogEntry } from '../services/harnessService'
 import { managedComposeFields } from '../managedSettings'
-import { claudeEmbeddedFields, inputFields } from '../runtimeSettings'
+import { inputFields } from '../runtimeSettings'
 import HarnessCatalogGrid from './HarnessCatalogGrid.vue'
 import HarnessExecutionSettings from './HarnessExecutionSettings.vue'
 import HarnessManagedProviders from './HarnessManagedProviders.vue'

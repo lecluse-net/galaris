@@ -26,7 +26,6 @@ from app.llm.provider_facade import TranscriptionResult
 from app.task import Task, TaskStatus, scheduler
 from app.task.models import TaskAttempt
 from core.database import get_db_session
-from core.params import runtime_settings
 from tests.test_embedded_claude_chat_effects import _gateway
 from tests.test_embedded_claude_media import _png
 from tests.test_inference_lifecycle import runtime  # noqa: F401 - shared provider fixture
@@ -55,7 +54,6 @@ async def test_specialist_media_keeps_the_origin_even_with_a_different_model(
     workspace = tmp_path / "claude"
     workspace.mkdir()
     monkeypatch.setattr(claude_driver, "CLAUDE_WORKSPACE_ROOT", workspace)
-    monkeypatch.setattr(runtime_settings, "HARNESS_CLAUDE_EMBEDDED_ENABLED", True)
     mode["concurrent"] = True
     specialist = LLM(
         llm_provider_id=model.llm_provider_id, code=f"synthetic-specialist-{uuid4()}", label="Synthetic specialist",

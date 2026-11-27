@@ -922,9 +922,8 @@ See [ADR 0062](../../../../project/decisions/0062-identified-message-streams.md)
 
 A human Messenger message is linked directly to a round in its `Room` by `app.conversation`.
 Its scheduler claims only the round and uses the effective agent profile's `low` text level.
-Admission fixes the round's engine. `internal` selects Pydantic AI. When the embedded Claude
-rollout is enabled, the Claude selection and the Codex and DSH assignments use the Claude SDK
-for new text rounds. The MCP relay checks the call identity, active attempt and Service
+Admission fixes the round's engine. Agents assigned to Claude Agent use the Claude SDK.
+Other assignments use Pydantic AI for these rounds. The MCP relay checks the call identity, active attempt and Service
 permissions before forwarding a read or action available in the conversation catalog.
 An invented dialogue turn invalidates that response's tool calls and is removed from the
 assistant history sent back to the provider.

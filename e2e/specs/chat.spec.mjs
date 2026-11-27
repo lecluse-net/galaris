@@ -59,20 +59,6 @@ async function prepare(page, request, mode = 'normal', errors) {
   return fixture
 }
 
-async function enableEmbeddedConversation(request, headers, driver) {
-  if (driver !== 'claude_embedded') return async () => {}
-  const flag = 'harness.claude-embedded.enabled'
-  const parameters = await request.get('/api/params', { headers })
-  expect(parameters.ok(), await parameters.text()).toBeTruthy()
-  const original = (await parameters.json()).params.find(param => param.name === flag).value
-  const write = async value => {
-    const response = await request.put(`/api/params/${flag}`, { headers, data: { value } })
-    expect(response.ok(), await response.text()).toBeTruthy()
-  }
-  await write('true')
-  return () => write(original)
-}
-
 async function readConversationCalls(request, headers, round) {
   const journal = await request.get('/api/llm-calls', { headers, params: { conversation_round_id: round } })
   expect(journal.ok(), await journal.text()).toBeTruthy()
@@ -296,7 +282,6 @@ for (const [mode, driver] of embeddedConversationDrivers) test(
   const fixture = await prepare(page, request, mode)
   const [room, otherRoom] = fixture.rooms
   const headers = { Authorization: `Bearer ${await page.evaluate(() => localStorage.getItem('access_token'))}` }
-  const restore = await enableEmbeddedConversation(request, headers, driver)
   const readRounds = async () => (await request.get(`/api/__test/rounds/${room}`)).json()
   const readCalls = id => readConversationCalls(request, headers, id)
   try {
@@ -351,7 +336,6 @@ for (const [mode, driver] of embeddedConversationDrivers) test(
     expect(cancelled.map(call => call.id)).not.toContain(completed[0].id)
   } finally {
     await release(request, room)
-    await restore()
   }
 })
 
@@ -496,7 +480,6 @@ for (const [mode, driver] of embeddedConversationDrivers) {
     const fixture = await prepare(page, request, mode, errors)
     const room = fixture.rooms[0]
     const headers = { Authorization: `Bearer ${await page.evaluate(() => localStorage.getItem('access_token'))}` }
-    const restore = await enableEmbeddedConversation(request, headers, driver)
     let offline = false
     try {
       await send(page)
@@ -540,7 +523,6 @@ for (const [mode, driver] of embeddedConversationDrivers) {
       await expect(trace.getByRole('region', { name: 'Consommation enregistrée' })).toContainText('16 tokens')
     } finally {
       if (offline && !page.isClosed()) await context.setOffline(false)
-      await restore()
     }
     await errors.settle()
     expect(errors()).toEqual([])
@@ -675,14 +657,13 @@ test('partial provider failure reaches a durable error and leaves the composer u
   await expect(page.locator('.composer-fields textarea')).toBeEnabled()
 })
 
-for (const [mode, driver] of embeddedConversationDrivers) {
+for (const [mode] of embeddedConversationDrivers) {
   for (const previousState of ['active', 'paused']) {
     test(`a correction replaces the ${previousState} round and delivers one reply (${mode})`, async ({ page, context, request }) => {
       test.setTimeout(90_000)
       const fixture = await prepare(page, request, mode)
       const [room] = fixture.rooms
       const headers = { Authorization: `Bearer ${await page.evaluate(() => localStorage.getItem('access_token'))}` }
-      const restore = await enableEmbeddedConversation(request, headers, driver)
       const readRounds = async () => (await request.get(`/api/__test/rounds/${room}`)).json()
       let offline = false
       try {
@@ -733,7 +714,6 @@ for (const [mode, driver] of embeddedConversationDrivers) {
       } finally {
         if (offline && !page.isClosed()) await context.setOffline(false)
         await release(request, room)
-        await restore()
       }
     })
   }

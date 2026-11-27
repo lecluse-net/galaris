@@ -244,8 +244,9 @@ agent's record from the list to edit it. Tabs in that record differ from page ta
 they include general settings, models and MCP according to permissions. Choose the Task
 engine in the agent's record. The form appears as soon as it opens; selectors load afterward.
 In **General**, the Harness selection follows the identity fields.
-**Pydantic AI** is selected by default when creating an agent. **Claude Agent** is offered after you enable it under **Administer → Preferences → Harnesses →
-Internal harness**. Both run in the Galaris backend. On an existing record,
+**Pydantic AI** is selected by default when creating an agent. **Claude Agent** is always available.
+Both run in the Galaris backend. A Claude Agent assignment covers Chat, voice, Tasks and
+`@deep`. On an existing record,
 wait for open Tasks to finish before switching Harnesses.
 To create or replace a portrait, click **Generate avatar**, enter instructions in the
 dialog (appearance, style, framing), then submit generation. You can request a realistic

@@ -4,11 +4,9 @@
 
 ## Embedded Claude Agent
 
-The backend installs the Python SDK and starts its local executable. In **Administer →
-Preferences → Harnesses → Internal harness**, enable **Claude Agent**. Then
-select **Claude Agent** in the Agent record under **General → Harness**. This
-assignment works without a dedicated Claude container. Pydantic AI remains available in
-the same selector.
+The backend installs the Python SDK and starts its local executable. **Claude Agent** is
+always available under **General → Harness** in the Agent record. Select it to use Claude
+Agent in Chat, voice, Tasks and `@deep`. Pydantic AI is also available in the same selector.
 
 Calls use the local Galaris gateway. Use the LLM log to find the Task attempt, Chat or voice
 round, or exact `@deep` submission. External MCP tools use the Service connections and
@@ -17,17 +15,11 @@ See the [execution flow](../architecture/flows/agent-execution.md).
 
 ### Restoring the previous conversation routing
 
-To restore Pydantic AI for new Chat and turn-based voice rounds, turn off **Use Claude Agent
-(embedded) for conversations** on the same screen. The
-`harness.claude-embedded.conversations.enabled` setting defaults to `true`.
-Keep `harness.claude-embedded.enabled` set to `true` during the transition. Existing rounds
-finish or resume with their original harness. Task assignments and `@deep` continue to use
-their own harness. Set the conversation setting back to `true` to route new rounds to Claude
-according to the agent's assignment.
-
-Before disabling the SDK itself, let active Claude rounds, Tasks and Deep submissions
-finish or resolve their recovery explicitly. To move future Task or Deep executions, change
-the agent's assignment from its agent record.
+To restore Pydantic AI in Chat and turn-based voice, select another harness in the Agent
+record after its open Tasks finish. New Tasks and `@deep` sessions follow the new assignment.
+Existing rounds finish or resume with their original harness. Agents assigned to Codex or
+DeepSeek Agent use Pydantic AI for Chat and turn-based voice and their selected harness for
+Tasks and `@deep`.
 
 If a Claude Task loses its worker before its first tool effect, the scheduler can restart
 execution with the same run identity and request budget. If the final result is already in
@@ -49,10 +41,10 @@ It keeps the original tool budget and accounts for previously recorded operation
 `EMBEDDED_HARNESS_IMAGE` and checks its embedded `EMBEDDED_HARNESS_REVISION`.
 Release qualification also runs this probe against the exact image in the bundle.
 The probe uses isolated PostgreSQL and a simulated model provider. It checks physical
-LLM calls for two concurrent rounds, restores Pydantic AI for new rounds, and runs a Task
-that still uses Claude. While Claude is enabled, a Pydantic agent retains its engine in
-Chat and Tasks. Agents assigned to Codex or DeepSeek Agent use Claude in Chat and send
-Tasks to their assigned harness. By default the probe simulates the managed harness endpoints.
+LLM calls for two concurrent rounds, reassigns the agent to Pydantic AI for new rounds, and runs
+a Task after reassigning it to Claude Agent. A Pydantic AI agent uses that engine in Chat and
+Tasks. Agents assigned to Codex or DeepSeek Agent use Pydantic AI in Chat and send Tasks to
+their assigned harness. By default the probe simulates the managed harness endpoints.
 The test log includes the image identity, SDK and CLI versions, calls
 reconciled with provider receipts, and the Tasks received by each managed harness.
 The probe also submits an explicit `@task` request from Chat for each assignment. The

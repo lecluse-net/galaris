@@ -22,7 +22,6 @@ from app.services import ServiceModel
 from app.task import scheduler as task_scheduler
 from core.authorize import Assignment, Role
 from core.database import middleware
-from core.params import runtime_settings
 from core.user.auth_service import create_access_token_for_user
 from core.user.models import User
 from main import app
@@ -77,7 +76,6 @@ async def test_model_snapshot_ignores_pricing_poll_but_detects_a_changed_binding
 async def test_benchmark_pairs_real_harnesses_at_both_normal_entry_points(runtime, committed_database, monkeypatch, tmp_path):
     db, model, physical_requests, mode = runtime
     monkeypatch.setattr(middleware, "AsyncSessionLocal", committed_database)
-    monkeypatch.setattr(runtime_settings, "HARNESS_CLAUDE_EMBEDDED_ENABLED", True)
     monkeypatch.setattr(claude_driver, "CLAUDE_WORKSPACE_ROOT", tmp_path)
     monkeypatch.setattr(round_controller, "_controller", HarnessConversationController())
     mode["concurrent"] = True

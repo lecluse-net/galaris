@@ -4,11 +4,10 @@
 
 ## Claude Agent embarqué
 
-Le backend installe le SDK Python et lance son exécutable local. Dans **Administrer →
-Préférences → Harnais → Harnais interne**, activez **Claude Agent**. Sélectionnez
-ensuite **Claude Agent** dans **Fiche Agent → Général → Harnais**. Cette
-affectation fonctionne sans conteneur Claude dédié. Pydantic AI reste sélectionnable dans
-la même fiche.
+Le backend installe le SDK Python et lance son exécutable local. **Claude Agent** est
+toujours disponible dans **Fiche Agent → Général → Harnais**. Sélectionnez-le pour
+utiliser Claude Agent dans Chat, en voix, dans les tâches et en mode `@deep`.
+Pydantic AI reste sélectionnable dans la même fiche.
 
 Les appels passent par la passerelle locale de Galaris. Le journal LLM permet de retrouver
 la tentative de tâche, le round Chat ou vocal, ou la soumission précise en mode `@deep`.
@@ -18,17 +17,11 @@ conversation ou en tâche. Les demandes d’accord se traitent dans l’interfac
 
 ### Retour au routage conversationnel précédent
 
-Pour rétablir Pydantic AI pour les nouveaux rounds de Chat et de voix par tours, désactivez
-**Utiliser Claude Agent en conversation** sur le même écran. Le réglage
-`harness.claude-embedded.conversations.enabled` vaut `true` par défaut.
-Conservez `harness.claude-embedded.enabled` à `true` pendant la transition. Les rounds déjà
-admis terminent ou reprennent avec leur harnais d’origine. Les affectations de tâches et le
-mode `@deep` continuent d’utiliser leur propre harnais. Remettez le réglage conversationnel
-à `true` pour rétablir le routage vers Claude selon l’affectation de l’agent.
-
-Avant de désactiver le SDK lui-même, laissez les rounds, tâches et soumissions Deep Claude
-en cours se terminer ou traitez explicitement leurs reprises. Pour déplacer des exécutions
-futures de tâches ou de Deep, modifiez l’affectation de l’agent dans sa fiche.
+Pour revenir à Pydantic AI dans Chat et en voix par tours, choisissez un autre harnais dans
+la fiche de l’agent après la fin de ses tâches ouvertes. Les nouvelles tâches et sessions
+`@deep` suivent la nouvelle affectation. Les rounds déjà admis terminent ou reprennent avec
+leur harnais d’origine. Les agents affectés à Codex ou DeepSeek Agent utilisent Pydantic AI
+dans Chat et en voix par tours, et leur harnais sélectionné pour les tâches et `@deep`.
 
 Si le worker d’une tâche Claude disparaît avant le premier effet d’un outil, le scheduler
 peut relancer l’exécution en conservant son identité et son budget d’appels. Si le résultat
@@ -52,10 +45,10 @@ des opérations déjà enregistrées.
 `EMBEDDED_HARNESS_IMAGE` et contrôle la révision `EMBEDDED_HARNESS_REVISION` embarquée.
 La livraison lance aussi cette sonde sur l’image exacte du bundle. La sonde utilise
 PostgreSQL isolé et simule le fournisseur de modèles. Elle vérifie les appels LLM
-de deux rounds simultanés, le retour des nouveaux rounds sur Pydantic AI et une tâche
-qui continue à utiliser Claude. Pendant l’activation de Claude, un agent Pydantic garde
-son moteur dans Chat et Tâches. Un agent affecté à Codex ou DeepSeek Agent répond
-dans Chat via Claude et envoie ses tâches au harnais affecté.
+de deux rounds simultanés, la réaffectation d’un agent à Pydantic AI pour les nouveaux rounds
+et une tâche après réaffectation à Claude Agent. Un agent Pydantic AI utilise ce moteur dans
+Chat et Tâches. Un agent affecté à Codex ou DeepSeek Agent répond dans Chat via Pydantic AI
+et envoie ses tâches au harnais affecté.
 Par défaut, la sonde simule les endpoints des harnais managés. Le journal inclut l’identité de
 l’image, les versions SDK et CLI, les appels rapprochés des reçus du fournisseur et les
 tâches reçues par chaque harnais managé. Il vérifie aussi une demande `@task` depuis
