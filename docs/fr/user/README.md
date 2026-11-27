@@ -375,6 +375,11 @@ L'attente ne signifie pas que l'objectif est atteint.
 
 L’onglet **Objectifs** liste les objectifs ordinaires et affiche
 l’avatar et le nom de l’agent responsable.
+Vous pouvez demander à un agent habilité de lancer un processus natif à chaque cycle en lui
+indiquant le code exact du processus. Les outils `goal_create` et `goal_update` utilisent ce code
+dans `process_code`. L’agent responsable doit avoir accès au processus et avoir `process_start`
+activé pour le sélectionner. Pour revenir aux tâches ordinaires, utilisez `clear_process=true`
+dans `goal_update`.
 Le mode **À dates fixes dans l’agenda** permet une récurrence dans un fuseau choisi.
 Chaque agent reçoit automatiquement un objectif **Auto-apprentissage**. L’onglet du même
 nom utilise le même affichage et les mêmes filtres. Dans **Modification**, choisissez une

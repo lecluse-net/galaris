@@ -359,7 +359,7 @@ tests remain authoritative for behavior.
 | `app.goal` | `app.connection` | `back/app/goal/mcp.py`, `back/app/goal/models.py`, `back/app/goal/resource_facade.py` |
 | `app.goal` | `app.llm` | `back/app/goal/evaluation.py`, `back/app/goal/goal_service.py`, `back/app/goal/models.py`, `back/app/goal/runner.py` |
 | `app.goal` | `app.messenger` | `back/app/goal/goal_service.py`, `back/app/goal/referrer_wait.py` |
-| `app.goal` | `app.process` | `back/app/goal/goal_service.py`, `back/app/goal/router.py`, `back/app/goal/runner.py` |
+| `app.goal` | `app.process` | `back/app/goal/goal_service.py`, `back/app/goal/mcp.py`, `back/app/goal/router.py`, `back/app/goal/runner.py` |
 | `app.goal` | `app.services` | `back/app/goal/access.py`, `back/app/goal/mcp.py` |
 | `app.goal` | `app.task` | `back/app/goal/calendar.py`, `back/app/goal/goal_service.py`, `back/app/goal/models.py`, `back/app/goal/referrer_wait.py`, `back/app/goal/resource_facade.py`, `back/app/goal/retrospective.py`, `back/app/goal/runner.py` |
 | `app.goal` | `core.authorize` | `back/app/goal/router.py` |
@@ -2476,18 +2476,18 @@ No cyclic component detected.
 | `incidents_list` | `galaris` | `app.incident` | `incidents_list` | `back/app/incident/mcp.py:31` |
 | `llm_call` | `galaris` | `app.llm` | `mcp_llm_call` | `back/app/llm/mcp.py:72` |
 | `llm_calls` | `galaris` | `app.llm` | `mcp_llm_calls` | `back/app/llm/mcp.py:90` |
-| `goal_ask_referrer` | `goal` | `app.goal` | `mcp_goal_ask_referrer` | `back/app/goal/mcp.py:167` |
-| `goal_complete` | `goal` | `app.goal` | `mcp_goal_complete` | `back/app/goal/mcp.py:477` |
-| `goal_create` | `goal` | `app.goal` | `mcp_goal_create` | `back/app/goal/mcp.py:208` |
-| `goal_delete` | `goal` | `app.goal` | `mcp_goal_delete` | `back/app/goal/mcp.py:531` |
-| `goal_pause` | `goal` | `app.goal` | `mcp_goal_pause` | `back/app/goal/mcp.py:429` |
-| `goal_resume` | `goal` | `app.goal` | `mcp_goal_resume` | `back/app/goal/mcp.py:453` |
-| `goal_retrospective_evidence` | `goal` | `app.goal` | `goal_retrospective_evidence` | `back/app/goal/mcp.py:40` |
-| `goal_retrospective_learn` | `goal` | `app.goal` | `goal_retrospective_learn` | `back/app/goal/mcp.py:56` |
-| `goal_retrospective_record` | `goal` | `app.goal` | `goal_retrospective_record` | `back/app/goal/mcp.py:67` |
-| `goal_run_now` | `goal` | `app.goal` | `mcp_goal_run_now` | `back/app/goal/mcp.py:503` |
-| `goal_update` | `goal` | `app.goal` | `mcp_goal_update` | `back/app/goal/mcp.py:360` |
-| `goal_update_suivi` | `goal` | `app.goal` | `mcp_goal_update_suivi` | `back/app/goal/mcp.py:324` |
+| `goal_ask_referrer` | `goal` | `app.goal` | `mcp_goal_ask_referrer` | `back/app/goal/mcp.py:168` |
+| `goal_complete` | `goal` | `app.goal` | `mcp_goal_complete` | `back/app/goal/mcp.py:505` |
+| `goal_create` | `goal` | `app.goal` | `mcp_goal_create` | `back/app/goal/mcp.py:221` |
+| `goal_delete` | `goal` | `app.goal` | `mcp_goal_delete` | `back/app/goal/mcp.py:559` |
+| `goal_pause` | `goal` | `app.goal` | `mcp_goal_pause` | `back/app/goal/mcp.py:457` |
+| `goal_resume` | `goal` | `app.goal` | `mcp_goal_resume` | `back/app/goal/mcp.py:481` |
+| `goal_retrospective_evidence` | `goal` | `app.goal` | `goal_retrospective_evidence` | `back/app/goal/mcp.py:41` |
+| `goal_retrospective_learn` | `goal` | `app.goal` | `goal_retrospective_learn` | `back/app/goal/mcp.py:57` |
+| `goal_retrospective_record` | `goal` | `app.goal` | `goal_retrospective_record` | `back/app/goal/mcp.py:68` |
+| `goal_run_now` | `goal` | `app.goal` | `mcp_goal_run_now` | `back/app/goal/mcp.py:531` |
+| `goal_update` | `goal` | `app.goal` | `mcp_goal_update` | `back/app/goal/mcp.py:378` |
+| `goal_update_suivi` | `goal` | `app.goal` | `mcp_goal_update_suivi` | `back/app/goal/mcp.py:340` |
 | `lab_campaign_get` | `lab` | `app.lab` | `lab_campaign_get` | `back/app/lab/mcp.py:611` |
 | `lab_campaign_list` | `lab` | `app.lab` | `lab_campaign_list` | `back/app/lab/mcp.py:598` |
 | `lab_case_create` | `lab` | `app.lab` | `lab_case_create` | `back/app/lab/mcp.py:290` |

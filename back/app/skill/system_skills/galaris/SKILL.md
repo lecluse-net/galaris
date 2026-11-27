@@ -995,19 +995,25 @@ calls from a toolset built before a connection change.
 
 - `goal_create(agent_id, service_code, referrer_user_id, referrer_display_name,
   title, description, cycle_delay_seconds=3600, referrer_max_reminders=1,
-  schedule_enabled=False, schedule=None, active=True) -> dict` assigns a durable Goal.
+  schedule_enabled=False, schedule=None, active=True, process_code=None) -> dict` assigns a durable Goal.
   `description` is a rich-text HTML fragment; `title` is plain text. The owner performs the
   recurring work; the exact human Messenger contact supervises it. Resolve the contact and
   Service code first. Pass the external user identifier as `referrer_user_id`.
 - `goal_update(goal_id, expected_revision, title=None, description=None, agent_id=None,
   service_code=None, referrer_user_id=None, referrer_display_name=None,
   cycle_delay_seconds=None, referrer_max_reminders=None, schedule_enabled=None,
-  schedule=None) -> dict` updates only supplied administrative fields. `description` stays
+  schedule=None, process_code=None, clear_process=False) -> dict` updates only supplied administrative fields. `description` stays
   HTML. The owner assignment can change only before the first cycle; changing the referrer
   requires the complete human contact identity.
 - `goal_pause`, `goal_resume`, and `goal_complete` each take
   `(goal_id: str, expected_revision: int) -> dict` and apply a lifecycle command within the delegation.
 - `goal_delete(goal_id: str) -> dict` soft-deletes an authorized Goal when no cycle remains unfinished.
+
+To run a native Process on each Goal cycle, pass its exact `process_code`, listed as
+`metadata.native_code` by `file_list("galaris://processes/")`. The Goal owner must have access
+to that Process and have `process_start` enabled for automatic use when selecting it.
+On update, omit both fields to preserve the current choice, or set `clear_process=True`
+to return to ordinary Tasks.
 
 Administrative functions never infer ownership from the caller. Always read the exact
 `galaris://goal/<uuid>` resource immediately before an update or lifecycle command and pass its

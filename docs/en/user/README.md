@@ -319,6 +319,10 @@ for the reply. An already recorded decision should be read from its source; a fa
 to make the choice should be checked before asking. Waiting does not mean the Goal is achieved.
 
 The **Goals** tab lists regular Goals and shows the responsible agent’s avatar and name.
+You can ask an authorized agent to run a native process on each cycle by giving it the exact
+process code. The `goal_create` and `goal_update` tools take that code in `process_code`.
+The responsible agent needs access to the process and must have `process_start` enabled
+to select it. To return to ordinary Tasks, use `clear_process=true` in `goal_update`.
 In **Cycles**, each cycle shows the applied decision, monitoring state and recorded evidence.
 No review-opening action is offered.
 Each agent receives a **Self-learning** Goal. The **Self-learning** tab uses the same layout

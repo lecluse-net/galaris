@@ -10,8 +10,12 @@ import pytest
 from sqlalchemy import select
 
 from app.agent.models import Agent, Title
+from app.connection.facade import set_connection_function_state
 from app.connection.models import Connection
 from app.connection import connection_service
+from app.process.bpmn import Flow, Node, Workflow
+from app.process.native_definitions import create as create_native_process
+from app.services import sync_integrated_service_connections
 from app.services.facade import AdministrationScope
 from app.services.mcp_loader import McpToolContext, add_galaris_tools
 from app.services.models import Service
@@ -92,11 +96,18 @@ async def test_goal_self_service_tool_schemas_are_exposed_by_goal_service() -> N
         "goal_id",
         "expected_revision",
     ]
+    for name in ("goal_create", "goal_update"):
+        schema = tools[name].parameters
+        assert "process_code" in schema["properties"] and "process_code" not in schema["required"]
+        assert "process_definition_id" not in schema["properties"]
+    assert "clear_process" in tools["goal_update"].parameters["properties"]
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("process_code", [None, "synthetic_stock_check"])
 async def test_goal_create_selects_owner_and_human_referrer(
     monkeypatch: pytest.MonkeyPatch,
+    process_code: str | None,
 ) -> None:
     create = AsyncMock(return_value=_Response())
     monkeypatch.setattr(mcp, "administration_scope", AsyncMock(return_value=AdministrationScope("all", None)))
@@ -111,6 +122,8 @@ async def test_goal_create_selects_owner_and_human_referrer(
     from types import SimpleNamespace
     resolve = AsyncMock(return_value=SimpleNamespace(id=34))
     monkeypatch.setattr(mcp, "resolve_service_connection", resolve)
+    resolve_process = AsyncMock(return_value=56)
+    monkeypatch.setattr(mcp, "resolve_agent_scheduled_process", resolve_process)
     result = await mcp.mcp_goal_create(
         McpToolContext(agent_id=90, runtime="internal"),
         agent_id=12,
@@ -120,6 +133,7 @@ async def test_goal_create_selects_owner_and_human_referrer(
         title="Développer l'équipe",
         description="Accompagner la progression de l'équipe dans la durée.",
         cycle_delay_seconds=7200,
+        process_code=process_code,
     )
 
     resolve.assert_awaited_once_with(12, "synthetic-chat", account_email=None)
@@ -129,6 +143,12 @@ async def test_goal_create_selects_owner_and_human_referrer(
     assert data.referrer.connection_id == 34
     assert data.referrer.user_id == "human-34"
     assert data.cycle_delay_seconds == 7200
+    if process_code is None:
+        resolve_process.assert_not_awaited()
+        assert data.process_definition_id is None
+    else:
+        resolve_process.assert_awaited_once_with(12, process_code)
+        assert data.process_definition_id == 56
     assert result == {"id": "goal-1", "revision": 1, "agent_id": 12}
 
 
@@ -310,6 +330,19 @@ async def test_every_goal_admin_tool_revalidates_the_live_management_witness(
 async def test_live_management_connection_controls_cross_owner_goal_access(db: Any) -> None:
     caller = await _new_agent(db, "goal-caller")
     owner = await _new_agent(db, "goal-owner")
+    await sync_integrated_service_connections(owner.id)
+    process_connection_id = (await db.scalars(
+        select(Connection.id).join(Service, Service.id == Connection.service_id)
+        .where(Connection.agent_id == owner.id, Service.code == "process")
+    )).one()
+    graph = Workflow(
+        nodes=[Node(id="start", kind="start"), Node(id="end", kind="end")],
+        flows=[Flow(id="flow", source="start", target="end")],
+    )
+    process_code = "synthetic_goal_owner_workflow"
+    caller_process_code = "synthetic_goal_caller_workflow"
+    process = await create_native_process(actor_agent_id=owner.id, title="Owner workflow", code=process_code, graph=graph)
+    await create_native_process(actor_agent_id=caller.id, title="Caller workflow", code=caller_process_code, graph=graph)
     own_goal = await make_goal(
         title="Caller's Goal",
         description="Visible without administration.",
@@ -369,13 +402,25 @@ async def test_live_management_connection_controls_cross_owner_goal_access(db: A
     await connection_service.set_param(connection.id, "services.management_scope", "all", scope_edit_authorized=True)
     foreign = await mcp.mcp_goal_get(ctx, str(foreign_goal.id))
     assert foreign["agent_id"] == owner.id
+    await set_connection_function_state(process_connection_id, "process_start", "disabled")
+    with pytest.raises(PermissionError, match="Automatic process launch"):
+        await mcp.mcp_goal_update(ctx, str(foreign_goal.id), int(foreign["revision"]), process_code=process_code)
+    await set_connection_function_state(process_connection_id, "process_start", "enabled")
+    with pytest.raises(PermissionError, match="available to this agent"):
+        await mcp.mcp_goal_update(ctx, str(foreign_goal.id), int(foreign["revision"]), process_code=caller_process_code)
+    with pytest.raises(ValueError, match="not both"):
+        await mcp.mcp_goal_update(ctx, str(foreign_goal.id), int(foreign["revision"]),
+                                  process_code=process_code, clear_process=True)
+    configured = await mcp.mcp_goal_update(ctx, str(foreign_goal.id), int(foreign["revision"]), process_code=process_code)
+    assert configured["process_definition_id"] == process.id
     administered = await mcp.mcp_goal_update(
         ctx,
         str(foreign_goal.id),
-        expected_revision=int(foreign["revision"]),
+        expected_revision=int(configured["revision"]),
         title="Authorized administrative update",
     )
     assert administered["title"] == "Authorized administrative update"
+    assert administered["process_definition_id"] == process.id
     updated = await mcp.mcp_goal_update_suivi(
         ctx,
         str(foreign_goal.id),
@@ -383,6 +428,8 @@ async def test_live_management_connection_controls_cross_owner_goal_access(db: A
         tracking_content="<h1>Authorized admin change</h1>",
     )
     assert updated["tracking_content"] == "<h1>Authorized admin change</h1>"
+    cleared = await mcp.mcp_goal_update(ctx, str(foreign_goal.id), int(updated["revision"]), clear_process=True)
+    assert cleared["process_definition_id"] is None
 
     connection.active = False
     await db.commit()

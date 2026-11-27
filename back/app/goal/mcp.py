@@ -11,6 +11,7 @@ from app.services.mcp_loader import McpToolContext, context_language, mcp_tool
 from . import goal_service, retrospective
 from .access import owner_scope, readable_agents
 from app.connection.facade import resolve_service_connection
+from app.process.facade import resolve_agent_scheduled_process
 from app.services.facade import administration_scope
 from .resource_facade import agent_goal_payload
 from .models import GoalStatus
@@ -179,8 +180,12 @@ async def mcp_goal_ask_referrer(ctx: McpToolContext, question: str) -> str:
     )
 
 
-async def _referrer_preflight(ctx: McpToolContext, arguments: dict[str, Any]) -> dict[str, Any]:
-    if (code := arguments.get("service_code")) is None:
+async def _goal_configuration_preflight(ctx: McpToolContext, arguments: dict[str, Any]) -> dict[str, Any]:
+    service_code = arguments.get("service_code")
+    process_code = arguments.get("process_code")
+    if process_code is not None and arguments.get("clear_process"):
+        raise ValueError("Supply process_code or clear_process, not both")
+    if service_code is None and process_code is None:
         return {}
     await _require_goal_management_access(ctx)
     owner = arguments.get("agent_id")
@@ -190,19 +195,27 @@ async def _referrer_preflight(ctx: McpToolContext, arguments: dict[str, Any]) ->
     if not isinstance(owner, int):
         raise ValueError("The Goal owner is required")
     (await administration_scope(ctx.agent_id, _GOAL_SERVICE_CODE)).require(owner)
-    account = await resolve_service_connection(owner, code, account_email=arguments.get("account_email"))
-    return {"referrer_account": account.id}
+    configuration: dict[str, Any] = {}
+    if service_code is not None:
+        account = await resolve_service_connection(owner, service_code, account_email=arguments.get("account_email"))
+        configuration["referrer_account"] = account.id
+    if process_code is not None:
+        configuration["process_definition_id"] = await resolve_agent_scheduled_process(owner, process_code)
+    return configuration
 
 
 @mcp_tool("goal", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",
-    authorization_preflight=_referrer_preflight,
+    authorization_preflight=_goal_configuration_preflight,
     name="goal_create",
     description=(
         "Assign a new long-running Goal to an agent. The owner agent performs the work and "
         "the selected Messenger contact supervises it as its human contact. The "
         "description must be a rich-text HTML fragment; title stays plain text. The "
         "first cycle is scheduled immediately when active is true. An enabled schedule adds "
-        "a Goal-specific restriction inside the global Goal time window."
+        "a Goal-specific restriction inside the global Goal time window. To run a native process "
+        "on each cycle, set process_code to its exact code (metadata.native_code in "
+        "file_list('galaris://processes/')). The process must be available to the owner agent "
+        "with process_start enabled for automatic use. Omit process_code to run an ordinary Task."
     ),
 )
 async def mcp_goal_create(
@@ -219,11 +232,13 @@ async def mcp_goal_create(
     schedule: list[GoalScheduleWindow] | None = None,
     active: bool = True,
     account_email: str | None = None,
+    process_code: Annotated[str, Field(min_length=1, max_length=255)] | None = None,
 ) -> dict[str, Any]:
     """Create an agent-owned Goal with an explicit human referrer."""
 
     await _require_goal_management_access(ctx)
     (await administration_scope(ctx.agent_id, _GOAL_SERVICE_CODE)).require(agent_id)
+    process_id = await resolve_agent_scheduled_process(agent_id, process_code) if process_code is not None else None
     data = GoalCreate(
         title=title,
         description=description,
@@ -239,6 +254,7 @@ async def mcp_goal_create(
         schedule_enabled=schedule_enabled,
         schedule=schedule or [],
         active=active,
+        process_definition_id=process_id,
     )
     return await agent_goal_payload(await goal_service.create(data))
 
@@ -347,14 +363,16 @@ async def mcp_goal_update_suivi(
 
 @mcp_tool("goal", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",
 
-    authorization_preflight=_referrer_preflight,
+    authorization_preflight=_goal_configuration_preflight,
     name="goal_update",
     description=(
         "Update a Goal using the revision read from galaris://goal/<uuid>. Any omitted field is "
         "preserved. description must be a rich-text HTML fragment; title stays plain text. "
         "The owner assignment can only change before the first cycle; a supplied referrer is "
         "always a human Galaris user. An enabled schedule can only further restrict the global "
-        "Goal time window."
+        "Goal time window. Use the exact native process_code to select a process available "
+        "to the owner agent, or clear_process=true to return to ordinary Tasks. Omit both "
+        "to preserve the current choice."
     ),
 )
 async def mcp_goal_update(
@@ -372,14 +390,20 @@ async def mcp_goal_update(
     referrer_max_reminders: int | None = None,
     schedule_enabled: bool | None = None,
     schedule: list[GoalScheduleWindow] | None = None,
+    process_code: Annotated[str, Field(min_length=1, max_length=255)] | None = None,
+    clear_process: bool = False,
 ) -> dict[str, Any]:
     """Update selected Goal fields with optimistic concurrency control."""
 
 
+    if clear_process and process_code is not None:
+        raise ValueError("Supply process_code or clear_process, not both")
     await _require_goal_management_access(ctx)
-    owner = await owner_scope(ctx.agent_id, _goal_id(goal_id), manage=True)
+    identifier = _goal_id(goal_id)
+    owner = await owner_scope(ctx.agent_id, identifier, manage=True)
     if agent_id is not None:
         (await administration_scope(ctx.agent_id, _GOAL_SERVICE_CODE)).require(agent_id)
+    effective_owner = agent_id if agent_id is not None else owner
     values: dict[str, Any] = {"expected_revision": expected_revision}
     for key, value in (
         ("title", title),
@@ -392,6 +416,10 @@ async def mcp_goal_update(
     ):
         if value is not None:
             values[key] = value
+    if process_code is not None:
+        values["process_definition_id"] = await resolve_agent_scheduled_process(effective_owner, process_code)
+    elif clear_process:
+        values["process_definition_id"] = None
     referrer_values = (
         service_code,
         referrer_user_id,
@@ -408,14 +436,14 @@ async def mcp_goal_update(
         assert referrer_display_name is not None
         values["referrer"] = GoalMessengerReferrerInput(
             type="MESSENGER",
-            connection_id=(await resolve_service_connection(agent_id if agent_id is not None else owner, service_code, account_email=account_email)).id,
+            connection_id=(await resolve_service_connection(effective_owner, service_code, account_email=account_email)).id,
             user_id=referrer_user_id,
             display_name=referrer_display_name,
         )
     if len(values) == 1:
         raise ValueError("At least one Goal field must be supplied")
     data = GoalUpdate(**values)
-    result = await goal_service.update(_goal_id(goal_id), data)
+    result = await goal_service.update(identifier, data)
     if result is None:
         raise ValueError(f"Goal not found: {goal_id}")
     return await agent_goal_payload(result)
