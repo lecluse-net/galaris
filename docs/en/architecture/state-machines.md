@@ -429,6 +429,12 @@ A cycle creates an ordinary Task, waits for its terminal state, moves to judgmen
 persists a verdict. `CONTINUE` schedules the next time-based cycle when a frequency exists; `STOP`
 closes the objective. A pause prevents the creation of new cycles without erasing history.
 
+A Goal with a configured process admits its cycle and run in one transaction under the
+agent's identity. The cycle stays `RUNNING` until the run finishes, then becomes `DECIDED`
+with `CONTINUE` (or `STOP` if the Goal was completed manually). A delay-based Goal measures
+its next delay from the run's finish time. A failed admission sets the Goal to `ERROR`
+and preserves the configured process.
+
 A reply to a failed cycle's question remains attached to its Messenger interaction. The
 worker supplies it to the next eligible cycle of the same Goal, which can start before
 the next scheduled date. Admission respects pauses, operating windows, and cycle

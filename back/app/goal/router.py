@@ -10,8 +10,12 @@ from typing import Literal
 
 from fastapi import APIRouter, HTTPException, Query, status
 
-from core.authorize import Privileges, authorize
+from core.authorize import Privileges, authorize, check_privilege
+from core.database import get_db
+from core.i18n import tr
+from core.user import get_current_user
 from app.agent import AgentManagementScope, current_management_scope
+from app.process.facade import ScheduledProcessOption, scheduled_process_options
 
 from . import goal_service
 from .models import GoalStatus
@@ -83,6 +87,16 @@ async def _require_parent_scope(
     parent = await goal_service.get_access(parent_goal_id)
     if parent is None or not scope.allows(parent.agent_id):
         raise _not_found()
+
+
+async def _can_launch_process() -> bool:
+    user = await get_current_user()
+    return await check_privilege(user, [Privileges.PROCESS_LAUNCH, Privileges.PROCESS_ADMIN], get_db())
+
+
+async def _require_process_launch() -> None:
+    if not await _can_launch_process():
+        raise HTTPException(status_code=403, detail=await tr("goal_process.launch_privilege_required"))
 
 
 @router.get("", response_model=GoalPage)
@@ -210,6 +224,16 @@ async def read_agenda(agent_id: int, start: datetime, end: datetime) -> GoalAgen
         raise HTTPException(status_code=422, detail=str(exc)) from exc
 
 
+@router.get("/process-options", response_model=list[ScheduledProcessOption])
+@authorize(privileges=Privileges.GOAL_EDIT)
+async def read_cycle_process_options(agent_id: int = Query(gt=0)) -> list[ScheduledProcessOption]:
+    scope = await current_management_scope()
+    if not scope.allows(agent_id):
+        raise _not_found()
+    await _require_process_launch()
+    return await scheduled_process_options(agent_id)
+
+
 @router.get("/{goal_id}", response_model=GoalDetail)
 @authorize(privileges=[Privileges.GOAL_ACCESS, Privileges.GOAL_EDIT])
 async def read_goal(goal_id: UUID) -> GoalDetail:
@@ -249,6 +273,8 @@ async def create_goal(data: GoalApiCreate) -> GoalRead:
     try:
         scope = await current_management_scope()
         _require_goal_agents(scope, data)
+        if data.process_definition_id is not None:
+            await _require_process_launch()
         await _require_parent_scope(scope, data.parent_goal_id)
         return await goal_service.create(GoalCreate.model_validate(data.model_dump()))
     except goal_service.GoalConflictError as exc:
@@ -268,7 +294,10 @@ async def update_goal(goal_id: UUID, data: GoalApiUpdate) -> GoalRead:
         goal = await goal_service.update(
             goal_id,
             GoalUpdate.model_validate(data.model_dump(exclude_unset=True)),
+            can_configure_process=await _can_launch_process(),
         )
+    except goal_service.GoalProcessLaunchDenied as exc:
+        raise HTTPException(status_code=403, detail=str(exc)) from exc
     except goal_service.GoalConflictError as exc:
         raise _conflict(exc) from exc
     except LookupError as exc:

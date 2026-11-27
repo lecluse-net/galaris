@@ -6,6 +6,7 @@ import type {
   GoalCyclePage,
   GoalDetail,
   GoalPage,
+  GoalProcessOption,
   GoalSettings,
   GoalSettingsUpdate,
   GoalStatus,
@@ -16,6 +17,12 @@ import type {
 } from '../types'
 
 export const goalService = {
+  async processOptions(agentId: number, signal: AbortSignal): Promise<GoalProcessOption[]> {
+    const response = await api.get<GoalProcessOption[]>('/goals/process-options', {
+      params: { agent_id: agentId }, signal,
+    })
+    return response.data
+  },
   async agenda(agent: number, start: string, end: string, signal?: AbortSignal): Promise<{ items: GoalAgendaEvent[]; complete: boolean }> {
     return (await api.get('/goals/agenda', { params: { agent_id: agent, start, end }, signal })).data
   },

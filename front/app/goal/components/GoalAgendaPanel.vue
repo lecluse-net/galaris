@@ -11,11 +11,12 @@
         <div v-if="event.finished_at">{{ t('goal.agenda.finished', { date: format(event.finished_at) }) }}</div>
         <div v-if="event.verdict">{{ t(`goal.verdicts.${event.verdict}`) }}</div>
         <p v-if="event.reason">{{ event.reason }}</p>
-        <p v-if="!event.task_uri">{{ t('goal.agenda.noTask') }}</p>
+        <p v-if="!event.task_uri && !event.process_run_reference">{{ t('goal.agenda.noTask') }}</p>
       </q-card-section>
       <q-card-actions class="galaris-dialog-actions" align="right">
         <q-btn outline color="primary" icon="flag" :label="t('goal.agenda.openGoal')" @click="selectedResource = { kind: 'goal', id: event.goal_id, title: event.title }" />
-        <q-btn v-if="event.task_uri && canReadTasks" color="primary" :label="t('goal.agenda.openTask')" @click="openTask(event.task_uri)" />
+        <GoalProcessRunButton v-if="event.process_run_reference" :run-reference="event.process_run_reference" :engine="event.process_run_engine" />
+        <q-btn v-else-if="event.task_uri && canReadTasks" color="primary" :label="t('goal.agenda.openTask')" @click="openTask(event.task_uri)" />
       </q-card-actions>
     </q-card>
   </q-dialog>
@@ -28,6 +29,7 @@ import { useQuasar } from 'quasar'
 import { privileges, usePrivilegeStore } from '@/core/authorize'
 import { ResourceDetailDialog, type ResourceDetailTarget } from '@/core/util'
 import type { GoalAgendaEvent } from '../types'
+import GoalProcessRunButton from './GoalProcessRunButton.vue'
 const { event } = defineProps<{ event: GoalAgendaEvent }>()
 const emit = defineEmits<{ close: []; changed: [] }>()
 const { t, locale } = useI18n(), $q = useQuasar(), privilegeStore = usePrivilegeStore()

@@ -11,13 +11,13 @@ tests remain authoritative for behavior.
 
 - 80 declared backend modules;
 - 41 declared frontend modules;
-- 656 backend dependency edges;
+- 657 backend dependency edges;
 - 230 frontend dependency edges;
-- 309 edges between `app`/`bridge` domains;
+- 310 edges between `app`/`bridge` domains;
 - 30 directly bidirectional domain pairs;
 - 1 strongly connected components;
 - 0 directly bidirectional frontend pairs;
-- 852 detected HTTP/WebSocket handlers;
+- 853 detected HTTP/WebSocket handlers;
 - 212 detected SQLAlchemy tables;
 - 290 detected native MCP tools;
 - 60 detected Vue pages.
@@ -357,16 +357,17 @@ tests remain authoritative for behavior.
 | `app.goal` | `app.connection` | `back/app/goal/mcp.py`, `back/app/goal/models.py`, `back/app/goal/resource_facade.py` |
 | `app.goal` | `app.llm` | `back/app/goal/evaluation.py`, `back/app/goal/goal_service.py`, `back/app/goal/models.py`, `back/app/goal/runner.py` |
 | `app.goal` | `app.messenger` | `back/app/goal/goal_service.py`, `back/app/goal/referrer_wait.py` |
+| `app.goal` | `app.process` | `back/app/goal/goal_service.py`, `back/app/goal/router.py`, `back/app/goal/runner.py` |
 | `app.goal` | `app.services` | `back/app/goal/access.py`, `back/app/goal/mcp.py` |
 | `app.goal` | `app.task` | `back/app/goal/calendar.py`, `back/app/goal/goal_service.py`, `back/app/goal/models.py`, `back/app/goal/referrer_wait.py`, `back/app/goal/resource_facade.py`, `back/app/goal/retrospective.py`, `back/app/goal/runner.py` |
 | `app.goal` | `core.authorize` | `back/app/goal/router.py` |
-| `app.goal` | `core.database` | `back/app/goal/calendar.py`, `back/app/goal/category_service.py`, `back/app/goal/context.py`, `back/app/goal/events.py`, `back/app/goal/facade.py`, `back/app/goal/goal_service.py`, `back/app/goal/models.py`, `back/app/goal/referrer_wait.py`, `back/app/goal/resource_facade.py`, `back/app/goal/retrospective.py`, `back/app/goal/runner.py` |
+| `app.goal` | `core.database` | `back/app/goal/calendar.py`, `back/app/goal/category_service.py`, `back/app/goal/context.py`, `back/app/goal/events.py`, `back/app/goal/facade.py`, `back/app/goal/goal_service.py`, `back/app/goal/models.py`, `back/app/goal/referrer_wait.py`, `back/app/goal/resource_facade.py`, `back/app/goal/retrospective.py`, `back/app/goal/router.py`, `back/app/goal/runner.py` |
 | `app.goal` | `core.dbadmin` | `back/app/goal/agenda_upgrade.py`, `back/app/goal/dbadmin.py` |
-| `app.goal` | `core.i18n` | `back/app/goal/referrer_wait.py`, `back/app/goal/retrospective.py` |
+| `app.goal` | `core.i18n` | `back/app/goal/goal_service.py`, `back/app/goal/referrer_wait.py`, `back/app/goal/retrospective.py`, `back/app/goal/router.py`, `back/app/goal/runner.py` |
 | `app.goal` | `core.params` | `back/app/goal/facade.py`, `back/app/goal/settings_service.py` |
 | `app.goal` | `core.scheduling` | `back/app/goal/__init__.py` |
 | `app.goal` | `core.storage` | `back/app/goal/dbadmin.py` |
-| `app.goal` | `core.user` | `back/app/goal/category_service.py`, `back/app/goal/events.py`, `back/app/goal/goal_service.py`, `back/app/goal/hierarchy.py` |
+| `app.goal` | `core.user` | `back/app/goal/category_service.py`, `back/app/goal/events.py`, `back/app/goal/goal_service.py`, `back/app/goal/hierarchy.py`, `back/app/goal/router.py` |
 | `app.goal` | `core.util` | `back/app/goal/router.py`, `back/app/goal/schemas.py` |
 | `app.harness` | `app.agent` | `back/app/harness/__init__.py`, `back/app/harness/checkpoint.py`, `back/app/harness/checkpoint_policy.py`, `back/app/harness/claude_checkpoint.py`, `back/app/harness/claude_driver.py`, `back/app/harness/claude_mcp.py`, `back/app/harness/claude_media.py`, `back/app/harness/claude_runtime.py`, `back/app/harness/claude_tool_discovery.py`, `back/app/harness/contracts.py`, `back/app/harness/conversation.py`, `back/app/harness/conversation_protocol.py`, `back/app/harness/driver.py`, `back/app/harness/executor.py`, `back/app/harness/facade.py`, `back/app/harness/mcp_toolset.py`, `back/app/harness/media.py`, `back/app/harness/prompt.py`, `back/app/harness/router.py`, `back/app/harness/run_control.py`, `back/app/harness/runtime.py`, `back/app/harness/task_tool_scope.py` |
 | `app.harness` | `app.console` | `back/app/harness/claude_driver.py`, `back/app/harness/executor.py`, `back/app/harness/task_tool_scope.py` |
@@ -896,10 +897,10 @@ tests remain authoritative for behavior.
 | `app/file_share` | `core/util` | `front/app/file_share/components/AgentFileBrowser.vue`, `front/app/file_share/components/FileEntryActions.vue`, `front/app/file_share/components/FileIndexPanel.vue`, `front/app/file_share/components/FileTile.vue`, `front/app/file_share/components/MailMessageDialog.vue`, `front/app/file_share/pages/index.vue`, `front/app/file_share/pages/settings.vue`, `front/app/file_share/presentation.ts`, `front/app/file_share/richContent.ts` |
 | `app/goal` | `app/agent` | `front/app/goal/components/GoalOverview.vue`, `front/app/goal/pages/index.vue` |
 | `app/goal` | `core/api` | `front/app/goal/components/GoalCategoryManager.vue`, `front/app/goal/pages/index.vue`, `front/app/goal/services/categoryService.ts`, `front/app/goal/services/goalService.ts`, `front/app/goal/stores/goalStore.ts` |
-| `app/goal` | `core/authorize` | `front/app/goal/components/GoalAgendaPanel.vue`, `front/app/goal/navigation.ts`, `front/app/goal/pages/index.vue`, `front/app/goal/stores/goalStore.ts` |
+| `app/goal` | `core/authorize` | `front/app/goal/components/GoalAgendaPanel.vue`, `front/app/goal/components/GoalProcessRunButton.vue`, `front/app/goal/navigation.ts`, `front/app/goal/pages/index.vue`, `front/app/goal/stores/goalStore.ts` |
 | `app/goal` | `core/navigation` | `front/app/goal/navigation.ts`, `front/app/goal/pages/index.vue` |
 | `app/goal` | `core/user` | `front/app/goal/pages/index.vue`, `front/app/goal/stores/goalStore.ts` |
-| `app/goal` | `core/util` | `front/app/goal/components/GoalAgendaPanel.vue`, `front/app/goal/components/GoalCategoryManager.vue`, `front/app/goal/components/GoalOverview.vue`, `front/app/goal/components/GoalRecurrenceEditor.vue`, `front/app/goal/pages/index.vue`, `front/app/goal/richContent.ts` |
+| `app/goal` | `core/util` | `front/app/goal/components/GoalAgendaPanel.vue`, `front/app/goal/components/GoalCategoryManager.vue`, `front/app/goal/components/GoalOverview.vue`, `front/app/goal/components/GoalProcessRunButton.vue`, `front/app/goal/components/GoalRecurrenceEditor.vue`, `front/app/goal/pages/index.vue`, `front/app/goal/richContent.ts` |
 | `app/goal` | `core/websocket` | `front/app/goal/stores/goalStore.ts` |
 | `app/harnesses` | `core/api` | `front/app/harnesses/services/harnessService.ts`, `front/app/harnesses/services/managerService.ts` |
 | `app/harnesses` | `core/authorize` | `front/app/harnesses/components/HarnessCatalogGrid.vue`, `front/app/harnesses/components/HarnessEditor.vue`, `front/app/harnesses/components/HarnessExecutionSettings.vue`, `front/app/harnesses/components/HarnessManagedProviders.vue`, `front/app/harnesses/components/HarnessManagerConfiguration.vue` |
@@ -1075,10 +1076,10 @@ tests remain authoritative for behavior.
 | `app.agent` | 8 | `app.file_share`, `app.image`, `app.llm`, `app.messenger`, `app.process`, `app.services`, `app.share`, `app.skill` |
 | `app.messenger` | 8 | `app.agent`, `app.connection`, `app.conversation`, `app.file_share`, `app.llm`, `app.memory`, `app.services`, `app.task` |
 | `app.contact` | 7 | `app.agent`, `app.conversation`, `app.llm`, `app.memory`, `app.messenger`, `app.services`, `app.task` |
+| `app.goal` | 7 | `app.agent`, `app.connection`, `app.llm`, `app.messenger`, `app.process`, `app.services`, `app.task` |
 | `app.onboarding` | 7 | `app.agent`, `app.connection`, `app.llm`, `app.messenger`, `app.process`, `app.services`, `app.skill` |
 | `app.audio` | 6 | `app.file_share`, `app.llm`, `app.messenger`, `app.services`, `app.task`, `bridge.youtube` |
 | `app.calendar` | 6 | `app.agent`, `app.connection`, `app.contact`, `app.file_share`, `app.memory`, `app.services` |
-| `app.goal` | 6 | `app.agent`, `app.connection`, `app.llm`, `app.messenger`, `app.services`, `app.task` |
 | `bridge.codex` | 6 | `app.agent`, `app.harnesses`, `app.llm`, `app.mcp`, `app.skill`, `bridge.harness` |
 | `bridge.deepseek_harness` | 6 | `app.agent`, `app.harnesses`, `app.llm`, `app.mcp`, `app.skill`, `bridge.harness` |
 | `bridge.mail` | 6 | `app.agent`, `app.connection`, `app.contact`, `app.file_share`, `app.messenger`, `app.services` |
@@ -1140,7 +1141,7 @@ tests remain authoritative for behavior.
 | `app.connection` | 22 | `app.browser`, `app.calendar`, `app.console`, `app.conversation`, `app.dream`, `app.file_share`, `app.goal`, `app.lab`, `app.llm`, `app.messenger`, `app.onboarding`, `app.services`, `app.skill`, `app.topic`, `app.voice`, `app.webhook`, `bridge.hermes`, `bridge.mail`, `bridge.matrix`, `bridge.nextcloud`, `bridge.one_bot`, `bridge.whatsapp` |
 | `app.file_share` | 21 | `app.agent`, `app.audio`, `app.browser`, `app.calendar`, `app.chat`, `app.console`, `app.conversation`, `app.document`, `app.harness`, `app.image`, `app.llm`, `app.messenger`, `app.multimedia`, `app.process`, `app.services`, `bridge.calendar`, `bridge.code_server`, `bridge.hermes`, `bridge.mail`, `bridge.nextcloud`, `bridge.samba` |
 | `app.task` | 17 | `app.audio`, `app.contact`, `app.conversation`, `app.dashboard`, `app.document`, `app.dream`, `app.file_share`, `app.goal`, `app.lab`, `app.llm`, `app.memory`, `app.messenger`, `app.process`, `app.services`, `app.topic`, `app.voice`, `app.webhook` |
-| `app.process` | 14 | `app.agent`, `app.conversation`, `app.document`, `app.dream`, `app.file_share`, `app.harness`, `app.lab`, `app.llm`, `app.memory`, `app.onboarding`, `app.topic`, `app.voice`, `bridge.hermes`, `bridge.n8n` |
+| `app.process` | 15 | `app.agent`, `app.conversation`, `app.document`, `app.dream`, `app.file_share`, `app.goal`, `app.harness`, `app.lab`, `app.llm`, `app.memory`, `app.onboarding`, `app.topic`, `app.voice`, `bridge.hermes`, `bridge.n8n` |
 | `app.conversation` | 12 | `app.chat`, `app.contact`, `app.document`, `app.dream`, `app.file_share`, `app.harness`, `app.lab`, `app.llm`, `app.memory`, `app.messenger`, `app.topic`, `app.voice` |
 | `app.memory` | 11 | `app.calendar`, `app.contact`, `app.document`, `app.dream`, `app.file_share`, `app.lab`, `app.messenger`, `app.process`, `app.topic`, `app.voice`, `bridge.hermes` |
 | `app.skill` | 8 | `app.agent`, `app.file_share`, `app.harness`, `app.lab`, `app.onboarding`, `bridge.codex`, `bridge.deepseek_harness`, `bridge.hermes` |
@@ -1736,26 +1737,27 @@ No cyclic component detected.
 | WEBSOCKET | `/gateway/{identifier}/editor/{path:path}` | `app.code` | `editor_ws` | no | `back/app/code/gateway.py:188` |
 | GET | `/gateway/{identifier}/launch` | `app.code` | `launch_page` | no | `back/app/code/gateway.py:47` |
 | POST | `/gateway/{identifier}/launch` | `app.code` | `launch` | no | `back/app/code/gateway.py:71` |
-| GET | `/goals` | `app.goal` | `read_goals` | yes | `back/app/goal/router.py:90` |
-| POST | `/goals` | `app.goal` | `create_goal` | yes | `back/app/goal/router.py:248` |
-| GET | `/goals/agenda` | `app.goal` | `read_agenda` | yes | `back/app/goal/router.py:201` |
-| GET | `/goals/categories` | `app.goal` | `read_categories` | yes | `back/app/goal/router.py:120` |
-| POST | `/goals/categories` | `app.goal` | `create_category` | yes | `back/app/goal/router.py:126` |
-| DELETE | `/goals/categories/{category_id}` | `app.goal` | `delete_category` | yes | `back/app/goal/router.py:141` |
-| PUT | `/goals/categories/{category_id}` | `app.goal` | `update_category` | yes | `back/app/goal/router.py:132` |
-| GET | `/goals/referrers/messenger` | `app.goal` | `search_messenger_referrers` | yes | `back/app/goal/router.py:150` |
-| GET | `/goals/runtime-status` | `app.goal` | `read_goal_runtime` | yes | `back/app/goal/router.py:165` |
-| GET | `/goals/settings` | `app.goal` | `read_goal_settings` | yes | `back/app/goal/router.py:171` |
-| PATCH | `/goals/settings` | `app.goal` | `update_goal_settings` | yes | `back/app/goal/router.py:177` |
-| GET | `/goals/tree` | `app.goal` | `read_goal_tree` | yes | `back/app/goal/router.py:194` |
-| DELETE | `/goals/{goal_id}` | `app.goal` | `delete_goal` | yes | `back/app/goal/router.py:335` |
-| GET | `/goals/{goal_id}` | `app.goal` | `read_goal` | yes | `back/app/goal/router.py:215` |
-| PUT | `/goals/{goal_id}` | `app.goal` | `update_goal` | yes | `back/app/goal/router.py:262` |
-| POST | `/goals/{goal_id}/complete` | `app.goal` | `complete_goal` | yes | `back/app/goal/router.py:309` |
-| GET | `/goals/{goal_id}/cycles` | `app.goal` | `read_goal_cycles` | yes | `back/app/goal/router.py:229` |
-| POST | `/goals/{goal_id}/pause` | `app.goal` | `pause_goal` | yes | `back/app/goal/router.py:283` |
-| POST | `/goals/{goal_id}/resume` | `app.goal` | `resume_goal` | yes | `back/app/goal/router.py:296` |
-| POST | `/goals/{goal_id}/run-now` | `app.goal` | `run_goal_now` | yes | `back/app/goal/router.py:322` |
+| GET | `/goals` | `app.goal` | `read_goals` | yes | `back/app/goal/router.py:104` |
+| POST | `/goals` | `app.goal` | `create_goal` | yes | `back/app/goal/router.py:272` |
+| GET | `/goals/agenda` | `app.goal` | `read_agenda` | yes | `back/app/goal/router.py:215` |
+| GET | `/goals/categories` | `app.goal` | `read_categories` | yes | `back/app/goal/router.py:134` |
+| POST | `/goals/categories` | `app.goal` | `create_category` | yes | `back/app/goal/router.py:140` |
+| DELETE | `/goals/categories/{category_id}` | `app.goal` | `delete_category` | yes | `back/app/goal/router.py:155` |
+| PUT | `/goals/categories/{category_id}` | `app.goal` | `update_category` | yes | `back/app/goal/router.py:146` |
+| GET | `/goals/process-options` | `app.goal` | `read_cycle_process_options` | yes | `back/app/goal/router.py:229` |
+| GET | `/goals/referrers/messenger` | `app.goal` | `search_messenger_referrers` | yes | `back/app/goal/router.py:164` |
+| GET | `/goals/runtime-status` | `app.goal` | `read_goal_runtime` | yes | `back/app/goal/router.py:179` |
+| GET | `/goals/settings` | `app.goal` | `read_goal_settings` | yes | `back/app/goal/router.py:185` |
+| PATCH | `/goals/settings` | `app.goal` | `update_goal_settings` | yes | `back/app/goal/router.py:191` |
+| GET | `/goals/tree` | `app.goal` | `read_goal_tree` | yes | `back/app/goal/router.py:208` |
+| DELETE | `/goals/{goal_id}` | `app.goal` | `delete_goal` | yes | `back/app/goal/router.py:364` |
+| GET | `/goals/{goal_id}` | `app.goal` | `read_goal` | yes | `back/app/goal/router.py:239` |
+| PUT | `/goals/{goal_id}` | `app.goal` | `update_goal` | yes | `back/app/goal/router.py:288` |
+| POST | `/goals/{goal_id}/complete` | `app.goal` | `complete_goal` | yes | `back/app/goal/router.py:338` |
+| GET | `/goals/{goal_id}/cycles` | `app.goal` | `read_goal_cycles` | yes | `back/app/goal/router.py:253` |
+| POST | `/goals/{goal_id}/pause` | `app.goal` | `pause_goal` | yes | `back/app/goal/router.py:312` |
+| POST | `/goals/{goal_id}/resume` | `app.goal` | `resume_goal` | yes | `back/app/goal/router.py:325` |
+| POST | `/goals/{goal_id}/run-now` | `app.goal` | `run_goal_now` | yes | `back/app/goal/router.py:351` |
 | GET | `/harness-manager/configuration` | `bridge.harness` | `read_configuration` | yes | `back/bridge/harness/router.py:27` |
 | PUT | `/harness-manager/configuration` | `bridge.harness` | `update_configuration` | yes | `back/bridge/harness/router.py:33` |
 | GET | `/harness-manager/diagnostics` | `bridge.harness` | `manager_diagnostics` | yes | `back/bridge/harness/router.py:21` |
@@ -2223,12 +2225,12 @@ No cyclic component detected.
 | `file_owners` | `ManagedFileOwner` | `app.file_share` | no | `agents.id`, `files.id` | `back/app/file_share/models.py:94` |
 | `file_stores` | `FileStore` | `core.storage` | no | — | `back/core/storage/models.py:59` |
 | `files` | `StoredFile` | `core.storage` | yes | — | `back/core/storage/models.py:14` |
-| `goal_calendar_plans` | `GoalCalendarPlan` | `app.goal` | no | `goals.id` | `back/app/goal/models.py:364` |
+| `goal_calendar_plans` | `GoalCalendarPlan` | `app.goal` | no | `goals.id` | `back/app/goal/models.py:381` |
 | `goal_categories` | `GoalCategory` | `app.goal` | yes | — | `back/app/goal/models.py:76` |
-| `goal_cycle_triggers` | `GoalCycleTrigger` | `app.goal` | no | `goal_cycles.id`, `goals.id` | `back/app/goal/models.py:402` |
-| `goal_cycles` | `GoalCycle` | `app.goal` | no | `goal_cycles.id`, `goals.id`, `llms.id`, `memory_items.id`, `tasks.id` | `back/app/goal/models.py:240` |
-| `goal_occurrences` | `GoalOccurrence` | `app.goal` | no | `goal_calendar_plans.id`, `goal_cycles.id`, `goals.id` | `back/app/goal/models.py:381` |
-| `goals` | `Goal` | `app.goal` | yes | `agents.id`, `connections.id`, `documents.id`, `goal_categories.id`, `goals.id`, `memory_items.id`, `users.id` | `back/app/goal/models.py:86` |
+| `goal_cycle_triggers` | `GoalCycleTrigger` | `app.goal` | no | `goal_cycles.id`, `goals.id` | `back/app/goal/models.py:419` |
+| `goal_cycles` | `GoalCycle` | `app.goal` | no | `goal_cycles.id`, `goals.id`, `llms.id`, `memory_items.id`, `tasks.id` | `back/app/goal/models.py:243` |
+| `goal_occurrences` | `GoalOccurrence` | `app.goal` | no | `goal_calendar_plans.id`, `goal_cycles.id`, `goals.id` | `back/app/goal/models.py:398` |
+| `goals` | `Goal` | `app.goal` | yes | `agents.id`, `connections.id`, `documents.id`, `goal_categories.id`, `goals.id`, `memory_items.id`, `process_definitions.id`, `users.id` | `back/app/goal/models.py:86` |
 | `harness_execution_configurations` | `HarnessExecutionConfiguration` | `app.harnesses` | yes | — | `back/app/harnesses/models.py:18` |
 | `harnesses` | `Harness` | `app.harnesses` | yes | — | `back/app/harnesses/models.py:29` |
 | `hermes_agent_configs` | `HermesAgentConfig` | `bridge.hermes` | no | `agents.id` | `back/bridge/hermes/models.py:14` |

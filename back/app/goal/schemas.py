@@ -199,6 +199,7 @@ class GoalRecurrence(BaseModel):
 
 
 class GoalCreate(GoalScheduleConfig):
+    process_definition_id: int | None = Field(default=None, gt=0)
     category_id: int | None = Field(default=None, gt=0)
     title: str = Field(min_length=1, max_length=400)
     description: HtmlBody = Field(min_length=1)
@@ -235,6 +236,7 @@ class GoalApiCreate(GoalScheduleConfig):
     """Public HTTP contract: every newly assigned Goal has a human referrer."""
 
     category_id: int | None = Field(default=None, gt=0)
+    process_definition_id: int | None = Field(default=None, gt=0)
     title: str = Field(min_length=1, max_length=400)
     description: HtmlBody = Field(min_length=1)
     agent_id: int = Field(gt=0)
@@ -255,6 +257,7 @@ class GoalUpdate(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     category_id: int | None = Field(default=None, gt=0)
+    process_definition_id: int | None = Field(default=None, gt=0)
     expected_revision: int = Field(ge=1)
     title: str | None = Field(default=None, min_length=1, max_length=400)
     description: HtmlBody | None = Field(default=None, min_length=1)
@@ -301,6 +304,7 @@ class GoalApiUpdate(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     category_id: int | None = Field(default=None, gt=0)
+    process_definition_id: int | None = Field(default=None, gt=0)
     expected_revision: int = Field(ge=1)
     title: str | None = Field(default=None, min_length=1, max_length=400)
     description: HtmlBody | None = Field(default=None, min_length=1)
@@ -357,6 +361,7 @@ class GoalRead(GoalScheduleConfig):
     content_profile: str = "rich-text"
     content_profile_version: int = 1
     agent_id: int
+    process_definition_id: int | None = None
     requester_user_id: int | None = None
     agent_name: str = ""
     agent_code: str = ""
@@ -377,7 +382,9 @@ class GoalRead(GoalScheduleConfig):
     evaluation_cost: float = 0.0
     total_cost: float = 0.0
     current_task_id: UUID | None = None
+    current_process_run_reference: UUID | None = None
     last_task_finished_at: datetime | None = None
+    last_cycle_finished_at: datetime | None = None
     last_verdict: GoalVerdict | None = None
     created_at: datetime | None = None
     created_by: int | None = None
@@ -395,6 +402,9 @@ class GoalCycleRead(BaseModel):
     trigger_kind: GoalCycleTriggerKind
     source_cycle_id: UUID | None
     task_id: UUID | None
+    process_run_reference: UUID | None = None
+    process_run_engine: str | None = None
+    process_finished_at: datetime | None = None
     task_label: str | None = None
     task_status: str | None = None
     task_cost: float = 0.0
@@ -431,6 +441,8 @@ class GoalAgendaEvent(BaseModel):
     cycle_id: UUID | None = None
     sequence: int | None = None
     task_uri: str | None = None
+    process_run_reference: UUID | None = None
+    process_run_engine: str | None = None
     started_at: datetime | None = None
     finished_at: datetime | None = None
     verdict: GoalVerdict | None = None

@@ -30,11 +30,11 @@
           icon="rocket_launch"
           :label="t('goal.runNow')"
           :loading="commandPending"
-          :disable="Boolean(goal.current_task_id)"
+          :disable="hasOpenGoalCycle(goal)"
           @click="emit('command', 'runNow')"
         />
         <q-tooltip>
-          {{ goal.current_task_id
+          {{ hasOpenGoalCycle(goal)
             ? t('goal.runNowUnavailable')
             : t('goal.runNowHint') }}
         </q-tooltip>
@@ -202,6 +202,9 @@
               <q-badge v-if="goal.current_task_id" color="primary" outline>
                 {{ t('goal.currentTask') }}
               </q-badge>
+              <q-badge v-else-if="goal.current_process_run_reference" color="primary" outline>
+                {{ t('goal.cycleProcess.running') }}
+              </q-badge>
             </div>
           </div>
         </div>
@@ -222,7 +225,7 @@
             <div class="text-caption text-grey-7">{{ t('goal.totalCost') }}</div>
           </div>
           <div class="goal-activity-metric goal-activity-metric--wide">
-            <div class="text-weight-medium">{{ formatDate(goal.last_task_finished_at) }}</div>
+            <div class="text-weight-medium">{{ formatDate(goal.last_cycle_finished_at ?? goal.last_task_finished_at) }}</div>
             <div class="text-caption text-grey-7">{{ t('goal.lastCycle') }}</div>
           </div>
         </div>
@@ -240,7 +243,7 @@ import { useI18n } from 'vue-i18n'
 import { RichText } from '@/core/util'
 import { AgentAvatar } from '@/app/agent'
 import type { Goal, GoalTreeNode, GoalStatus } from '../types'
-import { useGoalFormatting, statusColor } from '../presentation'
+import { hasOpenGoalCycle, useGoalFormatting, statusColor } from '../presentation'
 const props = defineProps<{
   goal: Goal; parent: GoalTreeNode | null; children: (GoalTreeNode & { depth: number })[]
   canEdit: boolean; commandPending: boolean; hasAvatar?: boolean; parentTitle: string | null

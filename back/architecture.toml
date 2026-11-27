@@ -102,8 +102,8 @@ allowed_dependencies = ["app.agent", "app.goal", "app.llm", "app.messenger", "ap
 max_domain_fan_out = 5
 
 [module."app.goal"]
-allowed_dependencies = ["app.agent", "app.connection", "app.llm", "app.messenger", "app.task", "app.services"]
-max_domain_fan_out = 6
+allowed_dependencies = ["app.agent", "app.connection", "app.llm", "app.messenger", "app.process", "app.task", "app.services"]
+max_domain_fan_out = 7
 
 [module."app.dashboard"]
 allowed_dependencies = ["app.agent", "app.llm", "app.task"]

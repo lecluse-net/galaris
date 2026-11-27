@@ -43,6 +43,10 @@ from app.llm.trace import infer_call_type
 from app.document import Document, resource_service as document_service
 from app.document.goal_document_adapter import reconcile_goal_document_paths
 from app.messenger.models import MessengerUser
+from app.process import ProcessDefinition, ProcessRun, ProcessStartJob, process_service
+from app.process.facade import scheduled_process_options
+from app.process.bpmn import Flow, Node, Workflow
+from app.process.native_definitions import create as create_native_process
 from app.document.schemas import DocumentPayload, DocumentUpdate
 from app.task.models import Task, TaskAttempt, TaskAttemptStatus, TaskStatus
 from app.task import task_service
@@ -51,7 +55,7 @@ from core.user import user_service
 from core.user.models import User
 
 
-async def _new_agent(db) -> Agent:
+async def _new_agent(db, *, user_id: int | None = None) -> Agent:
     title_id = await db.scalar(select(Title.id).limit(1))
     if title_id is None:
         title = Title(label="Test", gender="M")
@@ -59,6 +63,7 @@ async def _new_agent(db) -> Agent:
         await db.flush()
         title_id = title.id
     agent = Agent(
+        user_id=user_id,
         title_id=title_id,
         code=f"goal-test-{uuid4().hex[:10]}",
         first_name="Goal",
@@ -106,6 +111,182 @@ def test_next_cycle_at_is_a_minimum_delay_after_task_completion() -> None:
     assert runner.next_cycle_at(finished, 3600) == finished + timedelta(hours=1)
     assert runner.next_cycle_at(finished, 0) == finished
     assert runner.next_cycle_at(finished, -10) == finished
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("engine", ["galaris", "fake"])
+async def test_cycle_runs_the_selected_process_and_clearing_restores_task_work(db, monkeypatch, engine):
+    monkeypatch.setattr("app.task.scheduler.wake", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(settings_service, "get_config", AsyncMock(return_value=GoalSettingsConfig()))
+    agent, other = await _new_agent(db), await _new_agent(db)
+    agent_id = agent.id
+    if engine == "galaris":
+        definition = await create_native_process(
+            actor_agent_id=agent_id, title="Synthetic stock check",
+            graph=Workflow(nodes=[Node(id="start", kind="start"), Node(id="end", kind="end")],
+                           flows=[Flow(id="flow", source="start", target="end")]),
+        )
+    else:
+        tool = await db.scalar(select(Service).where(Service.code == "fake"))
+        if tool is None:
+            tool = Service(code="fake", label="Synthetic external engine", connection_schema={})
+            db.add(tool)
+            await db.flush()
+        definition = ProcessDefinition(
+            agent_id=agent_id, service_id=tool.id, label="Synthetic stock check",
+            engine_process_id=f"synthetic-{uuid4()}",
+        )
+        db.add(definition)
+        await db.commit()
+    definition_id = definition.id
+    assert definition_id in {option.id for option in await scheduled_process_options(agent_id)}
+    assert definition_id not in {option.id for option in await scheduled_process_options(other.id)}
+
+    created = await goal_service.create(GoalCreate(
+        title="Check stock every hour", description="<p>Check synthetic stock.</p>", agent_id=agent_id,
+        referrer=GoalAgentReferrerInput(type="AGENT", agent_id=other.id), process_definition_id=definition_id,
+    ))
+    assert created.process_definition_id == definition_id
+    if engine == "galaris":
+        with monkeypatch.context() as interrupted:
+            interrupted.setattr(runner.goal_calendar, "attach_cycle", AsyncMock(side_effect=RuntimeError("interrupted")))
+            with pytest.raises(RuntimeError, match="interrupted"):
+                await runner.start_due_cycle()
+            await db.rollback()
+        assert (await db.scalar(select(ProcessRun).where(ProcessRun.process_id == definition_id))) is None
+        assert (await db.scalar(select(GoalCycle).where(GoalCycle.goal_id == created.id))) is None
+    assert await runner.start_due_cycle()
+    cycle = await db.scalar(select(GoalCycle).where(GoalCycle.goal_id == created.id))
+    assert cycle is not None and cycle.task_id is None and cycle.process_run_reference is not None
+    run_id = cycle.process_run_reference
+    run = await db.get(ProcessRun, run_id)
+    assert run is not None and run.process_id == definition_id and run.launcher_agent_id == agent_id
+    assert run.idempotency_key == f"goal-cycle:{cycle.id}"
+    assert (await db.scalar(select(ProcessStartJob).where(ProcessStartJob.run_id == run_id))) is not None
+    assert not await runner.finish_process_cycle()
+    assert not await runner.start_due_cycle()
+
+    await process_service.process_start_jobs(engine_code=engine)
+    if engine == "fake":
+        await process_service.cancel_run(run_id)
+    else:
+        for _ in range(5):
+            run = await process_service.refresh_run(run_id)
+            if run.status == "success":
+                break
+        assert run.status == "success", run.error_message
+    assert await runner.finish_process_cycle()
+    await db.refresh(cycle)
+    await db.refresh(run)
+    assert cycle.verdict == GoalVerdict.CONTINUE and cycle.process_finished_at == run.finished_at
+    assert (cycle.error is None) == (engine == "galaris")
+    assert not await runner.finish_process_cycle()
+
+    goal = await goal_service.get_read(created.id)
+    assert goal is not None and goal.next_cycle_at == run.finished_at + timedelta(hours=1)
+    goal = await goal_service.update(goal.id, GoalUpdate(expected_revision=goal.revision, process_definition_id=None))
+    assert goal is not None and goal.process_definition_id is None
+    await goal_service.run_now(goal.id, GoalCommand(expected_revision=goal.revision))
+    assert await runner.start_due_cycle()
+    next_cycle = await db.scalar(select(GoalCycle).where(GoalCycle.goal_id == goal.id, GoalCycle.sequence == 2))
+    assert next_cycle is not None and next_cycle.task_id is not None and next_cycle.process_run_reference is None
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("archive_after_admission", [False, True])
+async def test_archived_process_is_not_dispatched_and_never_falls_back_to_a_task(db, monkeypatch, archive_after_admission):
+    monkeypatch.setattr("app.task.scheduler.wake", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(settings_service, "get_config", AsyncMock(return_value=GoalSettingsConfig()))
+    agent, other = await _new_agent(db), await _new_agent(db)
+    definition = await create_native_process(
+        actor_agent_id=agent.id, title="Synthetic archived process",
+        graph=Workflow(nodes=[Node(id="start", kind="start"), Node(id="end", kind="end")],
+                       flows=[Flow(id="flow", source="start", target="end")]),
+    )
+    goal_data = GoalCreate(
+        title="Scheduled check", description="<p>Check synthetic stock.</p>", agent_id=agent.id,
+        referrer=GoalAgentReferrerInput(type="AGENT", agent_id=other.id), process_definition_id=definition.id,
+    )
+    with pytest.raises(goal_service.GoalConflictError):
+        await goal_service.create(goal_data.model_copy(update={
+            "agent_id": other.id, "referrer": GoalAgentReferrerInput(type="AGENT", agent_id=agent.id),
+        }))
+    goal = await goal_service.create(goal_data)
+    if archive_after_admission:
+        assert await runner.start_due_cycle()
+    definition.archived = True
+    await db.commit()
+    assert definition.id not in {option.id for option in await scheduled_process_options(agent.id)}
+    assert await db.scalar(select(Task).where(Task.goal_id == goal.id)) is None
+    if archive_after_admission:
+        assert await process_service.process_start_jobs(engine_code="galaris") == 1
+        run = await db.scalar(select(ProcessRun).where(ProcessRun.process_id == definition.id))
+        assert run is not None and run.status == "error" and run.engine_run_id is None
+        assert run.error_code == "goal_process_unavailable"
+        assert await runner.finish_process_cycle()
+        return
+
+    assert await runner.start_due_cycle()
+    current = await goal_service.get_read(goal.id)
+    assert current is not None and current.status == GoalStatus.ERROR and current.last_error
+    assert await db.scalar(select(GoalCycle).where(GoalCycle.goal_id == goal.id)) is None
+    assert await db.scalar(select(ProcessRun).where(ProcessRun.process_id == definition.id)) is None
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("can_launch", [False, True])
+async def test_goal_process_options_and_updates_respect_management_and_launch_privileges(client, can_launch):
+    from core.database import get_db_session
+    from core.user.auth_service import create_access_token
+    from tests.authorization_fixtures import grant_privileges
+
+    async with get_db_session() as db:
+        user = User(email="synthetic-process-editor@example.test", hashed_password="unused", is_active=True)
+        other_user = User(email="synthetic-process-owner@example.test", hashed_password="unused", is_active=True)
+        db.add_all([user, other_user])
+        await db.flush()
+        user_id, email = user.id, user.email
+        privileges = ["GOAL_EDIT", "PROCESS_LAUNCH"] if can_launch else ["GOAL_EDIT"]
+        await grant_privileges(db, user_id, *privileges)
+        agent = await _new_agent(db, user_id=user_id)
+        other = await _new_agent(db, user_id=other_user.id)
+        agent_id, other_id = agent.id, other.id
+        graph = Workflow(nodes=[Node(id="start", kind="start"), Node(id="end", kind="end")],
+                         flows=[Flow(id="flow", source="start", target="end")])
+        available = await create_native_process(actor_agent_id=agent_id, title="Synthetic shared work", graph=graph)
+        private = await create_native_process(actor_agent_id=other_id, title="Synthetic private work", graph=graph)
+        goal = await make_goal(title="Synthetic Goal", description="<p>Check stock.</p>", agent_id=agent_id,
+                               status=GoalStatus.PAUSED)
+        db.add(goal)
+        await db.flush()
+        goal_id, revision = goal.id, goal.revision
+        available_id, private_id = available.id, private.id
+
+    token = create_access_token({"sub": email, "user_id": user_id})
+    headers = {"Authorization": f"Bearer {token}", "X-Editorial-Profile-Version": "1"}
+    options_url = "/api/goals/process-options"
+    goal_url = f"/api/goals/{goal_id}"
+    denied = await client.get(options_url, headers=headers, params={"agent_id": other_id})
+    assert denied.status_code == 404, denied.text
+    options = await client.get(options_url, headers=headers, params={"agent_id": agent_id})
+    if not can_launch:
+        assert options.status_code == 403, options.text
+        response = await client.put(goal_url, headers=headers, json={
+            "expected_revision": revision, "process_definition_id": available_id,
+        })
+        assert response.status_code == 403, response.text
+        return
+
+    assert options.status_code == 200, options.text
+    assert options.json() == [{"id": available_id, "label": "Synthetic shared work"}]
+    response = await client.put(goal_url, headers=headers, json={
+        "expected_revision": revision, "process_definition_id": private_id,
+    })
+    assert response.status_code == 409, response.text
+    response = await client.put(goal_url, headers=headers, json={
+        "expected_revision": revision, "process_definition_id": available_id,
+    })
+    assert response.status_code == 200 and response.json()["process_definition_id"] == available_id, response.text
 
 
 @pytest.mark.asyncio

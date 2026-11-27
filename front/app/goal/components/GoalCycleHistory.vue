@@ -17,12 +17,12 @@
               v-for="cycle in cycles"
               :key="cycle.id"
               :title="t('goal.cycleNumber', { number: cycle.sequence })"
-              :subtitle="formatDate(cycle.task_finished_at || cycle.created_at)"
+              :subtitle="formatDate(cycle.process_finished_at || cycle.task_finished_at || cycle.created_at)"
               :icon="cycle.verdict === 'STOP' ? 'stop_circle' : cycle.verdict === 'CONTINUE' ? 'play_circle' : 'hourglass_top'"
               :color="cycleColor(cycle)"
             >
               <div class="goal-cycle-mobile-date text-caption text-grey-7">
-                {{ formatDate(cycle.task_finished_at || cycle.created_at) }}
+                {{ formatDate(cycle.process_finished_at || cycle.task_finished_at || cycle.created_at) }}
               </div>
               <q-card flat bordered>
                 <q-card-section>
@@ -30,13 +30,17 @@
                     <q-chip dense outline :color="cycleColor(cycle)">
                       {{ cycle.verdict ? t('goal.cycleDecision', { decision: verdictLabel(cycle.verdict) }) : cycleStatusLabel(cycle.status) }}
                     </q-chip>
-                    <span class="goal-cycle-costs text-caption text-grey-7">
+                    <span v-if="cycle.process_run_reference" class="text-caption">
+                      {{ t('goal.cycleProcess.label') }}
+                    </span>
+                    <span v-else class="goal-cycle-costs text-caption text-grey-7">
                       {{ t('goal.taskCost') }} {{ formatCost(cycle.task_cost) }} ·
                       {{ t('goal.evaluationCost') }} {{ formatCost(cycle.judge_cost) }}
                     </span>
                     <q-space />
+                    <GoalProcessRunButton v-if="cycle.process_run_reference" :run-reference="cycle.process_run_reference" :engine="cycle.process_run_engine" />
                     <q-btn
-                      v-if="cycle.task_id && canViewTasks"
+                      v-else-if="cycle.task_id && canViewTasks"
                       outline
                       color="primary"
                       icon="task_alt"
@@ -44,7 +48,7 @@
                       @click="emit('openTask', cycle.task_id)"
                     />
                   </div>
-                  <div v-if="cycle.verdict" class="text-caption text-grey-7 q-mb-sm">
+                  <div v-if="cycle.verdict && !cycle.process_run_reference" class="text-caption text-grey-7 q-mb-sm">
                     {{ cycle.error ? t('goal.monitoringUnavailable') : cycle.judge_llm_id === null ? t('goal.monitoringNoDecision') : t('goal.monitoringRecorded') }}
                   </div>
                   <div v-if="cycle.progress_summary" class="q-mb-sm">
@@ -108,6 +112,7 @@ import { useI18n } from 'vue-i18n'
 import { useQuasar } from 'quasar'
 import type { GoalCycle } from '../types'
 import { useGoalFormatting } from '../presentation'
+import GoalProcessRunButton from './GoalProcessRunButton.vue'
 const { cycles, loading, error, total, page, pageSize, timezone, canViewTasks } = defineProps<{
   cycles: GoalCycle[]; loading: boolean; error: unknown; total: number; page: number; pageSize: number; timezone?: string; canViewTasks: boolean
 }>()
@@ -128,7 +133,7 @@ function verdictLabel(verdict: NonNullable<GoalCycle['verdict']>): string {
 }
 
 function cycleColor(cycle: GoalCycle): string {
-  if (cycle.status === 'ERROR') return 'negative'
+  if (cycle.status === 'ERROR' || (cycle.process_run_reference && cycle.error)) return 'negative'
   if (cycle.verdict === 'STOP') return 'primary'
   if (cycle.verdict === 'CONTINUE') return 'positive'
   if (cycle.status === 'JUDGING') return 'secondary'

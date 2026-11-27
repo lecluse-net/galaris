@@ -511,6 +511,11 @@ In a Goal form, **Frequency** can be set in seconds, minutes, hours, days, weeks
 or years. These units represent fixed durations: a week is 7 days, a month 30 days and
 a year 365 days. They do not select a calendar date; allowed time windows still apply.
 
+Below **Who supervises?**, **Action to trigger** lists the processes available to the
+responsible agent. Choose one that can start with its default inputs. Manual and automatic
+cycles wait for the run to finish. Select **View process run** under **Cycles** to open it.
+The default option is **No process, start a task**.
+
 **Next cycle** shows the first time allowed by both the global and individual windows,
 after the delay has elapsed. Dates use the schedule timezone shown at the top of the page.
 A cycle due outside these windows remains pending until opening; changing the windows

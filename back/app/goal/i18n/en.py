@@ -1,6 +1,16 @@
 """English Goal runtime messages."""
 
 default: dict[str, object] = {
+    "goal_process": {
+        "launch_privilege_required": "You need permission to launch processes to select one for a Goal.",
+        "unavailable": "The selected process is unavailable to the Goal's agent.",
+        "admission_failed": "The process could not start. Check the agent's access, the start event and the required inputs.",
+        "outcomes": {
+            "error": "The process execution failed.",
+            "cancelled": "The process execution was cancelled.",
+            "unavailable": "The process execution is unavailable.",
+        },
+    },
     "goal_retrospective": {
         "title": "Self-learning",
         "description": "Review recent work and improve your personal skills from observable evidence.",

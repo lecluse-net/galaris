@@ -84,7 +84,7 @@ class GoalCategory(HistoryMixin, Base):
 
 
 class Goal(HistoryMixin, Base):
-    """A durable objective repeatedly advanced by ordinary agent tasks."""
+    """A durable objective advanced by recurring work."""
 
     __tablename__ = "goals"
     __table_args__ = (
@@ -133,6 +133,9 @@ class Goal(HistoryMixin, Base):
     category: Mapped[GoalCategory | None] = relationship(GoalCategory)
     agent_id: Mapped[int] = mapped_column(
         ForeignKey("agents.id", ondelete="RESTRICT"), nullable=False, index=True
+    )
+    process_definition_id: Mapped[int | None] = mapped_column(
+        ForeignKey("process_definitions.id", ondelete="RESTRICT"), nullable=True, index=True
     )
     parent_goal_id: Mapped[UUID | None] = mapped_column(
         PGUUID(as_uuid=True),
@@ -238,11 +241,15 @@ class Goal(HistoryMixin, Base):
 
 
 class GoalCycle(Base):
-    """One task created for a goal followed by a CONTINUE/STOP judgement."""
+    """One task or Process run and its durable cycle outcome."""
 
     __tablename__ = "goal_cycles"
     __table_args__ = (
         UniqueConstraint("goal_id", "sequence", name="uq_goal_cycle_sequence"),
+        CheckConstraint(
+            "task_id IS NULL OR process_run_reference IS NULL",
+            name="ck_goal_cycle_single_work",
+        ),
         UniqueConstraint(
             "goal_id", "source_cycle_id", name="uq_goal_cycle_relational_source"
         ),
@@ -290,6 +297,12 @@ class GoalCycle(Base):
         unique=True,
         index=True,
     )
+    # Keep historical provenance even when Process retention removes the run.
+    process_run_reference: Mapped[UUID | None] = mapped_column(
+        PGUUID(as_uuid=True), nullable=True, unique=True,
+    )
+    process_run_engine: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    process_finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     status: Mapped[GoalCycleStatus] = mapped_column(
         SQLEnum(GoalCycleStatus),
         nullable=False,
@@ -352,6 +365,10 @@ class GoalCycle(Base):
     goal: Mapped[Goal] = relationship("Goal", back_populates="cycles")
     task: Mapped["Task | None"] = relationship("Task", foreign_keys=[task_id])
     judge_llm: Mapped["LLM | None"] = relationship("LLM", foreign_keys=[judge_llm_id])
+
+    @property
+    def work_finished_at(self) -> datetime | None:
+        return self.process_finished_at or self.task_finished_at
 
     def clear_lease(self) -> None:
         """Release the durable judge claim after a terminal outcome."""

@@ -1,6 +1,16 @@
 """French Goal runtime messages."""
 
 default: dict[str, object] = {
+    "goal_process": {
+        "launch_privilege_required": "Vous devez avoir le droit de lancer des processus pour en choisir un pour un objectif.",
+        "unavailable": "Le processus choisi est indisponible pour l’agent de l’objectif.",
+        "admission_failed": "Le processus n’a pas pu démarrer. Vérifiez les droits de l’agent, l’événement de début et les entrées requises.",
+        "outcomes": {
+            "error": "L’exécution du processus a échoué.",
+            "cancelled": "L’exécution du processus a été annulée.",
+            "unavailable": "L’exécution du processus est indisponible.",
+        },
+    },
     "goal_retrospective": {
         "title": "Auto-apprentissage",
         "description": "Examiner le travail récent et améliorer ses compétences personnelles à partir de preuves observables.",

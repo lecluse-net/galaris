@@ -1,6 +1,10 @@
 import { useI18n } from 'vue-i18n'
 import { UNIT_SECONDS, type DurationUnit } from './durations'
-import type { GoalStatus } from './types'
+import type { Goal, GoalStatus } from './types'
+
+export function hasOpenGoalCycle(goal: Goal): boolean {
+  return Boolean(goal.current_task_id || goal.current_process_run_reference)
+}
 
 export function statusColor(status: GoalStatus): string {
   return { ACTIVE: 'positive', PAUSED: 'warning', COMPLETED: 'primary', ERROR: 'negative' }[status]

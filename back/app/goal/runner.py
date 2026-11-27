@@ -18,10 +18,18 @@ from sqlalchemy.orm import selectinload
 from app.agent.models import Agent
 from app.llm import LLM, LLMCallPurpose
 from app.llm.models import LLMCall
+from app.process import ProcessEngineError
+from app.process.facade import (
+    active_scheduled_runs,
+    publish_scheduled_process,
+    scheduled_run_outcome,
+    stage_scheduled_process,
+)
 from app.task import task_service, try_lock_agent, initialize_scope, get_task_outcome_observation
 from app.task.models import Task, TaskAttempt, TaskStatus
 from app.task.schemas import TaskCreate
 from core.database import get_db
+from core.i18n import tr
 
 from . import goal_service, referrer_wait, retrospective, settings_service
 from .document_store import get_goal_document_store
@@ -574,6 +582,41 @@ async def process_terminal_cycle(tracking_llm: LLM | None = None) -> bool:
     return True
 
 
+async def finish_process_cycle() -> bool:
+    db = get_db()
+    row = (await db.execute(
+        select(Goal, GoalCycle).join(GoalCycle, GoalCycle.goal_id == Goal.id)
+        .where(
+            GoalCycle.status == GoalCycleStatus.RUNNING,
+            GoalCycle.process_run_reference.is_not(None),
+            GoalCycle.process_run_reference.not_in(active_scheduled_runs()),
+        )
+        .order_by(GoalCycle.created_at)
+        .with_for_update(skip_locked=True, of=Goal)
+        .limit(1)
+    )).one_or_none()
+    if row is None:
+        return False
+    goal, cycle = row
+    assert cycle.process_run_reference is not None
+    status, finished_at = await scheduled_run_outcome(cycle.process_run_reference)
+    now = datetime.now(timezone.utc)
+    cycle.process_finished_at = finished_at or now
+    cycle.status = GoalCycleStatus.DECIDED
+    cycle.verdict = GoalVerdict.STOP if goal.status == GoalStatus.COMPLETED else GoalVerdict.CONTINUE
+    if status != "success":
+        cycle.error = await tr(f"goal_process.outcomes.{status}")
+    if cycle.verdict == GoalVerdict.CONTINUE:
+        goal.last_error = cycle.error
+        if cycle.trigger_kind != GoalCycleTriggerKind.RELATIONAL and goal.cycle_delay_seconds is not None:
+            goal.next_cycle_at = next_cycle_at(cycle.process_finished_at, goal.cycle_delay_seconds)
+    await goal_service.enqueue_child_triggers(cycle)
+    await goal_calendar.sync_plan(goal, now=now)
+    await db.commit()
+    await goal_service.emit_updated(goal.id)
+    return True
+
+
 def _agent_pending_work(agent_id: int | ColumnElement[int], now: datetime) -> ColumnElement[bool]:
     """Use the same eligibility predicate for discovery and the locked recheck."""
     return exists().where(
@@ -622,12 +665,31 @@ async def _cycle_task_objective(goal: Goal, sequence: int) -> str:
     return "\n\n".join(sections)
 
 
+async def _record_cycle_admission(
+    goal: Goal, cycle: GoalCycle, trigger: GoalCycleTrigger | None, *, now: datetime, recovery_only: bool,
+) -> None:
+    db = get_db()
+    db.add(cycle)
+    await db.flush()
+    is_manual = cycle.trigger_kind == GoalCycleTriggerKind.MANUAL
+    await goal_calendar.attach_cycle(goal, cycle, now=now, manual=is_manual or recovery_only)
+    if trigger is not None:
+        trigger.consumed_cycle_id = cycle.id
+        trigger.consumed_at = now
+    else:
+        goal.next_cycle_at = None
+    if is_manual:
+        goal.manual_run_requested_at = None
+    goal.last_error = None
+    await db.commit()
+
+
 async def start_due_cycle(
     tracking_llm: LLM | None = None,
     *,
     manual_only: bool = False,
 ) -> bool:
-    """Create one due Goal Task when its own schedule and agent availability allow it."""
+    """Start one due Goal cycle when its schedule and agent availability allow it."""
 
     db = get_db()
     now = datetime.now(timezone.utc)
@@ -642,7 +704,7 @@ async def start_due_cycle(
         GoalCycleTrigger.goal_id == Goal.id,
         GoalCycleTrigger.consumed_cycle_id.is_(None),
     )
-    pending_referrer_recovery = referrer_wait.pending_cycle_recovery()
+    pending_referrer_recovery = and_(Goal.process_definition_id.is_(None), referrer_wait.pending_cycle_recovery())
     temporal_due = and_(
         Goal.cycle_delay_seconds.is_not(None),
         Goal.next_cycle_at.is_not(None),
@@ -732,7 +794,7 @@ async def start_due_cycle(
         is_calendar = bool(await db.scalar(select(goal_calendar.pending_passage(now)).where(Goal.id == goal.id)))
         if is_calendar and not is_manual:
             selected_relational_trigger = None
-        recovered_answers = await referrer_wait.failed_cycle_answers(goal.id)
+        recovered_answers = await referrer_wait.failed_cycle_answers(goal.id) if goal.process_definition_id is None else []
         recovery_only = not (
             is_manual or selected_relational_trigger is not None or is_temporal or is_calendar
         )
@@ -792,6 +854,35 @@ async def start_due_cycle(
         )
         sequence = (previous.sequence if previous is not None else 0) + 1
         cycle_id = uuid4()
+        trigger_kind = (
+            GoalCycleTriggerKind.MANUAL if is_manual else GoalCycleTriggerKind.RELATIONAL
+            if selected_relational_trigger is not None else GoalCycleTriggerKind.TEMPORAL
+        )
+        cycle = GoalCycle(
+            id=cycle_id, created_at=now, goal_id=goal.id, sequence=sequence,
+            status=GoalCycleStatus.RUNNING, trigger_kind=trigger_kind,
+            source_cycle_id=selected_relational_trigger.source_cycle_id if selected_relational_trigger else None,
+        )
+        if goal.process_definition_id is not None:
+            try:
+                async with db.begin_nested():
+                    run = await stage_scheduled_process(goal.agent_id, goal.process_definition_id, cycle_id=cycle_id)
+            except (PermissionError, LookupError, ValueError, ProcessEngineError) as exc:
+                goal.status = GoalStatus.ERROR
+                goal.last_error = await tr("goal_process.admission_failed")
+                await goal_calendar.sync_plan(goal, now=now)
+                await db.commit()
+                await goal_service.emit_updated(goal.id)
+                logger.warning("Goal {} could not start its process: {}", goal.id, exc)
+                did_work = True
+                continue
+            cycle.process_run_reference = run.run_id
+            cycle.process_run_engine = run.tool
+            await _record_cycle_admission(goal, cycle, selected_relational_trigger, now=now, recovery_only=False)
+            await publish_scheduled_process(run)
+            await goal_service.emit_updated(goal.id)
+            return True
+
         objective = await _cycle_task_objective(goal, sequence)
         if recovered_answers:
             objective += (
@@ -819,13 +910,7 @@ async def start_due_cycle(
             "goal_referrer_user_id": goal.referrer_user_id,
             "goal_referrer_display_name": goal.referrer_display_name,
             "goal_referrer_platform": goal.referrer_platform,
-            "goal_trigger_kind": (
-                GoalCycleTriggerKind.MANUAL.value
-                if is_manual
-                else GoalCycleTriggerKind.RELATIONAL.value
-                if selected_relational_trigger is not None
-                else GoalCycleTriggerKind.TEMPORAL.value
-            ),
+            "goal_trigger_kind": trigger_kind.value,
             "goal_source_cycle_id": (
                 str(selected_relational_trigger.source_cycle_id)
                 if selected_relational_trigger is not None
@@ -857,38 +942,9 @@ async def start_due_cycle(
         )}
         await initialize_scope(task, source_reference=f"galaris://goal/{goal.id}")
         task_service.retain(task, _GOAL_JUDGEMENT_RETENTION)
-        cycle = GoalCycle(
-            id=cycle_id,
-            created_at=now,
-            goal_id=goal.id,
-            sequence=sequence,
-            status=GoalCycleStatus.RUNNING,
-            trigger_kind=(
-                GoalCycleTriggerKind.MANUAL
-                if is_manual
-                else GoalCycleTriggerKind.RELATIONAL
-                if selected_relational_trigger is not None
-                else GoalCycleTriggerKind.TEMPORAL
-            ),
-            source_cycle_id=(
-                selected_relational_trigger.source_cycle_id
-                if selected_relational_trigger is not None
-                else None
-            ),
-            task=task,
-        )
-        db.add_all([task, cycle])
-        await db.flush()
-        await goal_calendar.attach_cycle(goal, cycle, now=now, manual=is_manual or recovery_only)
-        if selected_relational_trigger is not None:
-            selected_relational_trigger.consumed_cycle_id = cycle_id
-            selected_relational_trigger.consumed_at = now
-        else:
-            goal.next_cycle_at = None
-        if is_manual:
-            goal.manual_run_requested_at = None
-        goal.last_error = None
-        await db.commit()
+        cycle.task = task
+        db.add(task)
+        await _record_cycle_admission(goal, cycle, selected_relational_trigger, now=now, recovery_only=recovery_only)
         await db.refresh(task)
         await task_service.publish_created(task)
         await goal_service.emit_updated(goal.id)
@@ -907,6 +963,7 @@ async def process_goals() -> None:
 
     await goal_service.recover_obsolete_supervision_pause()
     await goal_calendar.materialize_due()
+    await finish_process_cycle()
     await process_terminal_cycle()
     await referrer_wait.process_recovered_cycle_feedback()
     settings = await settings_service.get_settings()

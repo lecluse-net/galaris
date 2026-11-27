@@ -18,6 +18,8 @@ export interface GoalAgendaEvent {
   id: string; goal_id: string; title: string; scheduled_at: string; timezone: string
   projected: boolean; state: string; cycle_id: string | null; sequence: number | null
   task_uri: string | null
+  process_run_reference?: string | null
+  process_run_engine?: string | null
   started_at: string | null; finished_at: string | null; verdict: GoalVerdict | null; reason: string | null
 }
 
@@ -86,6 +88,7 @@ export interface Goal {
   description: string
   tracking_content: string
   agent_id: number
+  process_definition_id?: number | null
   agent_name: string
   agent_code: string
   referrer: GoalReferrer | null
@@ -106,7 +109,9 @@ export interface Goal {
   evaluation_cost: number
   total_cost: number
   current_task_id: string | null
+  current_process_run_reference?: string | null
   last_task_finished_at: string | null
+  last_cycle_finished_at?: string | null
   last_verdict: GoalVerdict | null
   created_at: string | null
   created_by: number | null
@@ -122,6 +127,9 @@ export interface GoalCycle {
   trigger_kind: GoalCycleTriggerKind
   source_cycle_id: string | null
   task_id: string | null
+  process_run_reference?: string | null
+  process_run_engine?: string | null
+  process_finished_at?: string | null
   task_label: string | null
   task_status: string | null
   task_cost: number
@@ -190,6 +198,7 @@ export interface GoalCreate {
   title: string
   description: string
   agent_id: number
+  process_definition_id?: number | null
   referrer: GoalReferrerInput
   cycle_delay_seconds: number | null
   parent_goal_id: string | null
@@ -207,6 +216,7 @@ export interface GoalUpdate {
   description?: string
   tracking_content?: string
   agent_id?: number
+  process_definition_id?: number | null
   referrer?: GoalReferrerInput
   cycle_delay_seconds?: number | null
   parent_goal_id?: string | null
@@ -217,6 +227,11 @@ export interface GoalUpdate {
 
 export interface GoalCommand {
   expected_revision: number
+}
+
+export interface GoalProcessOption {
+  id: number
+  label: string
 }
 
 export interface GoalCategory {

@@ -21,11 +21,15 @@ async function goals(page, status = 'ACTIVE', id = 'goal-a', changes = {}) {
   return commands
 }
 
-test('a fixed Goal cadence saves with a timezone and survives reopening', async ({ page }) => {
+test('a fixed Goal cadence can select a process and switch back to starting a task', async ({ page }) => {
   await goals(page)
   let current = { ...goal, referrer: { type: 'MESSENGER', connection_id: 1,
     user_id: 'user:1', display_name: 'Synthetic supervisor', platform: 'internal' } }
   const writes = []
+  await page.route('**/api/goals/process-options?*', route => {
+    const agentId = new URL(route.request().url()).searchParams.get('agent_id')
+    return route.fulfill({ json: agentId === String(agent.id) ? [{ id: 17, label: 'Synthetic stock check' }] : [] })
+  })
   await page.route('**/api/goals/goal-a', route => {
     if (route.request().method() === 'PUT') {
       const body = route.request().postDataJSON(); writes.push(body)
@@ -33,7 +37,7 @@ test('a fixed Goal cadence saves with a timezone and survives reopening', async 
     }
     return route.fulfill({ json: current })
   })
-  await mount(page, 'app/goal/pages/index.vue', { privileges: ['GOAL_EDIT'] })
+  await mount(page, 'app/goal/pages/index.vue', { privileges: ['GOAL_EDIT', 'PROCESS_LAUNCH'] })
   await page.getByRole('button', { name: 'Goal details', exact: true }).first().click()
   const dialog = page.getByRole('dialog')
   await dialog.getByRole('tab', { name: 'Edit', exact: true }).click()
@@ -41,13 +45,24 @@ test('a fixed Goal cadence saves with a timezone and survives reopening', async 
   await dialog.getByRole('combobox', { name: 'Recurrence timezone', exact: true }).click()
   await page.getByRole('option', { name: 'UTC', exact: true }).click()
   await dialog.getByLabel('First passage', { exact: true }).fill('2026-11-17T09:00')
+  const cycleProcess = dialog.getByRole('combobox', { name: 'Cycle process', exact: true })
+  await expect(dialog.getByText('No process, start a task', { exact: true })).toBeVisible()
+  await cycleProcess.click()
+  await page.getByRole('option', { name: 'Synthetic stock check', exact: true }).click()
   await dialog.getByRole('button', { name: 'Save', exact: true }).click()
   await expect.poll(() => writes.length).toBe(1)
-  expect(writes[0]).toMatchObject({ cycle_delay_seconds: null, parent_goal_id: null,
+  expect(writes[0]).toMatchObject({ cycle_delay_seconds: null, parent_goal_id: null, process_definition_id: 17,
     recurrence: { frequency: 'DAILY', interval: 1, timezone: 'UTC', start_at: '2026-11-17T09:00:00.000Z' } })
   await dialog.getByRole('tab', { name: 'Edit', exact: true }).click()
   await expect(dialog.getByRole('radio', { name: 'Fixed dates in the agenda', exact: true })).toBeChecked()
   await expect(dialog.getByLabel('First passage', { exact: true })).toHaveValue('2026-11-17T09:00')
+  await expect(dialog.getByText('Synthetic stock check', { exact: true })).toBeVisible()
+  await cycleProcess.click()
+  await page.getByRole('option', { name: 'No process, start a task', exact: true }).click()
+  await dialog.getByRole('button', { name: 'Save', exact: true }).click()
+  await expect.poll(() => writes[1]?.process_definition_id).toBeNull()
+  await dialog.getByRole('tab', { name: 'Edit', exact: true }).click()
+  await expect(dialog.getByText('No process, start a task', { exact: true })).toBeVisible()
 })
 
 test('a self-learning Goal can pause, resume and save a different recurrence', async ({ page }) => {
@@ -533,12 +548,19 @@ test('Goal history loads on demand, recovers from an error and stays lazy after 
     reason: 'Synthetic evidence was inspected.', progress_summary: 'Synthetic milestone verified.',
     evidence: ['Synthetic acceptance checks passed.'], task_finished_at: '2026-09-01T12:00:00Z',
     judge_cost: 0, judge_llm_id: 1, judge_attempt_count: 1, error: null, created_at: '2026-09-01T11:00:00Z' }
+  const runId = '00000000-0000-0000-0000-000000000174'
+  const processCycle = { ...cycle, id: 'synthetic-process-cycle', sequence: 3, task_id: null,
+    process_run_reference: runId, process_run_engine: 'n8n', process_finished_at: '2026-09-01T13:00:00Z' }
+  await jsonRoute(page, `**/api/processes/runs/${runId}`, {
+    id: runId, status: 'success', service_code: 'n8n', summary: 'Synthetic stock check completed',
+    engine_metadata: {}, events: [], task_ids: [], llm_calls: [],
+  })
   let reads = 0
   await page.route('**/api/goals/goal-a/cycles?*', route => {
     reads++
     return reads === 1
       ? route.fulfill({ status: 503, json: { detail: 'Synthetic unavailable history' } })
-      : route.fulfill({ json: { items: [cycle], total: 1, page: 1, page_size: 50 } })
+      : route.fulfill({ json: { items: [processCycle, cycle], total: 2, page: 1, page_size: 50 } })
   })
   await mount(page, 'app/goal/pages/index.vue', { privileges: ['GOAL_ACCESS'] })
   const open = () => page.getByRole('button', { name: 'Goal details', exact: true }).first().click()
@@ -563,6 +585,14 @@ test('Goal history loads on demand, recovers from an error and stays lazy after 
   await expect(dialog.getByRole('button', { name: 'Task - Cycle 2', exact: true })).toHaveCount(0)
   await setPrivileges(page, ['GOAL_ACCESS', 'TASK_ACCESS'])
   await expect(dialog.getByRole('button', { name: 'Task - Cycle 2', exact: true })).toBeVisible()
+  await setPrivileges(page, ['GOAL_ACCESS', 'TASK_ACCESS', 'PROCESS_READ'])
+  await expect(dialog.getByRole('button', { name: 'Task - Cycle 3', exact: true })).toHaveCount(0)
+  await dialog.getByRole('button', { name: 'View process run', exact: true }).click()
+  const processDialog = page.getByRole('dialog').filter({ hasText: 'Synthetic stock check completed' })
+  await expect(processDialog).toBeVisible()
+  await page.keyboard.press('Escape')
+  await expect(processDialog).toHaveCount(0)
+  await expect(dialog.getByRole('button', { name: 'View process run', exact: true })).toBeVisible()
   for (const width of [390, 1440]) {
     await page.setViewportSize({ width, height: 950 })
     for (const dark of [false, true]) {

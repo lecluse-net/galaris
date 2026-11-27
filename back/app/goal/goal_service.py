@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from app.llm import model_usages
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import datetime, timedelta, timezone
 from collections.abc import Collection
 from typing import TYPE_CHECKING, Any, Literal, Sequence
@@ -19,9 +19,11 @@ from sqlalchemy.sql.elements import ColumnElement
 from pydantic import ValidationError
 
 from app.agent.models import Agent
+from app.process.facade import validate_scheduled_process
 from app.task.models import Task, TaskStatus
 from core import websocket
 from core.database import get_db
+from core.i18n import tr
 from core.user import get_current_user_id
 
 from .document_store import GoalMarkdown, get_goal_document_store
@@ -74,6 +76,19 @@ class GoalRevisionConflict(GoalConflictError):
     """The Goal changed since the client last loaded it."""
 
 
+class GoalProcessLaunchDenied(PermissionError):
+    """The editor cannot configure a Process launch."""
+
+
+async def _assert_cycle_process(agent_id: int, definition_id: int | None) -> None:
+    if definition_id is None:
+        return
+    try:
+        await validate_scheduled_process(agent_id, definition_id)
+    except PermissionError as exc:
+        raise GoalConflictError(await tr("goal_process.unavailable")) from exc
+
+
 @dataclass(frozen=True)
 class GoalAccess:
     agent_id: int
@@ -97,7 +112,9 @@ class GoalMetrics:
     task_cost: float = 0.0
     evaluation_cost: float = 0.0
     last_task_finished_at: datetime | None = None
+    last_cycle_finished_at: datetime | None = None
     current_task_id: UUID | None = None
+    current_process_run_reference: UUID | None = None
     last_verdict: GoalVerdict | None = None
 
     @property
@@ -222,6 +239,7 @@ async def _metrics_for(goal_ids: Sequence[UUID]) -> dict[UUID, GoalMetrics]:
                 func.coalesce(func.sum(_effective_task_cost()), 0.0),
                 func.coalesce(func.sum(GoalCycle.judge_cost), 0.0),
                 func.max(GoalCycle.task_finished_at),
+                func.max(func.coalesce(GoalCycle.process_finished_at, GoalCycle.task_finished_at)),
             )
             .outerjoin(Task, Task.id == GoalCycle.task_id)
             .where(GoalCycle.goal_id.in_(goal_ids))
@@ -233,26 +251,24 @@ async def _metrics_for(goal_ids: Sequence[UUID]) -> dict[UUID, GoalMetrics]:
             cycle_count=int(cycle_count),
             task_cost=float(task_cost),
             evaluation_cost=float(judge_cost),
-            last_task_finished_at=last_finished,
+            last_task_finished_at=last_task_finished,
+            last_cycle_finished_at=last_cycle_finished,
         )
-        for goal_id, cycle_count, task_cost, judge_cost, last_finished in rows
+        for goal_id, cycle_count, task_cost, judge_cost, last_task_finished, last_cycle_finished in rows
     }
     latest_rows = (
         await db.execute(
-            select(GoalCycle.goal_id, GoalCycle.task_id, GoalCycle.verdict)
+            select(GoalCycle.goal_id, GoalCycle.task_id, GoalCycle.process_run_reference, GoalCycle.verdict)
             .where(GoalCycle.goal_id.in_(goal_ids))
             .distinct(GoalCycle.goal_id)
             .order_by(GoalCycle.goal_id, GoalCycle.sequence.desc())
         )
     ).all()
-    for goal_id, task_id, verdict in latest_rows:
-        current = metrics.get(goal_id, GoalMetrics())
-        metrics[goal_id] = GoalMetrics(
-            cycle_count=current.cycle_count,
-            task_cost=current.task_cost,
-            evaluation_cost=current.evaluation_cost,
-            last_task_finished_at=current.last_task_finished_at,
+    for goal_id, task_id, run_reference, verdict in latest_rows:
+        metrics[goal_id] = replace(
+            metrics.get(goal_id, GoalMetrics()),
             current_task_id=task_id if verdict is None else None,
+            current_process_run_reference=run_reference if verdict is None else None,
             last_verdict=verdict,
         )
     return metrics
@@ -317,7 +333,9 @@ def _serialize_goal(
             "evaluation_cost": metrics.evaluation_cost,
             "total_cost": metrics.total_cost,
             "current_task_id": metrics.current_task_id,
+            "current_process_run_reference": metrics.current_process_run_reference,
             "last_task_finished_at": metrics.last_task_finished_at,
+            "last_cycle_finished_at": metrics.last_cycle_finished_at,
             "last_verdict": metrics.last_verdict,
             "parent_title": goal.parent.title if goal.parent is not None else None,
             "children_count": len(goal.children) if children_count is None else children_count,
@@ -893,6 +911,7 @@ async def create(data: GoalCreate) -> GoalRead:
         recurrence=data.recurrence,
     )
     await _assert_agent(data.agent_id)
+    await _assert_cycle_process(data.agent_id, data.process_definition_id)
     referrer = await _resolve_referrer(data.agent_id, data.referrer)
     now = datetime.now(timezone.utc)
     goal_id = uuid4()
@@ -911,6 +930,7 @@ async def create(data: GoalCreate) -> GoalRead:
         description=data.description,
         tracking_document_id=tracking_document_id,
         agent_id=data.agent_id,
+        process_definition_id=data.process_definition_id,
         category_id=data.category_id,
         parent_goal_id=data.parent_goal_id,
         cycle_delay_seconds=data.cycle_delay_seconds,
@@ -993,6 +1013,7 @@ async def update(
     data: GoalUpdate,
     *,
     owner_agent_id: int | None = None,
+    can_configure_process: bool = True,
 ) -> GoalRead | None:
     if data.category_id is not None:
         await category_service.require_owned(data.category_id, lock=True)
@@ -1005,7 +1026,7 @@ async def update(
         return None
     _assert_revision(goal, data)
     if goal.is_weekly_retrospective:
-        if {"description", "referrer", "referrer_max_reminders", "parent_goal_id"} & data.model_fields_set:
+        if {"description", "referrer", "referrer_max_reminders", "parent_goal_id", "process_definition_id"} & data.model_fields_set:
             raise GoalConflictError("The self-learning Goal's assignment and purpose are managed by Galaris.")
         if data.agent_id is not None and data.agent_id != goal.agent_id:
             raise GoalConflictError("The self-learning Goal stays assigned to its agent.")
@@ -1072,6 +1093,13 @@ async def update(
             raise GoalConflictError("An agent cannot be changed after the first Goal cycle.")
         await _assert_agent(owner_agent_id)
 
+    if "process_definition_id" in changes or owner_agent_id != goal.agent_id:
+        definition_id = data.process_definition_id if "process_definition_id" in changes else goal.process_definition_id
+        if definition_id is not None and (definition_id != goal.process_definition_id or owner_agent_id != goal.agent_id):
+            if not can_configure_process:
+                raise GoalProcessLaunchDenied(await tr("goal_process.launch_privilege_required"))
+        await _assert_cycle_process(owner_agent_id, definition_id)
+
     referrer_values: dict[str, Any] | None = None
     if "referrer" in data.model_fields_set:
         assert data.referrer is not None
@@ -1128,12 +1156,13 @@ async def update(
             goal.next_cycle_at = None
         else:
             last_cycle = await _last_cycle(goal.id)
+            finished_at = last_cycle.work_finished_at if last_cycle is not None else None
             if (
                 last_cycle is not None
                 and last_cycle.verdict == GoalVerdict.CONTINUE
-                and last_cycle.task_finished_at is not None
+                and finished_at is not None
             ):
-                goal.next_cycle_at = last_cycle.task_finished_at + timedelta(
+                goal.next_cycle_at = finished_at + timedelta(
                     seconds=goal.cycle_delay_seconds
                 )
             elif last_cycle is None and goal.status == GoalStatus.ACTIVE:
@@ -1241,15 +1270,16 @@ async def resume(goal_id: UUID, command: GoalCommand) -> GoalRead | None:
         goal.next_cycle_at = None
     else:
         last_cycle = await _last_cycle(goal.id)
+        finished_at = last_cycle.work_finished_at if last_cycle is not None else None
         if last_cycle is None and goal.cycle_delay_seconds is not None:
             goal.next_cycle_at = datetime.now(timezone.utc)
         elif (
             last_cycle is not None
             and last_cycle.verdict == GoalVerdict.CONTINUE
-            and last_cycle.task_finished_at is not None
+            and finished_at is not None
             and goal.cycle_delay_seconds is not None
         ):
-            goal.next_cycle_at = last_cycle.task_finished_at + timedelta(
+            goal.next_cycle_at = finished_at + timedelta(
                 seconds=goal.cycle_delay_seconds
             )
     result = await _save(goal)

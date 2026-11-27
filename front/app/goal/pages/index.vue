@@ -325,12 +325,12 @@
                   icon="rocket_launch"
                   color="positive"
                   :loading="commandGoalIds.has(props.row.id)"
-                  :disable="Boolean(props.row.current_task_id)"
+                  :disable="hasOpenGoalCycle(props.row)"
                   :aria-label="t('goal.runNow')"
                   @click="runCommand('runNow', props.row)"
                 />
                 <q-tooltip>
-                  {{ props.row.current_task_id
+                  {{ hasOpenGoalCycle(props.row)
                     ? t('goal.runNowUnavailable')
                     : t('goal.runNowHint') }}
                 </q-tooltip>
@@ -473,6 +473,9 @@
               <q-badge v-if="props.row.current_task_id" color="primary" outline>
                 {{ t('goal.currentTask') }}
               </q-badge>
+              <q-badge v-else-if="props.row.current_process_run_reference" color="primary" outline>
+                {{ t('goal.cycleProcess.running') }}
+              </q-badge>
             </template>
 
             <template v-else-if="col.name === 'cycles'">
@@ -517,12 +520,12 @@
                     icon="rocket_launch"
                     color="positive"
                     :loading="commandGoalIds.has(props.row.id)"
-                    :disable="Boolean(props.row.current_task_id)"
+                    :disable="hasOpenGoalCycle(props.row)"
                     :aria-label="t('goal.runNow')"
                     @click="runCommand('runNow', props.row)"
                   />
                   <q-tooltip>
-                    {{ props.row.current_task_id
+                    {{ hasOpenGoalCycle(props.row)
                       ? t('goal.runNowUnavailable')
                       : t('goal.runNowHint') }}
                   </q-tooltip>
@@ -906,6 +909,18 @@
                     </div>
                   </q-card-section>
                 </q-card>
+                <q-card v-if="canSelectProcess && !editingGoal?.is_weekly_retrospective" flat>
+                  <q-card-section class="q-pa-sm">
+                    <div class="goal-role-legend row items-center q-gutter-xs text-primary">
+                      <q-icon name="play_circle" size="18px" />
+                      <span class="text-subtitle2">{{ t('goal.cycleProcess.action') }}</span>
+                    </div>
+                    <GoalProcessSelect
+                      v-model="form.processDefinitionId"
+                      :agent-id="form.agentId"
+                    />
+                  </q-card-section>
+                </q-card>
                 <q-card flat class="goal-trigger-section">
                   <q-card-section class="q-pa-sm">
                     <div class="goal-role-legend row items-center q-gutter-xs text-primary">
@@ -1062,11 +1077,12 @@ import { privileges, usePrivilegeStore } from '@/core/authorize'
 import { useAuthStore } from '@/core/user'
 import { AgentAvatar, AgentSelect, getAgentSelection, useAgentSelectionStore, type AgentSelectionOption } from '@/app/agent'
 import GoalCycleHistory from '../components/GoalCycleHistory.vue'
-import { useGoalFormatting, statusColor } from '../presentation'
+import { hasOpenGoalCycle, useGoalFormatting, statusColor } from '../presentation'
 import { UNIT_SECONDS, type DurationUnit } from '../durations'
 import GoalOverview from '../components/GoalOverview.vue'
 import GoalScheduleEditor from '../components/GoalScheduleEditor.vue'
 import GoalRecurrenceEditor from '../components/GoalRecurrenceEditor.vue'
+import GoalProcessSelect from '../components/GoalProcessSelect.vue'
 import type { GoalRecurrence } from '../types'
 import { categoryService } from '../services/categoryService'
 import { goalService } from '../services/goalService'
@@ -1097,6 +1113,7 @@ interface GoalFormState {
   title: string
   description: string
   agentId: number | null
+  processDefinitionId: number | null
   messengerReferrer: MessengerReferrerOption | null
   referrerMaxReminders: number
   triggerMode: GoalTriggerMode
@@ -1116,7 +1133,7 @@ function goalActions(goal: Goal): ContextAction[] {
   const disabled = commandGoalIds.has(goal.id)
   actions.push({ key: 'edit', icon: 'edit', label: t('goal.editAction'), run: () => openEdit(goal) })
   if (goal.status !== 'COMPLETED' && !(goal.is_weekly_retrospective && goal.status === 'PAUSED')) actions.push(
-    { key: 'run', icon: 'rocket_launch', label: t('goal.runNow'), disabled: disabled || Boolean(goal.current_task_id), run: () => runCommand('runNow', goal) },
+    { key: 'run', icon: 'rocket_launch', label: t('goal.runNow'), disabled: disabled || hasOpenGoalCycle(goal), run: () => runCommand('runNow', goal) },
   )
   if (!goal.is_weekly_retrospective && goal.status !== 'COMPLETED') actions.push(
     { key: 'complete', icon: 'stop_circle', label: t('goal.complete'), disabled, run: () => confirmComplete(goal) },
@@ -1221,6 +1238,7 @@ const agentSelectionStore = useAgentSelectionStore()
 const privilegeStore = usePrivilegeStore()
 const authStore = useAuthStore()
 const canEdit = computed(() => privilegeStore.hasPrivilege(privileges.GOAL_EDIT))
+const canSelectProcess = computed(() => privilegeStore.hasAnyPrivilege([privileges.PROCESS_LAUNCH, privileges.PROCESS_ADMIN]))
 const canReadGoals = computed(() => privilegeStore.hasAnyPrivilege([privileges.GOAL_ACCESS, privileges.GOAL_EDIT]))
 const canReadGoalConfiguration = computed(() => privilegeStore.hasAnyPrivilege([privileges.GOAL_CONFIG_ACCESS, privileges.GOAL_CONFIG_EDIT]))
 const canViewGoalTabs = computed(() => canReadGoals.value || canReadGoalConfiguration.value)
@@ -1279,6 +1297,7 @@ const form = reactive<GoalFormState>({
   title: '',
   description: '',
   agentId: null,
+  processDefinitionId: null,
   messengerReferrer: null,
   referrerMaxReminders: 1,
   triggerMode: 'TEMPORAL_DEFAULT',
@@ -1594,6 +1613,7 @@ function resetForm(): void {
     title: '',
     description: '',
     agentId: agentSelectionStore.defaultAgentId(selectableAgents.value),
+    processDefinitionId: null,
     messengerReferrer: null,
     referrerMaxReminders: 1,
     triggerMode: 'TEMPORAL_DEFAULT' as GoalTriggerMode,
@@ -1671,6 +1691,7 @@ function prepareGoalForm(goal: Goal): void {
     title: goal.title,
     description: goal.description,
     agentId: goal.agent_id,
+    processDefinitionId: goal.process_definition_id ?? null,
     messengerReferrer,
     referrerMaxReminders: goal.referrer_max_reminders,
     triggerMode: goal.recurrence ? 'CALENDAR' : goal.parent_goal_id !== null
@@ -1756,6 +1777,8 @@ async function submitForm(): Promise<void> {
         ...(!selfLearning && referrer ? {
           description: form.description.trim(),
           agent_id: form.agentId ?? undefined,
+          ...(form.processDefinitionId !== (editingGoal.value.process_definition_id ?? null)
+            ? { process_definition_id: form.processDefinitionId } : {}),
           referrer,
           cycle_delay_seconds: cycleDelay,
           parent_goal_id: parentGoalId,
@@ -1775,6 +1798,7 @@ async function submitForm(): Promise<void> {
         category_id: form.categoryId,
         description: form.description.trim(),
         agent_id: form.agentId,
+        process_definition_id: form.processDefinitionId,
         referrer,
         cycle_delay_seconds: cycleDelay,
         recurrence,
@@ -1944,6 +1968,7 @@ function retryCycles(): void {
 function setOwnerAgent(value: number | null): void {
   if (form.agentId === value) return
   form.agentId = value
+  form.processDefinitionId = null
   form.messengerReferrer = null
   messengerReferrerOptions.value = []
   void selectCurrentUserReferrer(false)

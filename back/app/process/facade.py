@@ -2,7 +2,11 @@
 
 from typing import Any
 from collections.abc import Collection
+from dataclasses import dataclass
+from datetime import datetime
 from uuid import UUID
+
+from sqlalchemy import Select, select
 
 from app.agent import AgentManagementScope
 from core.authorize import check_privilege
@@ -10,7 +14,8 @@ from core.database import get_db
 from core.user import get_user_record
 
 from . import native_definitions, native_runs, process_service
-from .schemas import ProcessFileInput
+from .models import ProcessDefinition, ProcessRun
+from .schemas import ProcessFileInput, ProcessStartResponse
 from .dataset_usage import find_dataset_run_usages as find_dataset_run_usages
 from .dataset_usage import find_dataset_definition_usages as find_dataset_definition_usages
 from .values import ValueContractError as ValueContractError
@@ -273,3 +278,65 @@ async def definition_options(*, agent_ids: Collection[int] | None) -> list[dict[
     records = await process_service.list_definitions(agent_ids=agent_ids)
     return [{"agent_id": item.agent_id, "engine_process_id": item.engine_process_id, "label": item.label}
             for item in records if item.code is None]
+
+
+@dataclass(frozen=True)
+class ScheduledProcessOption:
+    id: int
+    label: str
+
+
+def _scheduled_definitions(agent_id: int) -> Select[tuple[int, str, str]]:
+    return select(ProcessDefinition.id, ProcessDefinition.label, ProcessDefinition.engine_process_id).where(
+        process_service.agent_definition_access(agent_id),
+        ProcessDefinition.deleted_at.is_(None),
+        ProcessDefinition.archived.is_(False),
+        ~ProcessDefinition.engine_process_id.startswith("agent_admin:"),
+        ~ProcessDefinition.engine_process_id.startswith("service_admin:"),
+    )
+
+
+async def scheduled_process_options(agent_id: int) -> list[ScheduledProcessOption]:
+    rows = await get_db().execute(_scheduled_definitions(agent_id).order_by(ProcessDefinition.label, ProcessDefinition.id))
+    return [ScheduledProcessOption(identity, label) for identity, label, _ in rows]
+
+
+async def _scheduled_workflow(agent_id: int, definition_id: int) -> str:
+    row = (await get_db().execute(
+        _scheduled_definitions(agent_id).where(ProcessDefinition.id == definition_id)
+    )).one_or_none()
+    if row is None:
+        raise PermissionError("The selected process is unavailable to the Goal's agent.")
+    return row[2]
+
+
+async def validate_scheduled_process(agent_id: int, definition_id: int) -> None:
+    await _scheduled_workflow(agent_id, definition_id)
+
+
+async def stage_scheduled_process(agent_id: int, definition_id: int, *, cycle_id: UUID) -> ProcessStartResponse:
+    """Stage a run and its outbox job in the cycle's transaction."""
+    workflow_id = await _scheduled_workflow(agent_id, definition_id)
+    return await process_service.start_process(
+        agent_id=agent_id, workflow_id=workflow_id, input_data={},
+        idempotency_key=f"goal-cycle:{cycle_id}", _scheduled_definition_id=definition_id,
+    )
+
+
+async def publish_scheduled_process(run: ProcessStartResponse) -> None:
+    if not run.deduplicated:
+        await process_service.publish_run_created(run.run_id, run.workflow_id, run.tool)
+
+
+def active_scheduled_runs() -> Select[tuple[UUID]]:
+    return select(ProcessRun.id).where(
+        ProcessRun.deleted_at.is_(None), ProcessRun.status.not_in(process_service.TERMINAL_STATUSES),
+    )
+
+
+async def scheduled_run_outcome(run_id: UUID) -> tuple[str, datetime | None]:
+    """Read only operational outcome fields for the owning scheduler."""
+    row = (await get_db().execute(
+        select(ProcessRun.status, ProcessRun.finished_at).where(ProcessRun.id == run_id)
+    )).one_or_none()
+    return (row.status, row.finished_at) if row is not None else ("unavailable", None)

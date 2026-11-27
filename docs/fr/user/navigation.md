@@ -560,6 +560,12 @@ jours, semaines, mois ou années. Ces unités représentent des durées fixes : 
 vaut 7 jours, un mois 30 jours et une année 365 jours. Elles ne fixent pas une date dans
 le calendrier ; les fenêtres horaires autorisées continuent de s'appliquer.
 
+Sous **Qui supervise ?**, la section **Action à déclencher** propose les processus
+accessibles à l’agent responsable. Choisissez un processus capable de démarrer avec ses
+valeurs par défaut. Les cycles manuels et automatiques attendent la fin de son exécution,
+consultable dans **Cycles** avec **Voir l’exécution du processus**. Le réglage par défaut
+est **Pas de processus, lance une tâche**.
+
 Le **Prochain cycle** indique le premier horaire compatible avec la plage globale et
 celle de l'objectif, une fois le délai écoulé. Les dates utilisent le fuseau du planning
 affiché en haut de la page. Un cycle dû hors plage reste en attente jusqu'à l'ouverture ;

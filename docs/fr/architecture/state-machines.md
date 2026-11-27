@@ -424,6 +424,12 @@ Un cycle crée une tâche ordinaire, attend son état terminal, passe au jugemen
 un verdict. `CONTINUE` programme le cycle temporel suivant lorsqu'une fréquence existe ; `STOP`
 clôt l’objectif. Une pause empêche la création de nouveaux cycles sans effacer l’historique.
 
+Lorsqu’un processus est configuré, le cycle et le run sont admis dans une seule transaction
+sous l’identité de l’agent. Le cycle reste `RUNNING` jusqu’à la fin du run, puis passe à
+`DECIDED` avec `CONTINUE` (ou `STOP` si l’objectif a été terminé manuellement). La date de fin
+du run sert de référence pour le délai d’un cycle temporel. Un refus au lancement place
+l’objectif en `ERROR` et conserve le processus configuré.
+
 Une réponse à la question d’un cycle en erreur reste attachée à l’interaction Messenger.
 Le worker la transmet au prochain cycle éligible du même objectif, y compris avant la
 prochaine échéance. L’admission respecte les pauses, les plages horaires et l’exclusion

@@ -394,7 +394,7 @@ async def list_for_agent(agent_id: int) -> list[dict[str, Any]]:
     query = (
         select(ProcessDefinition)
         .where(
-            _agent_definition_clause(agent_id),
+            agent_definition_access(agent_id),
             ProcessDefinition.archived.is_(False),
             ~ProcessDefinition.engine_process_id.startswith("agent_admin:"),
         )
@@ -435,7 +435,7 @@ async def list_resource_definitions_for_agent(
     from .native_access import administrative_definition_clause
     administrative = await administrative_definition_clause(management_scope or agent_id)
     statement = select(ProcessDefinition).where(
-        or_(_agent_definition_clause(agent_id, management_scope),
+        or_(agent_definition_access(agent_id, management_scope),
             and_(ProcessDefinition.code.is_not(None), administrative)),
         ProcessDefinition.archived.is_(False),
         ~ProcessDefinition.engine_process_id.startswith("agent_admin:"),
@@ -461,18 +461,20 @@ async def list_resource_definitions_for_agent(
     return list((await get_db().execute(statement)).scalars().all())
 
 
-async def get_for_agent(agent_id: int, workflow_id: str) -> Optional[ProcessDefinition]:
+async def get_for_agent(agent_id: int, workflow_id: str, *,
+                        definition_id: int | None = None) -> Optional[ProcessDefinition]:
     result = await get_db().execute(
         select(ProcessDefinition).where(
-            _agent_definition_clause(agent_id),
+            agent_definition_access(agent_id),
             ProcessDefinition.engine_process_id == workflow_id,
+            true() if definition_id is None else ProcessDefinition.id == definition_id,
             ProcessDefinition.archived.is_(False),
         )
     )
     return result.scalar_one_or_none()
 
 
-def _agent_definition_clause(agent_id: int, management_scope: "AgentManagementScope | None" = None) -> ColumnElement[bool]:
+def agent_definition_access(agent_id: int, management_scope: "AgentManagementScope | None" = None) -> ColumnElement[bool]:
     from .native_access import accessible_clause
     return or_(
         and_(ProcessDefinition.code.is_(None), ProcessDefinition.agent_id == agent_id),
@@ -737,6 +739,7 @@ async def start_process(
     typed_input: bool = False,
     external_input: bool = False,
     input_origins: dict[str, dict[str, Any]] | None = None,
+    _scheduled_definition_id: int | None = None,
 ) -> ProcessStartResponse:
     provided_input_names = set(input_data)
     if idempotency_key and idempotency_key.strip():
@@ -764,7 +767,7 @@ async def start_process(
             if wait_for_completion:
                 await _ensure_process_wait(admitted, definition)
             return await _start_response(admitted, definition, deduplicated=True)
-    allowed = await get_for_agent(agent_id, workflow_id)
+    allowed = await get_for_agent(agent_id, workflow_id, definition_id=_scheduled_definition_id)
     human_scope = None
     if requester_user_id is not None:
         from app.agent import management_scope_for
@@ -879,6 +882,8 @@ async def start_process(
         "input": input_data,
         "files": serialized_files,
     }
+    if _scheduled_definition_id is not None:
+        launch_snapshot["goal_cycle"] = True
     if native_definition is not None:
         definition = native_definition
         launch_snapshot["definition"] = {key: definition[key] for key in ("xml", "graph", "revision")}
@@ -923,8 +928,14 @@ async def start_process(
             origins = input_origins if input_origins is not None else {name: ({"kind": "human", "actor_user_id": requester_user_id}
                 if requester_user_id is not None else {"kind": "agent"}) for name in selected if name in provided_input_names}
             await record_inputs(run, selected, origins=origins)
+        if _scheduled_definition_id is not None:
+            # The scheduler commits the job and its owning cycle together.
+            await db.flush()
+            return await _start_response(run, process, deduplicated=False)
         await db.commit()
     except IntegrityError:
+        if _scheduled_definition_id is not None:
+            raise
         await db.rollback()
         if not explicit_key:
             raise
@@ -941,11 +952,15 @@ async def start_process(
         # Reload explicitly before building the existing invocation's receipt.
         await db.refresh(process)
         return await _start_response(existing, process, deduplicated=True)
-    metrics.increment("process_runs_started_total", process_code=process.engine_process_id, engine=tool.code)
-    await websocket.emit("process_run", "create", {"id": str(run.id), "status": run.status}, None)
+    await publish_run_created(run.id, process.engine_process_id, tool.code)
     if wait_for_completion:
         await _ensure_process_wait(run, process)
     return await _start_response(run, process, deduplicated=False)
+
+
+async def publish_run_created(run_id: UUID, workflow_id: str, engine_code: str) -> None:
+    metrics.increment("process_runs_started_total", process_code=workflow_id, engine=engine_code)
+    await websocket.emit("process_run", "create", {"id": str(run_id), "status": "queued"}, None)
 
 
 async def _locked_run(run_id: UUID) -> Optional[ProcessRun]:
@@ -1932,6 +1947,7 @@ async def process_start_jobs(*, batch_size: int = 10, engine_code: str | None = 
         await db.commit()
         started = asyncio.get_running_loop().time()
         authorization_permit = run.launch_snapshot.get("authorization_permit")
+        scheduled_cycle = run.launch_snapshot.get("goal_cycle") is True
         dispatch_claimed = False
         from app.services.facade import claim_deferred_dispatch, finish_action, authorized_request
         try:
@@ -1943,6 +1959,21 @@ async def process_start_jobs(*, batch_size: int = 10, engine_code: str | None = 
                 raise ProcessEngineError(
                     "invalid_launch_snapshot", "Unsupported or invalid durable launch snapshot",
                 ) from error
+            if scheduled_cycle:
+                allowed = await db.scalar(
+                    select(ProcessDefinition.id).join(ServiceModel, ServiceModel.id == ProcessDefinition.service_id)
+                    .where(
+                        ProcessDefinition.id == run.process_id,
+                        ProcessDefinition.engine_process_id == snapshot.workflow_id,
+                        ProcessDefinition.deleted_at.is_(None),
+                        ProcessDefinition.archived.is_(False),
+                        ServiceModel.code == run.engine_code,
+                        agent_definition_access(run.launcher_agent_id),
+                    )
+                )
+                if allowed is None:
+                    raise ProcessEngineError("goal_process_unavailable", "The scheduled process is no longer available to its agent")
+                await db.commit()
             payload = ProcessStartPayload(
                 input=snapshot.input, files=snapshot.files,
                 launch_snapshot=snapshot.model_dump(mode="json"),
@@ -1959,7 +1990,10 @@ async def process_start_jobs(*, batch_size: int = 10, engine_code: str | None = 
                     raise ProcessEngineError("authorization_invalidated", "Deferred authorization is unavailable") from error
             with authorized_request(UUID(str(authorization_permit)) if authorization_permit else None):
                 result = await asyncio.wait_for(
-                    engine.start_run(process.engine_process_id or "", _engine_run_reference(run), payload),
+                    engine.start_run(
+                        snapshot.workflow_id if scheduled_cycle else process.engine_process_id or "",
+                        _engine_run_reference(run), payload,
+                    ),
                     timeout=(engine.start_timeout_seconds if isinstance(engine, IntegratedProcessEngine)
                              else runtime_settings.PROCESS_START_TIMEOUT_SECONDS),
                 )
