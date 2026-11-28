@@ -542,26 +542,34 @@ async def _create_conversation_task(
     )
 
 
-def _require_task_run_context(ctx: McpToolContext, agent_id: int | None) -> None:
+def _validate_task_run_arguments(ctx: McpToolContext, arguments: dict[str, Any]) -> None:
+    agent_id = arguments["agent_id"]
     if agent_id is None and not ctx.conversation_only:
-        raise PermissionError("Omit agent_id only when submitting work from a conversation.")
+        raise ToolArgumentsRejectedError("Omit agent_id only when submitting work from a conversation.")
     if agent_id is not None and ctx.conversation_only:
-        raise PermissionError("Omit agent_id in conversation. A running Task can delegate to another agent.")
-
-
-async def _task_run_authorization_preflight(
-    ctx: McpToolContext, arguments: dict[str, Any],
-) -> dict[str, Any]:
-    _require_task_run_context(ctx, arguments.get("agent_id"))
-    return {}
+        raise ToolArgumentsRejectedError("Omit agent_id in conversation. A running Task can delegate to another agent.")
+    if agent_id is None:
+        if arguments["effort"] is not None or arguments["document_access"] != "read":
+            raise ToolArgumentsRejectedError("Effort and document_access are only available for delegation.")
+        if arguments["mode"] not in (None, "auto", "exec", "plan"):
+            raise ToolArgumentsRejectedError("Conversation mode must be auto, exec or plan.")
+        if not arguments["objective"].strip():
+            raise ToolArgumentsRejectedError("objective is required")
+    else:
+        if arguments["disposition"] != "CREATE_NEW" or any(
+            arguments[key] is not None for key in ("target_task_id", "expected_revision", "reason")
+        ):
+            raise ToolArgumentsRejectedError("Amendment and replacement controls are only available in conversation.")
+        if not arguments["label"].strip():
+            raise ToolArgumentsRejectedError("A delegated Task requires a label.")
 
 
 @mcp_tool("task", approval="ask", approval_reason="Admits background work or delegates a Task within the caller's scope",
     name="task_run",
     conversation_policy="deferred",
-    authorization_preflight=_task_run_authorization_preflight,
+    validate_arguments=_validate_task_run_arguments,
     description=(
-        "In conversation, omit agent_id to submit background work to the current agent. Compare recent "
+        "In conversation, omit agent_id, effort and document_access to submit background work to the current agent. Compare recent "
         "Tasks before choosing a disposition. Use CREATE_NEW for an independently verifiable outcome or "
         "a new approach after failure. AMEND_CURRENT or AMEND_QUEUED require the same primary target "
         "and success criteria, target_task_id and expected_revision. If children are active, an amendment "
@@ -589,20 +597,17 @@ async def task_run(
     expected_revision: int | None = None,
     reason: str | None = None,
 ) -> dict[str, Any] | str:
-    _require_task_run_context(ctx, agent_id)
+    _validate_task_run_arguments(ctx, {
+        "agent_id": agent_id, "effort": effort, "document_access": document_access, "mode": mode,
+        "objective": objective, "disposition": disposition, "target_task_id": target_task_id,
+        "expected_revision": expected_revision, "reason": reason, "label": label,
+    })
     if agent_id is None:
-        if effort is not None or document_access != "read":
-            raise ValueError("Effort and document_access are only available for delegation.")
-        if mode not in (None, "auto", "exec", "plan"):
-            raise ValueError("Conversation mode must be auto, exec or plan.")
         return await task_submit(
-            ctx, objective=objective, label=label, mode=mode or "auto", disposition=disposition,
+            ctx, objective=objective, label=label, mode=cast(Literal["auto", "exec", "plan"], mode or "auto"),
+            disposition=disposition,
             target_task_id=target_task_id, expected_revision=expected_revision, reason=reason,
         )
-    if disposition != "CREATE_NEW" or target_task_id is not None or expected_revision is not None or reason is not None:
-        raise ValueError("Amendment and replacement controls are only available in conversation.")
-    if not label.strip():
-        raise ValueError("A delegated Task requires a label.")
     return await delegate_agent_task(ctx, agent_id, label, objective, effort, mode, document_access)
 
 
@@ -848,6 +853,7 @@ async def admit_background_task(
     name="task_list",
     conversation_policy="short",
     task_enabled=False,
+    effect_policy="read",
     description=(
         "List compact summaries of recent root Tasks in the current conversation scope, "
         "including their canonical resource_uri, operational state and active resource "

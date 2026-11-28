@@ -8935,7 +8935,7 @@
       {
         "file": "back/app/conversation/mcp.py",
         "handler": "chat_choice_resolve",
-        "line": 924,
+        "line": 930,
         "module": "app.conversation",
         "name": "chat_choice_resolve",
         "namespace": "chat"
@@ -10287,7 +10287,7 @@
       {
         "file": "back/app/conversation/mcp.py",
         "handler": "process_pending",
-        "line": 983,
+        "line": 989,
         "module": "app.conversation",
         "name": "process_pending",
         "namespace": "process"
@@ -10295,7 +10295,7 @@
       {
         "file": "back/app/conversation/mcp.py",
         "handler": "process_prepare",
-        "line": 1071,
+        "line": 1077,
         "module": "app.conversation",
         "name": "process_prepare",
         "namespace": "process"
@@ -10303,7 +10303,7 @@
       {
         "file": "back/app/conversation/mcp.py",
         "handler": "process_respond",
-        "line": 974,
+        "line": 980,
         "module": "app.conversation",
         "name": "process_respond",
         "namespace": "process"
@@ -10391,7 +10391,7 @@
       {
         "file": "back/app/conversation/mcp.py",
         "handler": "process_start_conversation",
-        "line": 1099,
+        "line": 1105,
         "module": "app.conversation",
         "name": "process_start_conversation",
         "namespace": "process"
@@ -10671,7 +10671,7 @@
       {
         "file": "back/app/conversation/mcp.py",
         "handler": "task_cancel",
-        "line": 1056,
+        "line": 1062,
         "module": "app.conversation",
         "name": "task_cancel",
         "namespace": "task"
@@ -10679,7 +10679,7 @@
       {
         "file": "back/app/conversation/mcp.py",
         "handler": "task_get",
-        "line": 902,
+        "line": 908,
         "module": "app.conversation",
         "name": "task_get",
         "namespace": "task"
@@ -10687,7 +10687,7 @@
       {
         "file": "back/app/conversation/mcp.py",
         "handler": "task_list",
-        "line": 857,
+        "line": 863,
         "module": "app.conversation",
         "name": "task_list",
         "namespace": "task"
@@ -10695,7 +10695,7 @@
       {
         "file": "back/app/conversation/mcp.py",
         "handler": "task_pause",
-        "line": 1013,
+        "line": 1019,
         "module": "app.conversation",
         "name": "task_pause",
         "namespace": "task"
@@ -10703,7 +10703,7 @@
       {
         "file": "back/app/conversation/mcp.py",
         "handler": "task_resume",
-        "line": 1031,
+        "line": 1037,
         "module": "app.conversation",
         "name": "task_resume",
         "namespace": "task"
@@ -10711,7 +10711,7 @@
       {
         "file": "back/app/conversation/mcp.py",
         "handler": "task_run",
-        "line": 578,
+        "line": 586,
         "module": "app.conversation",
         "name": "task_run",
         "namespace": "task"

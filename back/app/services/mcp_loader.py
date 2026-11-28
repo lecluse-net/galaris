@@ -217,6 +217,7 @@ class McpToolDefinition:
     authorization_preflight: Callable[[McpToolContext, dict[str, Any]], Awaitable[dict[str, Any]]] | None = None
     effect_descriptor: EffectDescriptorV1 | None = None
     execution_inspection: bool = False
+    validate_arguments: Callable[[McpToolContext, dict[str, Any]], None] | None = None
 
     @property
     def management_scope_service(self) -> str | None:
@@ -324,6 +325,7 @@ def mcp_tool(
     authorization_preflight: Callable[[McpToolContext, dict[str, Any]], Awaitable[dict[str, Any]]] | None = None,
     effect_descriptor: EffectDescriptorV1 | None = None,
     execution_inspection: bool = False,
+    validate_arguments: Callable[[McpToolContext, dict[str, Any]], None] | None = None,
 ) -> Callable[[ToolFunc], ToolFunc]:
     """Mark an ``mcp.py`` function as a native MCP tool.
 
@@ -352,6 +354,7 @@ def mcp_tool(
             authorization_preflight=authorization_preflight,
             effect_descriptor=effect_descriptor,
             execution_inspection=execution_inspection,
+            validate_arguments=validate_arguments,
             function=func,
         )
         setattr(func, "__galaris_mcp_tool__", definition)
@@ -617,6 +620,9 @@ def _wrap_tool(definition: McpToolDefinition, ctx: McpToolContext | None) -> Cal
                     arguments = {
                         key: value for key, value in bound.arguments.items() if key not in {"ctx", "context"}
                     }
+                    # Contextual argument rules must run before consent or the effect fence.
+                    if definition.validate_arguments is not None:
+                        definition.validate_arguments(ctx, arguments)
                     call_ctx = ctx
                     if definition.service_code in {"mail", "calendar", "rest"}:
                         protocol = cast(Literal["mail", "calendar", "rest"], definition.service_code)

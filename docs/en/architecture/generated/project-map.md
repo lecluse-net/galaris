@@ -2428,7 +2428,7 @@ No cyclic component detected.
 | `calendar_is_available` | `calendar` | `app.calendar` | `calendar_is_available` | `back/app/calendar/mcp.py:111` |
 | `calendar_list` | `calendar` | `app.calendar` | `calendar_list` | `back/app/calendar/mcp.py:53` |
 | `calendar_update_event` | `calendar` | `app.calendar` | `calendar_update_event` | `back/app/calendar/mcp.py:229` |
-| `chat_choice_resolve` | `chat` | `app.conversation` | `chat_choice_resolve` | `back/app/conversation/mcp.py:924` |
+| `chat_choice_resolve` | `chat` | `app.conversation` | `chat_choice_resolve` | `back/app/conversation/mcp.py:930` |
 | `chat_repository_show` | `chat` | `app.conversation` | `chat_repository_show` | `back/app/conversation/mcp.py:128` |
 | `chat_round_get` | `chat` | `app.conversation` | `chat_round_get` | `back/app/conversation/mcp.py:253` |
 | `chat_screenshot` | `chat` | `app.chat` | `chat_screenshot` | `back/app/chat/mcp.py:40` |
@@ -2597,9 +2597,9 @@ No cyclic component detected.
 | `process_archive` | `process` | `app.process` | `process_archive` | `back/app/process/mcp.py:151` |
 | `process_create` | `process` | `app.process` | `process_create` | `back/app/process/mcp.py:113` |
 | `process_history` | `process` | `app.process` | `process_history` | `back/app/process/mcp.py:137` |
-| `process_pending` | `process` | `app.conversation` | `process_pending` | `back/app/conversation/mcp.py:983` |
-| `process_prepare` | `process` | `app.conversation` | `process_prepare` | `back/app/conversation/mcp.py:1071` |
-| `process_respond` | `process` | `app.conversation` | `process_respond` | `back/app/conversation/mcp.py:974` |
+| `process_pending` | `process` | `app.conversation` | `process_pending` | `back/app/conversation/mcp.py:989` |
+| `process_prepare` | `process` | `app.conversation` | `process_prepare` | `back/app/conversation/mcp.py:1077` |
+| `process_respond` | `process` | `app.conversation` | `process_respond` | `back/app/conversation/mcp.py:980` |
 | `process_restore` | `process` | `app.process` | `process_restore` | `back/app/process/mcp.py:145` |
 | `process_run_cancel` | `process` | `app.process` | `process_run_cancel` | `back/app/process/mcp.py:195` |
 | `process_run_children` | `process` | `app.process` | `process_run_children` | `back/app/process/mcp.py:166` |
@@ -2610,7 +2610,7 @@ No cyclic component detected.
 | `process_run_signal` | `process` | `app.process` | `process_run_signal` | `back/app/process/mcp.py:203` |
 | `process_share` | `process` | `app.process` | `process_share` | `back/app/process/mcp.py:157` |
 | `process_start` | `process` | `app.process` | `process_start` | `back/app/process/mcp.py:237` |
-| `process_start_conversation` | `process` | `app.conversation` | `process_start_conversation` | `back/app/conversation/mcp.py:1099` |
+| `process_start_conversation` | `process` | `app.conversation` | `process_start_conversation` | `back/app/conversation/mcp.py:1105` |
 | `process_update` | `process` | `app.process` | `process_update` | `back/app/process/mcp.py:122` |
 | `process_validate` | `process` | `app.process` | `process_validate` | `back/app/process/mcp.py:130` |
 | `rest_request` | `rest` | `app.services` | `rest_request` | `back/app/services/mcp.py:43` |
@@ -2645,12 +2645,12 @@ No cyclic component detected.
 | `skill_set_enabled` | `skills` | `app.skill` | `mcp_skill_set_enabled` | `back/app/skill/mcp.py:54` |
 | `skill_update` | `skills` | `app.skill` | `mcp_skill_update` | `back/app/skill/mcp.py:46` |
 | `skills_list` | `skills` | `app.skill` | `mcp_skills_list` | `back/app/skill/mcp.py:13` |
-| `task_cancel` | `task` | `app.conversation` | `task_cancel` | `back/app/conversation/mcp.py:1056` |
-| `task_get` | `task` | `app.conversation` | `task_get` | `back/app/conversation/mcp.py:902` |
-| `task_list` | `task` | `app.conversation` | `task_list` | `back/app/conversation/mcp.py:857` |
-| `task_pause` | `task` | `app.conversation` | `task_pause` | `back/app/conversation/mcp.py:1013` |
-| `task_resume` | `task` | `app.conversation` | `task_resume` | `back/app/conversation/mcp.py:1031` |
-| `task_run` | `task` | `app.conversation` | `task_run` | `back/app/conversation/mcp.py:578` |
+| `task_cancel` | `task` | `app.conversation` | `task_cancel` | `back/app/conversation/mcp.py:1062` |
+| `task_get` | `task` | `app.conversation` | `task_get` | `back/app/conversation/mcp.py:908` |
+| `task_list` | `task` | `app.conversation` | `task_list` | `back/app/conversation/mcp.py:863` |
+| `task_pause` | `task` | `app.conversation` | `task_pause` | `back/app/conversation/mcp.py:1019` |
+| `task_resume` | `task` | `app.conversation` | `task_resume` | `back/app/conversation/mcp.py:1037` |
+| `task_run` | `task` | `app.conversation` | `task_run` | `back/app/conversation/mcp.py:586` |
 | `task_update` | `task` | `app.task` | `mcp_work_update` | `back/app/task/mcp.py:111` |
 
 ## Declared Privileges

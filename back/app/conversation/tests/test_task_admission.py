@@ -24,6 +24,7 @@ from app.task.models import Task, TaskStatus
 from app.task.schemas import TaskCreate
 from app.task.working_set import WORKING_SET_DATA_KEY
 from app.services import McpToolContext
+from app.services.contracts import ToolArgumentsRejectedError
 
 
 def _turn(
@@ -98,13 +99,13 @@ async def test_task_run_refuses_cross_context_arguments(monkeypatch) -> None:
     chat = McpToolContext(agent_id=7, runtime="internal", conversation_only=True)
     task = McpToolContext(agent_id=7, runtime="internal", task_id=uuid4())
 
-    with pytest.raises(PermissionError, match="Omit agent_id in conversation"):
+    with pytest.raises(ToolArgumentsRejectedError, match="Omit agent_id in conversation"):
         await conversation_mcp.task_run(chat, objective="Delegate", label="Synthetic", agent_id=8)
-    with pytest.raises(PermissionError, match="Omit agent_id only"):
+    with pytest.raises(ToolArgumentsRejectedError, match="Omit agent_id only"):
         await conversation_mcp.task_run(task, objective="Submit")
-    with pytest.raises(ValueError, match="only available for delegation"):
+    with pytest.raises(ToolArgumentsRejectedError, match="only available for delegation"):
         await conversation_mcp.task_run(chat, objective="Submit", effort="high")
-    with pytest.raises(ValueError, match="only available in conversation"):
+    with pytest.raises(ToolArgumentsRejectedError, match="only available in conversation"):
         await conversation_mcp.task_run(task, objective="Amend", label="Synthetic",
                                         agent_id=8, disposition="AMEND_CURRENT")
     submit.assert_not_awaited()
