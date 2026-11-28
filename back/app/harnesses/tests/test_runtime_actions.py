@@ -56,7 +56,7 @@ async def test_absent_status_exposes_creation_without_querying_missing_runtime(m
         capabilities=lambda: frozenset({"status", "start", "restart"}),
     )
     target = SimpleNamespace(
-        status="absent", provider_code="hermes", last_error=None,
+        status="absent", name="Synthetic managed Harness", provider_code="hermes", last_error=None,
         capabilities=provider.capabilities(),
     )
     monkeypatch.setattr(supervision, "get_agent_record", AsyncMock(return_value=SimpleNamespace(id=1)))
@@ -65,6 +65,7 @@ async def test_absent_status_exposes_creation_without_querying_missing_runtime(m
     monkeypatch.setattr(supervision, "get_provider", lambda _: provider)
     result = await router.harness_status(1)
     assert result.status == "absent"
+    assert result.name == target.name
     assert result.available_actions == ["restart"]
     provider.status.assert_not_awaited()
 

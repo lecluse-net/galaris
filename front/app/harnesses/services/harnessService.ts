@@ -44,6 +44,7 @@ export interface HarnessRuntimeState {
     skills_status?: 'not_applicable' | 'pending' | 'current' | 'error'
     available_actions?: HarnessCapability[]
     status: string
+    name?: string | null
     capabilities: HarnessCapability[]
     lifecycle_status: 'absent' | 'provisioning' | 'ready' | 'deprovisioning' | 'error' | 'internal'
     managed: boolean

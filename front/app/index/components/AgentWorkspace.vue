@@ -64,31 +64,23 @@
           @open-summary="field => openRichTextDialog(agent, field)">
           <q-card-actions v-if="canInspectAgent(agent)" class="agent-card-actions q-pa-sm">
             <q-chip
-              v-if="agent.agent_driver === 'internal'"
-              dense
-              square
-              color="positive"
-              text-color="white"
-              icon="check_circle"
-              size="sm"
-            >
-              {{ $t('agent.harness.status.running') }}
-            </q-chip>
-            <q-chip
-              v-else-if="isManagedRuntime(agent)"
+              v-if="harnessName(agent) || isManagedRuntime(agent)"
               dense
               square
               :clickable="hasHarnessCapability(agent, 'logs')"
-              :color="harnessStatusColor(harnessState(agent).status)"
+              :color="harnessStatusColor(harnessBadgeStatus(agent))"
               text-color="white"
-              :icon="harnessState(agent).status === 'loading' ? '' : harnessStatusIcon(harnessState(agent).status)"
+              :icon="harnessBadgeStatus(agent) === 'loading' ? '' : harnessStatusIcon(harnessBadgeStatus(agent))"
               size="sm"
               @click="hasHarnessCapability(agent, 'logs') && openHarnessLogs(agent)"
             >
-              <q-spinner v-if="harnessState(agent).status === 'loading'" size="xs" class="q-mr-xs" />
-              {{ harnessStatusLabel(harnessState(agent).status) }}
-              <q-tooltip v-if="harnessState(agent).last_error || hasHarnessCapability(agent, 'logs')">
-                {{ harnessState(agent).last_error || $t('agent.harness.showLogs') }}
+              <q-spinner v-if="harnessBadgeStatus(agent) === 'loading'" size="xs" class="q-mr-xs" />
+              <span class="ellipsis">{{ harnessName(agent) }}</span>
+              <q-tooltip>
+                <div>{{ harnessName(agent) }}</div>
+                <div v-if="isManagedRuntime(agent)">{{ harnessStatusLabel(harnessBadgeStatus(agent)) }}</div>
+                <div v-if="harnessState(agent).last_error">{{ harnessState(agent).last_error }}</div>
+                <div v-if="hasHarnessCapability(agent, 'logs')">{{ $t('agent.harness.showLogs') }}</div>
               </q-tooltip>
             </q-chip>
             <div class="agent-action-buttons row items-center justify-end">
@@ -680,8 +672,8 @@ const canManageAllAgents = computed(() => (
 const canInspectAgent = (agent: Agent): boolean => agent.is_owner || canManageAllAgents.value
 const canManageAgent = (agent: Agent): boolean => canEdit.value && canInspectAgent(agent)
 const {
-  isManagedRuntime, managedAgents, harnessManagerUnavailable, harnessState, harnessStatusColor, harnessStatusIcon,
-  harnessStatusLabel, hasHarnessCapability, hasHarnessAction, harnessRestartLabel, harnessLifecycleBusy,
+  harnessName, harnessBadgeStatus, isManagedRuntime, managedAgents, harnessManagerUnavailable, harnessState,
+  harnessStatusColor, harnessStatusIcon, harnessStatusLabel, hasHarnessCapability, hasHarnessAction, harnessRestartLabel, harnessLifecycleBusy,
   harnessActionLoading, runHarnessAction, restartFleet, fleetRestarting, markHarnessSelectionPending,
   fetchHarnessStatus, showHarnessLogsDialog, harnessLogs, harnessLogsLoading, harnessLogsAgentName,
   fetchHarnessLogs, openHarnessLogs, closeHarnessLogs, harnessLogColor,
@@ -1583,12 +1575,14 @@ onUnmounted(() => {
 }
 
 .agent-card-wrapper {
+  display: grid;
   width: 100%;
 }
 
 .agent-cards-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, 700px);
+  grid-auto-rows: 1fr;
   gap: 16px;
   justify-content: center;
 }
@@ -1634,8 +1628,13 @@ body.body--dark .agent-fallback-avatar {
 }
 
 .agent-card-actions .q-chip {
-  flex: 0 0 auto;
+  min-width: 0;
+  max-width: 50%;
   margin: 0;
+}
+
+.agent-card-actions .q-chip :deep(.q-chip__content) {
+  min-width: 0;
 }
 
 .agent-action-buttons {

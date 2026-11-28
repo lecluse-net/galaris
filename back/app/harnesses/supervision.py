@@ -35,7 +35,7 @@ async def status(agent_id: int) -> HarnessRuntimeState:
     skills_status, skills_error = await skill_sync_status(agent_id)
     capabilities = sorted(await configured_provider_capabilities(target.provider_code))
     observed = await provider.status(agent) if target.status == "ready" and "status" in capabilities else target.status
-    return HarnessRuntimeState(status=observed, lifecycle_status=target.status, managed=provider.containerized,
+    return HarnessRuntimeState(status=observed, name=target.name, lifecycle_status=target.status, managed=provider.containerized,
                                capabilities=capabilities, last_error=target.last_error or skills_error, skills_status=skills_status)
 
 

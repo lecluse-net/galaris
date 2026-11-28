@@ -41,6 +41,14 @@ export function useAgentHarnessRuntime({
       && sessionGeneration() === session && previewAgentId.value === preview
   }
 
+  function harnessName(agent: Agent): string {
+    const name = harnessStates[agent.id]?.name
+    if (name) return name
+    if (agent.agent_driver === 'internal') return t('harnesses.internal')
+    const driver = drivers.value.find(driver => driver.name === agent.agent_driver)
+    return driver?.label_key ? t(driver.label_key) : ''
+  }
+
   const isManagedRuntime = (agent: Agent): boolean => (
     canInspectAgent(agent) && (harnessStates[agent.id]?.managed
       ?? drivers.value.some(driver => driver.name === agent.agent_driver && driver.manages_runtime))
@@ -68,9 +76,18 @@ export function useAgentHarnessRuntime({
 
   const harnessState = (agent: Agent) => stateFor(agent.id)
 
+  function harnessBadgeStatus(agent: Agent): string {
+    if (isManagedRuntime(agent)) return harnessState(agent).status
+    const driver = drivers.value.find(driver => driver.name === agent.agent_driver)
+    if (driver?.transport === 'embedded') return driver.available ? 'running' : 'disabled'
+    if (agent.agent_driver === 'internal') return 'running'
+    const status = harnessState(agent).status
+    return status === 'internal' || status === 'ready' ? 'running' : status
+  }
+
   function markHarnessSelectionPending(agentId: number): void {
     statusRequests.delete(agentId)
-    harnessStates[agentId] = { ...stateFor(agentId), status: 'loading', available_actions: [] }
+    harnessStates[agentId] = { ...stateFor(agentId), name: null, status: 'loading', available_actions: [] }
   }
 
   const hasHarnessCapability = (agent: Agent, capability: HarnessCapability): boolean => (
@@ -78,7 +95,7 @@ export function useAgentHarnessRuntime({
   )
 
   const harnessStatusLabel = (status: string): string => {
-    if (['absent', 'provisioning', 'deprovisioning', 'error'].includes(status)) {
+    if (['absent', 'provisioning', 'ready', 'deprovisioning', 'error'].includes(status)) {
       return t(`agent.harness.lifecycle.${status}`)
     }
     return t(`agent.harness.status.${status || 'unknown'}`)
@@ -129,9 +146,12 @@ export function useAgentHarnessRuntime({
       if (!current()) return
       const serviceUnavailable = isAxiosError(error) && error.response?.status === 503
       let managed = isManagedRuntime(agent)
-      if (serviceUnavailable && !managed) {
+      let name = harnessState(agent).name
+      if (serviceUnavailable && (!managed || !name)) {
         try {
-          managed = (await harnessService.selection(agent.id)).data.containerized
+          const { data: selection } = await harnessService.selection(agent.id)
+          managed = selection.containerized
+          if (!selection.internal) name = selection.name
         } catch {
           // Keep the last known runtime kind when the persisted selection cannot be read.
         }
@@ -144,6 +164,7 @@ export function useAgentHarnessRuntime({
       }
       harnessStates[agent.id] = {
         status: 'unknown',
+        name,
         lifecycle_status: harnessState(agent).lifecycle_status,
         managed,
         capabilities: harnessState(agent).capabilities,
@@ -244,8 +265,8 @@ export function useAgentHarnessRuntime({
   }, { immediate: true })
 
   return {
-    isManagedRuntime, managedAgents, harnessManagerUnavailable, harnessState, harnessStatusColor, harnessStatusIcon,
-    harnessStatusLabel, hasHarnessCapability, hasHarnessAction, harnessRestartLabel, harnessLifecycleBusy,
+    harnessName, harnessBadgeStatus, isManagedRuntime, managedAgents, harnessManagerUnavailable, harnessState,
+    harnessStatusColor, harnessStatusIcon, harnessStatusLabel, hasHarnessCapability, hasHarnessAction, harnessRestartLabel, harnessLifecycleBusy,
     harnessActionLoading, runHarnessAction, restartFleet, fleetRestarting, markHarnessSelectionPending,
     fetchHarnessStatus, showHarnessLogsDialog, harnessLogs, harnessLogsLoading, harnessLogsAgentName,
     fetchHarnessLogs, openHarnessLogs, closeHarnessLogs, harnessLogColor,

@@ -102,14 +102,16 @@ async function setupAdministration(page, request) {
     await prompt.getByRole('button', { name: 'Plus tard', exact: true }).click()
   })
   const headers = { Authorization: `Bearer ${session.access_token}` }
-  const team = await request.post('/api/teams', { headers, data: { name: `Synthetic portrait team ${fixture.agent_id}` } })
+  const prefix = `/api/__test/agent-admin/${fixture.agent_id}`
+  const setup = await (await request.post(`${prefix}/setup`)).json()
+  const team = await request.post('/api/teams', { headers, data: {
+    name: `Synthetic portrait team ${fixture.agent_id}`, manager_user_id: setup.user_id,
+  } })
   expect(team.ok(), await team.text()).toBeTruthy()
   // These portraits belong to unassigned agents, even when other teams exist.
   const unassigned = page.locator('body:not(:has([role="dialog"]:visible))')
     .getByRole('tab', { name: /^(No team|Sans équipe)$/, exact: true }).and(page.locator('[aria-selected="false"]'))
   await page.addLocatorHandler(unassigned, tab => tab.click())
-  const prefix = `/api/__test/agent-admin/${fixture.agent_id}`
-  const setup = await (await request.post(`${prefix}/setup`)).json()
   const invoke = async (name, data) => {
     const response = await request.post(`${prefix}/call/${name}`, { data })
     expect(response.ok(), await response.text()).toBeTruthy()
@@ -145,6 +147,7 @@ test('the agent form creates and reopens an embedded Claude selection', async ({
   await expect(dialog).toHaveCount(0)
 
   const card = page.locator('.agent-card').filter({ has: page.getByText(name, { exact: true }) })
+  await expect(card.getByText('Claude Agent', { exact: true })).toBeVisible()
   const open = card.getByRole('button', { name: /Modifier l.agent/ })
   await open.click()
   await expect(harness).toHaveValue('Claude Agent')
@@ -155,6 +158,7 @@ test('the agent form creates and reopens an embedded Claude selection', async ({
   expect(switched.status(), await switched.text()).toBe(202)
   expect(await switched.json()).toMatchObject({ driver_code: 'internal', internal: true, containerized: false })
   await expect(dialog).toHaveCount(0)
+  await expect(card.getByText('Pydantic AI', { exact: true })).toBeVisible()
   await open.click()
   await expect(harness).toHaveValue('Pydantic AI')
   expect(await (await request.get(`/api/agents/${saved.id}`, { headers })).json()).toMatchObject({ agent_driver: 'internal' })

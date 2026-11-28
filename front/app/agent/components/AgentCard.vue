@@ -20,18 +20,13 @@
       <!-- Info Section (Right) -->
       <q-card-section class="agent-info-section q-pa-sm">
         <div class="agent-identity-section">
-          <!-- Model profile -->
-          <div
-            v-if="profileLabel"
-            class="profile-name text-caption text-grey-7 text-right ellipsis q-mb-xs"
-            :title="profileLabel"
-          >
-            {{ profileLabel }}
-          </div>
-
-          <!-- Name & Title -->
-          <div class="agent-name text-h6 text-weight-bold">
-            {{ agent.first_name }} {{ agent.last_name }}
+          <div class="agent-name-row row items-start no-wrap">
+            <div class="agent-name col text-h6 text-weight-bold">
+              {{ agent.first_name }} {{ agent.last_name }}
+            </div>
+            <div v-if="profileLabel" class="profile-name text-caption text-grey-7 text-right">
+              {{ profileLabel }}
+            </div>
           </div>
           <div class="agent-meta-row row items-baseline no-wrap">
             <div
@@ -157,6 +152,7 @@ const truncateText = (text: string | null, maxLength: number) => {
 
 .agent-card-horizontal {
   display: grid;
+  flex: 1 0 auto;
   grid-template-columns: minmax(140px, 180px) minmax(0, 1fr);
   min-height: 207px;
 }
@@ -182,6 +178,8 @@ const truncateText = (text: string | null, maxLength: number) => {
 }
 
 .agent-image-container {
+  position: absolute;
+  inset: 0;
   width: 100%;
   height: 100%;
   display: flex;
@@ -220,7 +218,13 @@ body.body--dark .agent-fallback-avatar {
 
 .profile-name {
   min-width: 0;
+  max-width: 50%;
   line-height: 1.2;
+  overflow-wrap: anywhere;
+}
+
+.agent-name-row {
+  gap: 8px;
 }
 
 .agent-name {
@@ -250,7 +254,6 @@ body.body--dark .agent-fallback-avatar {
     aspect-ratio: 1;
   }
 
-  .agent-avatar-section > .agent-image-container,
   .agent-avatar-section > .flex {
     position: absolute;
     inset: 0;

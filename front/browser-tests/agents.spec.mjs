@@ -87,7 +87,8 @@ for (const source of ['file', 'citation']) for (const width of [1440, 390]) test
     return route.fulfill(denied ? { status: 403, json: { detail: 'Synthetic denied agent' } } : { json: { ...agent, agent_driver: 'hermes' } })
   })
   await page.route('**/api/file-share/browser/entries?*', route => route.fulfill({ json: { entries: deleted ? [] : [file], truncated: false, next_cursor: null } }))
-  await jsonRoute(page, '**/api/harnesses/agents/7/status', { status: 'running', managed: true, lifecycle_status: 'ready', capabilities: ['restart', 'stop'], available_actions: ['restart', 'stop'], last_error: null })
+  await jsonRoute(page, '**/api/harnesses/agents/7/status', { name: 'Synthetic managed harness', status: 'running', managed: true, lifecycle_status: 'ready', capabilities: ['restart', 'stop', 'logs'], available_actions: ['restart', 'stop'], last_error: null })
+  await jsonRoute(page, '**/api/harnesses/agents/7/logs?*', { lines: ['Synthetic runtime log'] })
   let restarts = 0
   await page.route('**/api/harnesses/agents/7/actions/restart', route => { restarts++; return route.fulfill({ json: { status: 'queued', output: '' } }) })
   if (source === 'file') {
@@ -105,6 +106,10 @@ for (const source of ['file', 'citation']) for (const width of [1440, 390]) test
   await expect(card).toHaveCount(1)
   await expect(card.getByText('Alice Example', { exact: true })).toBeVisible()
   await expect(card.getByText('An agent for testing', { exact: true })).toBeVisible()
+  await card.getByText('Synthetic managed harness', { exact: true }).click()
+  await expect(page.getByRole('dialog').last().getByText('Synthetic runtime log', { exact: true })).toBeVisible()
+  await page.keyboard.press('Escape')
+  await expect(page.getByRole('dialog')).toHaveCount(1)
   await card.getByRole('button', { name: 'Restart', exact: true }).click()
   await expect.poll(() => restarts).toBe(1)
   await card.getByRole('button', { name: 'Edit agent', exact: true }).click()

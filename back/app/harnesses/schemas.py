@@ -196,6 +196,7 @@ class HarnessLogs(BaseModel):
 
 class HarnessRuntimeState(BaseModel):
     status: str
+    name: str | None = None
     capabilities: list[HarnessCapability]
     lifecycle_status: HarnessLifecycleStatus | Literal["internal"]
     managed: bool = True
