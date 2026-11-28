@@ -686,8 +686,23 @@
             >
               {{ statusLabel(store.currentGoal.status) }}
             </q-chip>
+            <q-btn
+              v-if="editingGoal"
+              class="goal-id-badge"
+              outline
+              rounded
+              dense
+              no-caps
+              size="sm"
+              color="white"
+              icon="link"
+              :label="editingGoal.id"
+              :aria-description="t('common.copyReference')"
+              @click="copyReference(`galaris://goal/${editingGoal.id}`)"
+            >
+              <q-tooltip>{{ t('common.copyReference') }}</q-tooltip>
+            </q-btn>
           </div>
-          <CopyResourceReference v-if="editingGoal" :uri="`galaris://goal/${editingGoal.id}`" />
           <ResourceReferenceMenu v-if="editingGoal" :uri="`galaris://goal/${editingGoal.id}`" :title="editingGoal.title" target=".goal-detail-dialog" />
           <q-btn
             flat
@@ -1058,7 +1073,7 @@
 </template>
 
 <script setup lang="ts">
-import { CopyResourceReference, ResourceDetailDialog, ResourceReferenceMenu, ActionContextMenu, useResourceCopy, useResourceDetail, type ContextAction } from '@/core/util'
+import { ResourceDetailDialog, ResourceReferenceMenu, ActionContextMenu, useResourceCopy, useResourceDetail, type ContextAction } from '@/core/util'
 import { showConfirmationDialog } from '@/core/util'
 import { navigationIcon } from '@/core/navigation'
 import { computed, defineAsyncComponent, onMounted, onUnmounted, reactive, ref, useId, watch } from 'vue'
@@ -1147,7 +1162,7 @@ function goalActions(goal: Goal): ContextAction[] {
 
 const { t, locale } = useI18n()
 const $q = useQuasar()
-const { action: copyReferenceAction } = useResourceCopy()
+const { copy: copyReference, action: copyReferenceAction } = useResourceCopy()
 const route = useRoute()
 const { id: selectedCycleTaskId, target: selectedCycleTaskTarget } = useResourceDetail('task')
 
@@ -2277,6 +2292,11 @@ watch(() => previewGoalId ?? route.query.goal_id, value => { if (typeof value ==
 .goal-detail-title .text-h6 {
   min-width: 0;
   overflow-wrap: anywhere;
+}
+
+.goal-id-badge {
+  max-width: 100%;
+  padding-inline: 8px;
 }
 
 .goal-llm-banner {

@@ -156,7 +156,7 @@ for (const [kind, , title, detail] of cases) test(`message resource cards open t
   await page.evaluate(() => window.testApp.dark(true))
   await open.click()
   await expect(dialog).toContainText(content)
-  await page.screenshot({ path: testInfo.outputPath(`${kind}-modal-dark-mobile.png`), animations: 'disabled' })
+  await dialog.screenshot({ path: testInfo.outputPath(`${kind}-modal-dark-mobile.png`), animations: 'disabled' })
   await page.evaluate(() => window.testApp.setProps({ messageId: 'another-message' }))
   await expect(dialog).toHaveCount(0)
 })
@@ -205,6 +205,10 @@ for (const [kind, url, title, detail] of cases) for (const format of ['uri', 'ur
     } else if (kind === 'task') {
       await dialog.locator('.task-detail').click({ button: 'right' })
       await page.getByRole('menuitem', { name: 'Copy reference', exact: true }).click()
+    } else if (kind === 'goal') {
+      const copy = dialog.getByRole('button', { name: id, exact: true })
+      if (format === 'uri') await copy.click()
+      else await copy.press('Enter')
     } else await dialog.getByRole('button', { name: 'Copy reference', exact: true }).first().click()
     await expect.poll(() => page.evaluate(() => navigator.clipboard.readText())).toBe(uri)
     if (await dialog.count()) await dialog.getByRole('button', { name: 'Close', exact: true }).first().click()
