@@ -103,6 +103,69 @@ for (const width of [390, 1440]) {
   })
 }
 
+for (const width of [390, 1280]) {
+  test(`composer selects and dismisses emojis with the keyboard at ${width}px`, async ({ page }, testInfo) => {
+    await page.setViewportSize({ width, height: 800 })
+    const used = []
+    await page.route('**/api/chat/emojis/usage', route => {
+      used.push(route.request().postDataJSON().emoji)
+      return route.fulfill({ json: { items: used } })
+    })
+    await home(page, { shell: true, dark: width === 390 })
+    await page.getByRole('button', { name: /Project outline Alice/ }).click()
+    const input = page.locator('textarea')
+    const picker = page.getByRole('dialog', { name: 'Choose an emoji' })
+    const firstEmoji = picker.getByRole('button', { name: 'Add 😀', exact: true })
+    const secondEmoji = picker.getByRole('button', { name: 'Add 😃', exact: true })
+    await input.fill('Hello there friend')
+    await input.evaluate(element => element.setSelectionRange(6, 11))
+    // A quick arrow press can arrive before the popup's opening timer fires.
+    const openingTime = await page.evaluate(() => Date.now() + 1_000)
+    await page.clock.pauseAt(openingTime)
+    await page.keyboard.press('F2')
+    // Give Vue a distinct event timestamp without running the paused timers.
+    await page.clock.setSystemTime(openingTime + 1)
+    await page.keyboard.press('ArrowRight')
+    await page.clock.resume()
+    await expect(secondEmoji).toBeFocused()
+    await expect(picker).toBeVisible()
+    await expect.poll(() => picker.evaluate(element => Number(getComputedStyle(element).opacity))).toBeGreaterThan(0)
+    await expect.poll(() => picker.evaluate(element => (
+      element.getBoundingClientRect().left >= 0
+      && element.getBoundingClientRect().right <= document.documentElement.clientWidth
+    ))).toBe(true)
+    await page.screenshot({ path: testInfo.outputPath('chat-emoji-keyboard.png'), animations: 'disabled' })
+    const firstRow = await secondEmoji.boundingBox()
+    await page.keyboard.press('ArrowDown')
+    const nextRow = await picker.locator('button:focus').boundingBox()
+    expect(nextRow.y).toBeGreaterThan(firstRow.y)
+    expect(nextRow.x).toBeCloseTo(firstRow.x)
+    await page.keyboard.press('ArrowUp')
+    await expect(secondEmoji).toBeFocused()
+    await page.keyboard.press('ArrowLeft')
+    await expect(firstEmoji).toBeFocused()
+    await page.keyboard.press('Escape')
+    await expect(picker).toBeHidden()
+    await expect(input).toBeFocused()
+    await expect(input).toHaveValue('Hello there friend')
+    expect(used).toEqual([])
+
+    await page.keyboard.press('F2')
+    await expect(firstEmoji).toBeFocused()
+    await page.keyboard.press('ArrowUp')
+    await expect(picker.getByRole('tab', { name: 'Smileys and emotion' })).toBeFocused()
+    await page.keyboard.press('ArrowRight')
+    await expect(picker.getByRole('tab', { name: 'People and gestures' })).toBeFocused()
+    await page.keyboard.press('ArrowDown')
+    await expect(picker.getByRole('button', { name: 'Add 👋', exact: true })).toBeFocused()
+    await page.keyboard.press('Enter')
+    await expect(picker).toBeHidden()
+    await expect(input).toBeFocused()
+    await expect(input).toHaveValue('Hello 👋 friend')
+    await expect.poll(() => used).toEqual(['👋'])
+  })
+}
+
 test('chat home keeps search and filters visible without creation privileges', async ({ page }) => {
   const { requests } = await home(page, { privileges: [] })
   await expect(page.getByRole('button', { name: /New conversation/ })).toHaveCount(0)

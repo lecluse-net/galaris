@@ -120,9 +120,10 @@
             @keydown="handleCommandHelpKeydown"
             @keydown.enter="handleEnter"
             @keydown.esc="commandHelpOpen = false"
+            @keydown.f2="openEmojiPicker"
           >
             <template #prepend>
-              <EmojiPicker @select="insertEmoji" @error="$emit('error', $event)" />
+              <EmojiPicker v-model="emojiPickerOpen" @select="insertEmoji" @error="$emit('error', $event)" />
             </template>
             <template #append>
               <div
@@ -326,6 +327,7 @@ const emit = defineEmits<{
   'update:topicId': [value: string | null]
 }>()
 const text = ref('')
+const emojiPickerOpen = ref(false)
 const { locale, t } = useI18n()
 const isMobileDevice = Boolean(useQuasar().platform.is.mobile)
 const resourcePickerOpen = ref(false)
@@ -952,6 +954,13 @@ function updateReasoningEffortIndex(value: number | null): void {
   if (value !== null && Number.isInteger(value)) reasoningEffortIndex.value = value
 }
 
+function openEmojiPicker(event: KeyboardEvent): void {
+  if (event.isComposing || event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return
+  event.preventDefault()
+  commandHelpOpen.value = false
+  emojiPickerOpen.value = true
+}
+
 function insertEmoji(emoji: string): void {
   const input = messageInput.value?.getNativeElement()
   const start = input?.selectionStart ?? text.value.length
@@ -1047,6 +1056,7 @@ watch(effortSelectOpen, (visible, wasVisible) => {
 })
 
 watch(() => props.roomId, () => {
+  emojiPickerOpen.value = false
   resourcePickerOpen.value = false
   roomGeneration += 1
   cancelDictation()

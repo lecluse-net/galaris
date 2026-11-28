@@ -347,6 +347,7 @@ export default {
       },
       emoji: {
         open: "Ajouter un émoji",
+        openShortcut: "Ajouter un émoji ({key})",
         title: "Choisir un émoji",
         categories: "Catégories d’émojis",
         insert: "Ajouter {emoji}",
@@ -778,6 +779,7 @@ export default {
       },
       emoji: {
         open: "Add an emoji",
+        openShortcut: "Add an emoji ({key})",
         title: "Choose an emoji",
         categories: "Emoji categories",
         insert: "Add {emoji}",
@@ -1032,6 +1034,7 @@ export default {
       },
       emoji: {
         open: "添加表情符号", title: "选择表情符号", categories: "表情符号类别", insert: "添加 {emoji}",
+        openShortcut: "添加表情符号（{key}）",
         category: { frequent: "常用", smileys: "笑脸与情感", people: "人物与手势", nature: "动物与自然", food: "食物与饮品", activities: "活动", travel: "旅行与地点", objects: "物品", symbols: "符号", flags: "旗帜" },
       },
       mute: "静音或恢复通知",

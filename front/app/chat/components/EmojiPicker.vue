@@ -4,23 +4,30 @@
     round
     dense
     :aria-label="t('chat.emoji.open')"
+    :aria-expanded="open"
+    aria-haspopup="dialog"
+    aria-keyshortcuts="F2"
   >
     <q-icon name="sentiment_satisfied_alt" size="18px" />
-    <q-tooltip>{{ t('chat.emoji.open') }}</q-tooltip>
+    <q-tooltip>{{ t('chat.emoji.openShortcut', { key: 'F2' }) }}</q-tooltip>
     <q-menu
+      ref="pickerMenu"
       v-model="open"
-      anchor="top left"
-      self="bottom left"
+      :anchor="$q.screen.lt.md ? 'top middle' : 'top left'"
+      :self="$q.screen.lt.md ? 'bottom middle' : 'bottom left'"
       :offset="[0, 8]"
+      :transition-duration="0"
       class="emoji-picker-menu"
+      role="dialog"
+      :aria-label="t('chat.emoji.title')"
       @before-show="preparePicker"
+      @keydown.esc.stop.prevent="open = false"
     >
       <section
         class="emoji-picker"
         :class="{ 'emoji-picker--dark': $q.dark.isActive, 'q-dark': $q.dark.isActive }"
-        :aria-label="t('chat.emoji.title')"
       >
-        <div class="emoji-category-tabs" role="tablist" :aria-label="t('chat.emoji.categories')">
+        <div ref="categoryTabs" class="emoji-category-tabs" role="tablist" :aria-label="t('chat.emoji.categories')" @keydown="navigateCategories">
           <q-btn
             v-for="category in categories"
             :key="category.key"
@@ -29,10 +36,12 @@
             dense
             size="md"
             role="tab"
+            class="emoji-category-tab"
             :aria-label="categoryLabel(category.key)"
             :aria-selected="activeCategory.key === category.key"
+            :tabindex="activeCategory.key === category.key ? 0 : -1"
             :class="{ 'emoji-category-tab--active': activeCategory.key === category.key }"
-            @click.stop="activeCategoryKey = category.key"
+            @click.stop="activateCategory(category.key)"
           >
             <span class="emoji-category-icon" aria-hidden="true">{{ category.icon }}</span>
             <q-tooltip>{{ categoryLabel(category.key) }}</q-tooltip>
@@ -40,15 +49,17 @@
         </div>
         <q-separator />
         <div class="emoji-category-title">{{ categoryLabel(activeCategory.key) }}</div>
-        <div class="emoji-grid" role="grid">
+        <div ref="emojiGrid" class="emoji-grid" role="group" :aria-label="categoryLabel(activeCategory.key)" @keydown="navigateEmojis">
           <q-btn
             v-for="(emoji, index) in activeCategory.emojis"
             :key="`${activeCategory.key}-${index}`"
-            v-close-popup
             flat
             dense
             class="emoji-cell"
             :aria-label="t('chat.emoji.insert', { emoji })"
+            :tabindex="focusedEmojiIndex === index ? 0 : -1"
+            :data-autofocus="index === 0 ? '' : undefined"
+            @focus="focusedEmojiIndex = index"
             @click="selectEmoji(emoji)"
           >
             <span aria-hidden="true">{{ emoji }}</span>
@@ -60,8 +71,8 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
-import { useQuasar } from 'quasar'
+import { computed, nextTick, onMounted, ref, useTemplateRef } from 'vue'
+import { useQuasar, type QMenu } from 'quasar'
 import { useI18n } from 'vue-i18n'
 import { chatService } from '../services/chatService'
 import {
@@ -76,16 +87,21 @@ const emit = defineEmits<{
 }>()
 const $q = useQuasar()
 const { t } = useI18n()
-const open = ref(false)
+const open = defineModel<boolean>({ required: true })
 const frequentEmojis = ref<string[]>([])
+const displayedFrequentEmojis = ref<string[]>([])
 const activeCategoryKey = ref<EmojiCategoryKey>('smileys')
+const focusedEmojiIndex = ref(0)
+const pickerMenu = useTemplateRef<QMenu>('pickerMenu')
+const categoryTabs = useTemplateRef('categoryTabs')
+const emojiGrid = useTemplateRef('emojiGrid')
 const categories = computed<readonly EmojiCategory[]>(() => {
-  if (!frequentEmojis.value.length) return emojiCategories
+  if (!displayedFrequentEmojis.value.length) return emojiCategories
   return [
     {
       key: 'frequent',
       icon: '🕘',
-      emojis: frequentEmojis.value,
+      emojis: displayedFrequentEmojis.value,
     },
     ...emojiCategories,
   ]
@@ -100,7 +116,61 @@ function categoryLabel(key: EmojiCategoryKey): string {
   return t(`chat.emoji.category.${key}`)
 }
 
+function activateCategory(key: EmojiCategoryKey): void {
+  if (activeCategoryKey.value === key) return
+  activeCategoryKey.value = key
+  focusedEmojiIndex.value = 0
+  if (emojiGrid.value) emojiGrid.value.scrollTop = 0
+}
+
+function navigateCategories(event: KeyboardEvent): void {
+  if (event.key === 'ArrowDown') {
+    event.preventDefault()
+    emojiGrid.value?.querySelector('button')?.focus()
+    return
+  }
+  if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return
+  event.preventDefault()
+  const index = categories.value.findIndex(category => category.key === activeCategoryKey.value)
+  const offset = event.key === 'ArrowLeft' ? -1 : 1
+  const nextIndex = (index + offset + categories.value.length) % categories.value.length
+  const category = categories.value[nextIndex]
+  if (!category) return
+  activateCategory(category.key)
+  categoryTabs.value?.querySelectorAll('button')[nextIndex]?.focus()
+}
+
+function navigateEmojis(event: KeyboardEvent): void {
+  if (!['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(event.key)) return
+  const grid = emojiGrid.value
+  if (!grid) return
+  event.preventDefault()
+  const buttons = grid.querySelectorAll('button')
+  const index = focusedEmojiIndex.value
+  // Resolved grid tracks give the same column count as the responsive layout.
+  const columns = getComputedStyle(grid).gridTemplateColumns.split(' ').length
+  const column = index % columns
+  switch (event.key) {
+    case 'ArrowLeft':
+      if (column > 0) buttons[index - 1]?.focus()
+      break
+    case 'ArrowRight':
+      if (column < columns - 1) buttons[index + 1]?.focus()
+      break
+    case 'ArrowUp':
+      if (index >= columns) buttons[index - columns]?.focus()
+      else categoryTabs.value?.querySelector<HTMLButtonElement>('[aria-selected="true"]')?.focus()
+      break
+    case 'ArrowDown':
+      if (index - column + columns < buttons.length) {
+        buttons[Math.min(index + columns, buttons.length - 1)]?.focus()
+      }
+      break
+  }
+}
+
 function selectEmoji(emoji: string): void {
+  open.value = false
   emit('select', emoji)
   recordQueue = recordQueue
     .then(async () => {
@@ -109,21 +179,34 @@ function selectEmoji(emoji: string): void {
     .catch(error => { emit('error', error) })
 }
 
-async function loadFrequentEmojis(preferFrequent: boolean): Promise<void> {
+async function loadFrequentEmojis(): Promise<void> {
   try {
     frequentEmojis.value = (await chatService.frequentEmojis()).items
-    if (preferFrequent && frequentEmojis.value.length) activeCategoryKey.value = 'frequent'
-    else if (!frequentEmojis.value.length && activeCategoryKey.value === 'frequent') activeCategoryKey.value = 'smileys'
   } catch (error) {
     emit('error', error)
   }
 }
 
-function preparePicker(): void {
-  void recordQueue.then(() => loadFrequentEmojis(true))
+async function preparePicker(): Promise<void> {
+  // Keep the displayed order stable while the user moves through the picker.
+  displayedFrequentEmojis.value = frequentEmojis.value
+  if (displayedFrequentEmojis.value.length) activeCategoryKey.value = 'frequent'
+  else if (activeCategoryKey.value === 'frequent') activeCategoryKey.value = 'smileys'
+  focusedEmojiIndex.value = 0
+  recordQueue = recordQueue.then(loadFrequentEmojis)
+
+  await nextTick()
+  const grid = emojiGrid.value
+  if (!open.value || !grid) return
+  // The popup is hidden until positioned. Focus it before Quasar's opening timer finishes.
+  pickerMenu.value?.updatePosition()
+  await nextTick()
+  if (open.value && emojiGrid.value === grid) {
+    grid.querySelector('button')?.focus({ preventScroll: true })
+  }
 }
 
-onMounted(() => { void loadFrequentEmojis(true) })
+onMounted(() => { recordQueue = recordQueue.then(loadFrequentEmojis) })
 </script>
 
 <style scoped>
@@ -192,6 +275,11 @@ onMounted(() => { void loadFrequentEmojis(true) })
   background: rgba(25, 118, 210, 0.1);
 }
 
+.emoji-picker :is(.emoji-category-tab, .emoji-cell):focus-visible {
+  outline: 2px solid var(--solaire-blue-accent) !important;
+  outline-offset: -2px;
+}
+
 .emoji-picker--dark {
   color: #e3e7ee;
   background: #1b1e23;
@@ -209,7 +297,7 @@ onMounted(() => { void loadFrequentEmojis(true) })
 
 @media (max-width: 460px) {
   .emoji-grid {
-    grid-template-columns: repeat(7, minmax(38px, 1fr));
+    grid-template-columns: repeat(7, minmax(0, 1fr));
   }
 }
 </style>
